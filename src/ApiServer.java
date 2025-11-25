@@ -489,6 +489,11 @@ public class ApiServer {
                 BidirectionalAstar.interval_duration > 0 ? BidirectionalAstar.interval_duration : 360.0
         );
 
+        if (!Graph.contains_node(source) || !Graph.contains_node(destination)) {
+            writeError(exchange, 400, "Source or destination node is not present in the current graph.");
+            return;
+        }
+
         Result result = null;
         long start = System.currentTimeMillis();
         try {
@@ -603,6 +608,22 @@ public class ApiServer {
         headers.set("Access-Control-Allow-Origin", "*");
         byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
         exchange.sendResponseHeaders(200, bytes.length);
+        try (OutputStream os = exchange.getResponseBody()) {
+            os.write(bytes);
+        }
+    }
+
+    /**
+     * Minimal JSON error helper to keep handler logic focused on validation
+     * rather than response formatting.
+     */
+    private static void writeError(HttpExchange exchange, int statusCode, String message) throws IOException {
+        Headers headers = exchange.getResponseHeaders();
+        headers.set("Content-Type", "application/json; charset=utf-8");
+        headers.set("Access-Control-Allow-Origin", "*");
+        String body = String.format(Locale.ROOT, "{\"error\":\"%s\"}", message.replace('"', '\''));
+        byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+        exchange.sendResponseHeaders(statusCode, bytes.length);
         try (OutputStream os = exchange.getResponseBody()) {
             os.write(bytes);
         }
