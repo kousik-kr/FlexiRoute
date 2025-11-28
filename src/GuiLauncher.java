@@ -74,6 +74,8 @@ public class GuiLauncher {
         });
     }
 
+    private JTabbedPane tabbedPane;
+
     public GuiLauncher() {
         this.frame = new JFrame("Wide-Path Pro - Advanced Pathfinding Analysis");
         this.executorService = Executors.newFixedThreadPool(4);
@@ -163,11 +165,11 @@ public class GuiLauncher {
         JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
         mainPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         
-        // Create input panel (left side)
-        inputPanel = new QueryInputPanel(maxNodeId, this::executeQuery);
+        // Create input panel (left side) with reset and exit callbacks
+        inputPanel = new QueryInputPanel(maxNodeId, this::executeQuery, this::resetQuery, this::exitApplication);
         
         // Create tabbed pane for output and visualization
-        JTabbedPane tabbedPane = new JTabbedPane(JTabbedPane.TOP);
+        tabbedPane = new JTabbedPane(JTabbedPane.TOP);
         tabbedPane.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         
         // Results tab
@@ -203,6 +205,9 @@ public class GuiLauncher {
         frame.setLocationRelativeTo(null);
         
         statusBar.setMessage("Ready. Graph loaded with " + maxNodeId + " nodes.", StatusBar.MessageType.INFO);
+        
+        // Show welcome message
+        displayWelcomeMessage();
     }
 
     private JMenuBar createMenuBar() {
@@ -359,9 +364,13 @@ public class GuiLauncher {
                     if (result.isSuccess()) {
                         statusBar.setMessage("Query completed successfully in " + result.getExecutionTimeMs() + " ms", 
                             StatusBar.MessageType.SUCCESS);
+                        showSuccessAnimation();
                     } else {
                         statusBar.setMessage("Query failed: " + result.getErrorMessage(), StatusBar.MessageType.ERROR);
                     }
+                    
+                    // Show action buttons after query completion
+                    SwingUtilities.invokeLater(() -> inputPanel.showActionButtons());
                 } catch (Exception e) {
                     statusBar.setMessage("Error processing results: " + e.getMessage(), StatusBar.MessageType.ERROR);
                 } finally {
@@ -439,9 +448,164 @@ public class GuiLauncher {
                         "• Real-time performance metrics\n" +
                         "• Query history and analytics\n" +
                         "• Advanced path visualization\n" +
-                        "• Multiple rendering modes\n\n" +
+                        "• Multiple rendering modes\n" +
+                        "• Query reset and session management\n\n" +
                         "© 2025 Wide-Path Team";
         
         JOptionPane.showMessageDialog(frame, message, "About Wide-Path Pro", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void resetQuery() {
+        // Animate reset with visual feedback
+        statusBar.setMessage("Resetting query session...", StatusBar.MessageType.INFO);
+        
+        SwingWorker<Void, Void> resetWorker = new SwingWorker<>() {
+            @Override
+            protected Void doInBackground() {
+                try {
+                    Thread.sleep(300); // Brief pause for visual feedback
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                // Clear output pane with fade effect
+                outputPane.setText("");
+                
+                // Clear map visualization
+                currentPath = Collections.emptyList();
+                currentWideEdges = Collections.emptyList();
+                mapPanel.setPath(currentPath, currentWideEdges);
+                
+                // Switch to input tab
+                tabbedPane.setSelectedIndex(0);
+                
+                // Reset input panel
+                inputPanel.resetToInitialState();
+                
+                // Update status
+                statusBar.setMessage("Ready for new query. All fields reset.", StatusBar.MessageType.SUCCESS);
+                
+                // Show welcome message
+                displayWelcomeMessage();
+            }
+        };
+        
+        resetWorker.execute();
+    }
+
+    private void displayWelcomeMessage() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("═══════════════════════════════════════\n");
+        sb.append("    WIDE-PATH PRO - READY\n");
+        sb.append("═══════════════════════════════════════\n\n");
+        sb.append("🎯 Enter query parameters and click 'Run Query'\n");
+        sb.append("📊 View results in the tabs above\n");
+        sb.append("🗺️  Visualize paths with multiple rendering modes\n");
+        sb.append("📈 Track performance metrics\n");
+        sb.append("🕐 Review query history\n\n");
+        sb.append("Tip: Use Ctrl+Enter to run queries quickly\n");
+        sb.append("═══════════════════════════════════════\n");
+        
+        outputPane.setText(sb.toString());
+    }
+
+    private void exitApplication() {
+        // Create custom confirmation dialog with styling
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        
+        JLabel icon = new JLabel("🚪");
+        icon.setFont(new Font("Segoe UI", Font.PLAIN, 48));
+        icon.setHorizontalAlignment(SwingConstants.CENTER);
+        
+        JLabel message = new JLabel("<html><div style='text-align: center;'>" +
+            "<b>Exit Wide-Path Pro?</b><br><br>" +
+            "Are you sure you want to exit?<br>" +
+            "All unsaved data will be lost." +
+            "</div></html>");
+        message.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        message.setHorizontalAlignment(SwingConstants.CENTER);
+        
+        panel.add(icon, BorderLayout.NORTH);
+        panel.add(message, BorderLayout.CENTER);
+        
+        String[] options = {"Exit", "Cancel"};
+        int choice = JOptionPane.showOptionDialog(
+            frame,
+            panel,
+            "Confirm Exit",
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.QUESTION_MESSAGE,
+            null,
+            options,
+            options[1]
+        );
+        
+        if (choice == 0) { // Exit chosen
+            performGracefulShutdown();
+        }
+    }
+
+    private void performGracefulShutdown() {
+        statusBar.setMessage("Shutting down Wide-Path Pro...", StatusBar.MessageType.INFO);
+        
+        SwingWorker<Void, Void> shutdownWorker = new SwingWorker<>() {
+            @Override
+            protected Void doInBackground() {
+                try {
+                    // Cleanup resources
+                    statusBar.dispose();
+                    metricsDashboard.dispose();
+                    executorService.shutdown();
+                    
+                    if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
+                        executorService.shutdownNow();
+                    }
+                } catch (InterruptedException e) {
+                    executorService.shutdownNow();
+                    Thread.currentThread().interrupt();
+                }
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                // Fade out animation
+                Timer fadeTimer = new Timer(30, null);
+                final float[] opacity = {1.0f};
+                fadeTimer.addActionListener(e -> {
+                    opacity[0] -= 0.1f;
+                    if (opacity[0] <= 0.0f) {
+                        ((Timer) e.getSource()).stop();
+                        frame.dispose();
+                        System.exit(0);
+                    } else {
+                        frame.setOpacity(opacity[0]);
+                    }
+                });
+                fadeTimer.start();
+            }
+        };
+        
+        shutdownWorker.execute();
+    }
+
+    private void showSuccessAnimation() {
+        // Visual success feedback with color flash on status bar
+        Timer flashTimer = new Timer(100, null);
+        final int[] flashCount = {0};
+        flashTimer.addActionListener(e -> {
+            if (flashCount[0]++ >= 6) {
+                ((Timer) e.getSource()).stop();
+            } else {
+                // Toggle between success color and normal
+                statusBar.repaint();
+            }
+        });
+        flashTimer.start();
     }
 }

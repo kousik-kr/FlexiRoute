@@ -14,7 +14,6 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.text.Bidi;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -174,7 +173,7 @@ public class ApiServer {
     private static Path resolveDataDirectory() {
         String configured = BidirectionalAstar.getConfiguredGraphDataDir();
         if (configured != null && !configured.isBlank()) {
-            Path dir = Paths.get(configured);
+            Path dir = Path.of(configured);
             if (Files.isDirectory(dir)) {
                 return dir;
             }
@@ -185,7 +184,7 @@ public class ApiServer {
             field.setAccessible(true);
             String path = (String) field.get(null);
             if (path != null && !path.isBlank()) {
-                Path dir = Paths.get(path);
+                Path dir = Path.of(path);
                 if (Files.isDirectory(dir)) {
                     return dir;
                 }

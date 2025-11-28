@@ -14,8 +14,14 @@ Wide-Path is an advanced pathfinding analysis system featuring:
 ✨ **Query History**: Stores and analyzes last 100 queries  
 ✨ **Material Design UI**: Modern, professional interface with themes  
 ✨ **Graph Pagination**: Handle large graphs with configurable pagination  
+✨ **Reset Query Feature**: One-click reset for running multiple queries 🔄  
+✨ **Exit System**: Graceful shutdown with confirmation and fade animation 🚪  
+✨ **Success Animations**: Visual feedback with status bar effects 🎨  
+✨ **Welcome Screen**: Professional startup and reset experience 🎯  
 
-📚 **[Read Full Transformation Summary →](TRANSFORMATION_SUMMARY.md)**
+📚 **[Read Full Transformation Summary →](TRANSFORMATION_SUMMARY.md)**  
+🔄 **[New Reset & Exit Features →](QUERY_RESET_EXIT_FEATURES.md)**  
+📊 **[Visual Workflow Guide →](VISUAL_WORKFLOW.md)**
 
 ## Prerequisites
 - **Java 21+ JDK** (LTS version recommended).
