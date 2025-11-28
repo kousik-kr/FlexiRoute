@@ -17,9 +17,13 @@ public class QueryInputPanel extends JPanel {
     private final JSpinner budgetSpinner;
     private final ModernButton runButton;
     private final ModernButton clearButton;
+    private final ModernButton resetButton;
+    private final ModernButton exitButton;
     private final int maxNodeId;
+    private JPanel actionPanel;
+    private boolean queryExecuted = false;
 
-    public QueryInputPanel(int maxNodeId, Consumer<QueryParameters> onRunQuery) {
+    public QueryInputPanel(int maxNodeId, Consumer<QueryParameters> onRunQuery, Runnable onReset, Runnable onExit) {
         this.maxNodeId = maxNodeId;
         setLayout(new BorderLayout(0, 10));
         setBorder(BorderFactory.createCompoundBorder(
@@ -55,10 +59,10 @@ public class QueryInputPanel extends JPanel {
         fieldsPanel.add(createFieldRow("⏱ Interval Duration (min):", intervalSpinner), gbc);
         fieldsPanel.add(createFieldRow("💰 Budget (min):", budgetSpinner), gbc);
 
-        // Buttons panel
+        // Buttons panel - Initial state
         JPanel buttonsPanel = new JPanel(new GridLayout(2, 1, 0, 10));
         runButton = new ModernButton("▶ Run Query", new Color(76, 175, 80));
-        clearButton = new ModernButton("🔄 Clear", new Color(158, 158, 158));
+        clearButton = new ModernButton("🔄 Clear Fields", new Color(158, 158, 158));
 
         runButton.setPreferredSize(new Dimension(200, 40));
         clearButton.setPreferredSize(new Dimension(200, 40));
@@ -72,6 +76,7 @@ public class QueryInputPanel extends JPanel {
                 (Integer) budgetSpinner.getValue()
             );
             onRunQuery.accept(params);
+            queryExecuted = true;
         });
 
         clearButton.addActionListener(e -> clearFields());
@@ -79,8 +84,32 @@ public class QueryInputPanel extends JPanel {
         buttonsPanel.add(runButton);
         buttonsPanel.add(clearButton);
 
+        // Action panel - Appears after query execution
+        actionPanel = new JPanel(new GridLayout(2, 1, 0, 10));
+        resetButton = new ModernButton("🔄 New Query", new Color(33, 150, 243));
+        exitButton = new ModernButton("🚪 Exit System", new Color(244, 67, 54));
+
+        resetButton.setPreferredSize(new Dimension(200, 40));
+        exitButton.setPreferredSize(new Dimension(200, 40));
+
+        resetButton.addActionListener(e -> {
+            onReset.run();
+            resetToInitialState();
+        });
+
+        exitButton.addActionListener(e -> onExit.run());
+
+        actionPanel.add(resetButton);
+        actionPanel.add(exitButton);
+        actionPanel.setVisible(false);
+
+        // Container for switching between button panels
+        JPanel buttonContainer = new JPanel(new BorderLayout());
+        buttonContainer.add(buttonsPanel, BorderLayout.NORTH);
+        buttonContainer.add(actionPanel, BorderLayout.CENTER);
+
         add(fieldsPanel, BorderLayout.CENTER);
-        add(buttonsPanel, BorderLayout.SOUTH);
+        add(buttonContainer, BorderLayout.SOUTH);
     }
 
     private JPanel createFieldRow(String label, JSpinner spinner) {
@@ -110,6 +139,47 @@ public class QueryInputPanel extends JPanel {
 
     public void setRunEnabled(boolean enabled) {
         runButton.setEnabled(enabled);
+    }
+
+    public void showActionButtons() {
+        // Disable input controls
+        sourceSpinner.setEnabled(false);
+        destSpinner.setEnabled(false);
+        departureSpinner.setEnabled(false);
+        intervalSpinner.setEnabled(false);
+        budgetSpinner.setEnabled(false);
+        runButton.setVisible(false);
+        clearButton.setVisible(false);
+        actionPanel.setVisible(true);
+        
+        // Animate the transition
+        Timer animationTimer = new Timer(10, null);
+        final float[] alpha = {0.0f};
+        animationTimer.addActionListener(e -> {
+            alpha[0] += 0.1f;
+            if (alpha[0] >= 1.0f) {
+                alpha[0] = 1.0f;
+                ((Timer) e.getSource()).stop();
+            }
+            actionPanel.repaint();
+        });
+        animationTimer.start();
+    }
+
+    public void resetToInitialState() {
+        // Re-enable input controls
+        sourceSpinner.setEnabled(true);
+        destSpinner.setEnabled(true);
+        departureSpinner.setEnabled(true);
+        intervalSpinner.setEnabled(true);
+        budgetSpinner.setEnabled(true);
+        runButton.setVisible(true);
+        clearButton.setVisible(true);
+        actionPanel.setVisible(false);
+        queryExecuted = false;
+        
+        // Clear fields
+        clearFields();
     }
 
     public static class QueryParameters {
