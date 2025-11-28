@@ -1,5 +1,6 @@
 import java.io.*;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -38,13 +39,13 @@ public class SyntheticDatasetGenerator {
 
     
     public static void main(String[] args) throws IOException {
-        Path coordPath = args.length > 0 ? Paths.get(args[0]) : Paths.get("USA-road-d.NY.co");
-        Path distPath = args.length > 1 ? Paths.get(args[1]) : Paths.get("USA-road-d.NY.gr");
-        Path timePath = args.length > 2 ? Paths.get(args[2]) : Paths.get("USA-road-t.NY.gr");
+        Path coordPath = args.length > 0 ? Path.of(args[0]) : Path.of("USA-road-d.NY.co");
+        Path distPath = args.length > 1 ? Path.of(args[1]) : Path.of("USA-road-d.NY.gr");
+        Path timePath = args.length > 2 ? Path.of(args[2]) : Path.of("USA-road-t.NY.gr");
 
         String datasetTag = deriveDatasetTag(coordPath.getFileName().toString());
-        Path nodeCityOutput = Paths.get("node_" + datasetTag + ".txt");
-        Path edgeCityOutput = Paths.get("edge_" + datasetTag + ".txt");
+        Path nodeCityOutput = Path.of("node_" + datasetTag + ".txt");
+        Path edgeCityOutput = Path.of("edge_" + datasetTag + ".txt");
 
         double baseWidth = 1.0;
         double rushWidthFactor = 1.5;

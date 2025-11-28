@@ -11,7 +11,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -398,13 +397,13 @@ public class BidirectionalAstar {
             extract_edges();
             System.out.println("[Load] Edges extracted.");
 
-            Path clusterPath = Paths.get(dataDirectory, "node_" + Graph.get_vertex_count() + ".txt");
+            Path clusterPath = Path.of(dataDirectory, "node_" + Graph.get_vertex_count() + ".txt");
             if (Files.exists(clusterPath)) {
                 extractClusterInformation(clusterPath.toString());
             } else {
                 System.err.println("Cluster file missing: " + clusterPath);
             }
-            Path edgeWidthPath = Paths.get(dataDirectory, "edge_" + Graph.get_vertex_count() + ".txt");
+            Path edgeWidthPath = Path.of(dataDirectory, "edge_" + Graph.get_vertex_count() + ".txt");
             if (Files.exists(edgeWidthPath)) {
                 extractEdgeWidthInformation(edgeWidthPath.toString());
             } else {
@@ -422,20 +421,20 @@ public class BidirectionalAstar {
 
     private static String resolveDataDirectory(String override) {
         if (override != null && !override.isBlank()) {
-            Path p = Paths.get(override);
+            Path p = Path.of(override);
             if (Files.isDirectory(p)) {
                 return p.toString();
             }
         }
 
         if (configuredGraphDataDir != null && !configuredGraphDataDir.isBlank()) {
-            Path p = Paths.get(configuredGraphDataDir);
+            Path p = Path.of(configuredGraphDataDir);
             if (Files.isDirectory(p)) {
                 return p.toString();
             }
         }
 
-        if (Files.isDirectory(Paths.get(currentDirectory))) {
+        if (Files.isDirectory(Path.of(currentDirectory))) {
             return currentDirectory;
         }
         return null;
@@ -447,7 +446,7 @@ public class BidirectionalAstar {
         }
 
         Pattern pattern = Pattern.compile("nodes_(\\d+)\\.txt");
-        try (Stream<Path> files = Files.list(Paths.get(dir))) {
+        try (Stream<Path> files = Files.list(Path.of(dir))) {
             int detected = files
                     .map(path -> path.getFileName().toString())
                     .map(name -> {
