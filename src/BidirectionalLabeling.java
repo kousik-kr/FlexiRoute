@@ -571,7 +571,7 @@ public class BidirectionalLabeling implements Runnable{
                 double normalizedDistance = totalEstimatedDistance / Math.max(1.0, budget);
 
                 // Refined width penalty: consider both current edge and accumulated path width
-                double currentWidth = topLabel.get_wide_distance().getValue();
+                double currentWidth = topLabel.get_wide_distance().getMaxValue();
                 double edgeWidthEstimate = Math.max(1.0, (edge.getBaseWidth() + edge.getRushWidth()) / 2.0);
                 
                 // Width penalty is higher for narrow edges, especially if path is already narrow
