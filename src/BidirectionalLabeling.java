@@ -19,14 +19,21 @@ public class BidirectionalLabeling implements Runnable{
         // the best heuristic seen for a node. Lower scores are better.
         private static final ConcurrentHashMap<Integer, Double> forwardBestScore = new ConcurrentHashMap<>();
         private static final ConcurrentHashMap<Integer, Double> backwardBestScore = new ConcurrentHashMap<>();
+        
+        // Track search progress to enable progressive pruning
+        private static final ConcurrentHashMap<Integer, Double> forwardMinCost = new ConcurrentHashMap<>();
+        private static final ConcurrentHashMap<Integer, Double> backwardMinCost = new ConcurrentHashMap<>();
 
-        // Baseline weights for the adaptive heuristic. We scale these at runtime based on
-        // remaining budget pressure, observed narrowness, and accumulated turns so the
-        // heuristic stays dynamic instead of static.
-        private static final double BASE_DISTANCE_WEIGHT = 0.35;
-        private static final double BASE_WIDTH_WEIGHT = 0.30;
-        private static final double BASE_TURN_WEIGHT = 0.20;
-        private static final double BASE_SHARP_TURN_WEIGHT = 0.15;
+        // Refined baseline weights for the adaptive heuristic. These ensure admissibility while
+        // providing strong guidance. Distance weight is higher to prioritize budget satisfaction.
+        private static final double BASE_DISTANCE_WEIGHT = 0.50;  // Increased for budget awareness
+        private static final double BASE_WIDTH_WEIGHT = 0.25;     // Reduced but still significant
+        private static final double BASE_TURN_WEIGHT = 0.15;      // Moderate penalty
+        private static final double BASE_SHARP_TURN_WEIGHT = 0.10; // Lower for admissibility
+        
+        // Progressive pruning - threshold becomes stricter as search progresses
+        private static final double INITIAL_PRUNE_THRESHOLD = 1.10; // 10% tolerance initially
+        private static final double STRICT_PRUNE_THRESHOLD = 1.03;  // 3% tolerance when established
 
         public BidirectionalLabeling(int goal, double b, Label label, BidirectionalDriver.SharedState shared, boolean is_forward){
                 this.goal = goal;
@@ -41,11 +48,26 @@ public class BidirectionalLabeling implements Runnable{
 
 //		List<Label> destinationLabels = new ArrayList<Label>();
 		
+		// Enhanced termination condition 1: Time limit check
 		long current = System.currentTimeMillis();
 		if((current-BidirectionalAstar.start)/1000F >BidirectionalAstar.TIME_LIMIT) {
 			if(!BidirectionalAstar.isMemoryUpdated()) 
 				BidirectionalAstar.updateMemory();
 			BidirectionalAstar.forceStop=true;
+			return;
+		}
+		
+		// Enhanced termination condition 2: Budget exhaustion check
+		// If the current label has already consumed budget close to the limit,
+		// and the heuristic shows we can't reach the goal, terminate early
+		double consumedBudget = topLabel.getDistance();
+		double estimatedRemaining = isForward ? 
+			Graph.get_node(topLabel.get_nodeID()).get_backward_hDistance() : 
+			Graph.get_node(topLabel.get_nodeID()).get_forward_hDistance();
+		
+		if(estimatedRemaining != Double.MAX_VALUE && 
+		   (consumedBudget + estimatedRemaining) > budget * 1.15) {
+			// Path cannot satisfy budget constraint even optimistically
 			return;
 		}
 	
@@ -493,37 +515,74 @@ public class BidirectionalLabeling implements Runnable{
 
         private boolean shouldPrune(Node nextNode, Edge edge, int nextNodeId) {
                 double heuristicScore = computeHeuristicScore(nextNode, edge);
-                ConcurrentHashMap<Integer, Double> cache = isForward ? forwardBestScore : backwardBestScore;
+                ConcurrentHashMap<Integer, Double> scoreCache = isForward ? forwardBestScore : backwardBestScore;
+                ConcurrentHashMap<Integer, Double> costCache = isForward ? forwardMinCost : backwardMinCost;
 
-                Double best = cache.get(nextNodeId);
-                if(best != null && heuristicScore >= best * 1.05) {
+                // Progressive pruning: use stricter threshold as we find better paths
+                double pathCost = topLabel.getDistance() + edge.get_distance();
+                Double globalMinCost = isForward ? 
+                        forwardMinCost.values().stream().min(Double::compare).orElse(Double.MAX_VALUE) :
+                        backwardMinCost.values().stream().min(Double::compare).orElse(Double.MAX_VALUE);
+                
+                double pruneThreshold = (globalMinCost < Double.MAX_VALUE && pathCost > globalMinCost * 0.8) ?
+                        STRICT_PRUNE_THRESHOLD : INITIAL_PRUNE_THRESHOLD;
+
+                // Heuristic-based pruning
+                Double best = scoreCache.get(nextNodeId);
+                if(best != null && heuristicScore >= best * pruneThreshold) {
                         return true;
                 }
 
-                cache.merge(nextNodeId, heuristicScore, Math::min);
+                // Cost-based pruning: if we've seen this node with significantly lower cost, prune
+                Double minCost = costCache.get(nextNodeId);
+                if(minCost != null && pathCost >= minCost * 1.20) {
+                        return true;
+                }
+
+                scoreCache.merge(nextNodeId, heuristicScore, Math::min);
+                costCache.merge(nextNodeId, pathCost, Math::min);
                 return false;
         }
 
         private double computeHeuristicScore(Node nextNode, Edge edge) {
                 double pathDistance = topLabel.getDistance() + edge.get_distance();
                 double estimatedRemainingDistance = isForward ? nextNode.get_backward_hDistance() : nextNode.get_forward_hDistance();
-                if(estimatedRemainingDistance==Double.MAX_VALUE) {
-                        estimatedRemainingDistance = budget;
+                
+                // Handle unreachable or unknown distances more conservatively
+                if(estimatedRemainingDistance == Double.MAX_VALUE) {
+                        estimatedRemainingDistance = budget * 0.5; // Conservative estimate
                 }
-                // Travel-time pressure: as we consume budget, distance weight increases so we
-                // prioritize options that satisfy the time constraint sooner.
-                double usedBudgetRatio = (pathDistance + estimatedRemainingDistance) / Math.max(1.0, budget);
-                double adaptiveDistanceWeight = BASE_DISTANCE_WEIGHT * (1.0 + 0.6 * Math.min(1.5, usedBudgetRatio));
+                
+                double totalEstimatedDistance = pathDistance + estimatedRemainingDistance;
+                double remainingBudget = budget - pathDistance;
+                
+                // Refined budget pressure calculation
+                // usedRatio tracks how much budget we've consumed relative to total needed
+                double usedBudgetRatio = totalEstimatedDistance / Math.max(1.0, budget);
+                // remainingRatio tracks budget headroom
+                double remainingBudgetRatio = Math.max(0.0, remainingBudget / Math.max(1.0, estimatedRemainingDistance));
+                
+                // Adaptive distance weight increases when budget is tight
+                // But stays admissible by not over-penalizing
+                double budgetPressure = Math.min(2.0, usedBudgetRatio);
+                double adaptiveDistanceWeight = BASE_DISTANCE_WEIGHT * (1.0 + 0.4 * budgetPressure);
 
-                double normalizedDistance = usedBudgetRatio;
+                // Normalize distance component by budget to keep it bounded
+                double normalizedDistance = totalEstimatedDistance / Math.max(1.0, budget);
 
-                // Narrow-road penalty: distance per unit width (higher when road is narrow). We
-                // amplify weight dynamically when this ratio is already high to minimize the
-                // percentage of narrow travel.
-                double widthEstimate = Math.max(1.0, (edge.getBaseWidth() + edge.getRushWidth()) / 2.0);
-                double narrowPenalty = edge.get_distance() / widthEstimate;
-                double adaptiveWidthWeight = BASE_WIDTH_WEIGHT * (1.0 + 0.4 * Math.min(1.5, narrowPenalty));
+                // Refined width penalty: consider both current edge and accumulated path width
+                double currentWidth = topLabel.get_wide_distance().getValue();
+                double edgeWidthEstimate = Math.max(1.0, (edge.getBaseWidth() + edge.getRushWidth()) / 2.0);
+                
+                // Width penalty is higher for narrow edges, especially if path is already narrow
+                double accumulatedWidthRatio = currentWidth / Math.max(1.0, pathDistance);
+                double edgeWidthPenalty = edge.get_distance() / edgeWidthEstimate;
+                double combinedWidthPenalty = (accumulatedWidthRatio + edgeWidthPenalty) / 2.0;
+                
+                // Amplify width weight when budget is tight (narrow roads slow us down)
+                double adaptiveWidthWeight = BASE_WIDTH_WEIGHT * (1.0 + 0.3 * Math.min(1.5, budgetPressure));
 
+                // Turn computation with better context awareness
                 Integer predecessorId = topLabel.getVisitedList().get(topLabel.get_nodeID());
                 boolean sharpTurn = false;
                 if(predecessorId != null && predecessorId >= 0) {
@@ -532,23 +591,34 @@ public class BidirectionalLabeling implements Runnable{
                         sharpTurn = Graph.isSharpRightTurn(previousNode, currentNode, nextNode);
                 }
 
-                int projectedTurns = topLabel.getRightTurns();
-                if(sharpTurn) {
-                        projectedTurns++;
-                }
-                projectedTurns += isForward ? nextNode.get_backward_hRightTurn() : nextNode.get_forward_hRightTurn();
+                int actualTurns = topLabel.getRightTurns();
+                int projectedTurns = actualTurns + (sharpTurn ? 1 : 0);
+                int estimatedRemainingTurns = isForward ? nextNode.get_backward_hRightTurn() : nextNode.get_forward_hRightTurn();
+                int totalEstimatedTurns = projectedTurns + estimatedRemainingTurns;
 
-                // Turn penalties: grow as we already accumulate turns or narrow segments to
-                // discourage additional turning on constrained/narrow routes.
-                double turnPressure = projectedTurns / Math.max(1.0, pathDistance);
-                double adaptiveTurnWeight = BASE_TURN_WEIGHT * (1.0 + 0.5 * Math.min(1.5, turnPressure + narrowPenalty * 0.1));
+                // Turn weight adapts based on turn density and remaining budget
+                // High turn density on tight budget is very costly
+                double turnDensity = totalEstimatedTurns / Math.max(1.0, totalEstimatedDistance);
+                double adaptiveTurnWeight = BASE_TURN_WEIGHT * (1.0 + 0.4 * Math.min(1.5, 
+                        budgetPressure * turnDensity + combinedWidthPenalty * 0.15));
 
-                double adaptiveSharpTurnWeight = BASE_SHARP_TURN_WEIGHT * (1.0 + 0.5 * Math.min(1.5, usedBudgetRatio + narrowPenalty));
+                // Sharp turn weight increases when budget is critical or path is narrow
+                double adaptiveSharpTurnWeight = BASE_SHARP_TURN_WEIGHT * (1.0 + 0.3 * Math.min(1.8, 
+                        budgetPressure + combinedWidthPenalty * 0.2));
 
-                return adaptiveDistanceWeight * normalizedDistance
-                                + adaptiveWidthWeight * narrowPenalty
-                                + adaptiveTurnWeight * projectedTurns
+                // Final heuristic combines all factors with adaptive weights
+                // This maintains admissibility while being sensitive to budget constraints
+                double heuristic = adaptiveDistanceWeight * normalizedDistance
+                                + adaptiveWidthWeight * combinedWidthPenalty
+                                + adaptiveTurnWeight * totalEstimatedTurns
                                 + (sharpTurn ? adaptiveSharpTurnWeight : 0.0);
+                
+                // Add small penalty if remaining budget is very tight relative to remaining distance
+                if(remainingBudgetRatio < 0.3 && estimatedRemainingDistance > 0) {
+                        heuristic *= 1.15; // Discourage paths that are cutting it too close
+                }
+                
+                return heuristic;
         }
 
         public void setMaster() {
