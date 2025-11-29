@@ -26,14 +26,14 @@ public class BidirectionalLabeling implements Runnable{
 
         // Refined baseline weights for the adaptive heuristic. These ensure admissibility while
         // providing strong guidance. Distance weight is higher to prioritize budget satisfaction.
-        private static final double BASE_DISTANCE_WEIGHT = 0.50;  // Increased for budget awareness
-        private static final double BASE_WIDTH_WEIGHT = 0.25;     // Reduced but still significant
-        private static final double BASE_TURN_WEIGHT = 0.15;      // Moderate penalty
-        private static final double BASE_SHARP_TURN_WEIGHT = 0.10; // Lower for admissibility
+        private static final double BASE_DISTANCE_WEIGHT = 0.40;  // Balanced for budget awareness
+        private static final double BASE_WIDTH_WEIGHT = 0.20;     // Reduced penalty
+        private static final double BASE_TURN_WEIGHT = 0.10;      // Lower penalty to allow exploration
+        private static final double BASE_SHARP_TURN_WEIGHT = 0.05; // Minimal penalty
         
-        // Progressive pruning - threshold becomes stricter as search progresses
-        private static final double INITIAL_PRUNE_THRESHOLD = 1.10; // 10% tolerance initially
-        private static final double STRICT_PRUNE_THRESHOLD = 1.03;  // 3% tolerance when established
+        // Progressive pruning - more lenient thresholds to allow bidirectional search to meet
+        private static final double INITIAL_PRUNE_THRESHOLD = 1.30; // 30% tolerance initially
+        private static final double STRICT_PRUNE_THRESHOLD = 1.10;  // 10% tolerance when established
 
         public BidirectionalLabeling(int goal, double b, Label label, BidirectionalDriver.SharedState shared, boolean is_forward){
                 this.goal = goal;
@@ -46,20 +46,24 @@ public class BidirectionalLabeling implements Runnable{
 	@Override
 	public void run(){
 
-//		List<Label> destinationLabels = new ArrayList<Label>();
+		System.out.println("[Labeling-" + (isForward ? "FWD" : "BWD") + "] Starting from node " + topLabel.get_nodeID());
 		
 		// Enhanced termination condition 1: Time limit check
 		long current = System.currentTimeMillis();
-		if((current-BidirectionalAstar.start)/1000F >BidirectionalAstar.TIME_LIMIT) {
+		float elapsed = (current-BidirectionalAstar.start)/1000F;
+		System.out.println("[Labeling-" + (isForward ? "FWD" : "BWD") + "] Elapsed time: " + elapsed + "s, TIME_LIMIT: " + BidirectionalAstar.TIME_LIMIT + "s");
+		if(elapsed > BidirectionalAstar.TIME_LIMIT) {
+			System.out.println("[Labeling-" + (isForward ? "FWD" : "BWD") + "] Time limit exceeded");
 			if(!BidirectionalAstar.isMemoryUpdated()) 
 				BidirectionalAstar.updateMemory();
 			BidirectionalAstar.forceStop=true;
 			return;
 		}
 		
-		// Enhanced termination condition 2: Budget exhaustion check
-		// If the current label has already consumed budget close to the limit,
-		// and the heuristic shows we can't reach the goal, terminate early
+		// Enhanced termination condition 2: Budget exhaustion check (DISABLED - A* preprocessing handles this)
+		// The A* preprocessing phase already filters nodes by budget via feasibility marking.
+		// This check was overly conservative and preventing valid exploration.
+		/*
 		double consumedBudget = topLabel.getDistance();
 		double estimatedRemaining = isForward ? 
 			Graph.get_node(topLabel.get_nodeID()).get_backward_hDistance() : 
@@ -68,8 +72,11 @@ public class BidirectionalLabeling implements Runnable{
 		if(estimatedRemaining != Double.MAX_VALUE && 
 		   (consumedBudget + estimatedRemaining) > budget * 1.15) {
 			// Path cannot satisfy budget constraint even optimistically
+			System.out.println("[Labeling-" + (isForward ? "FWD" : "BWD") + "] Early termination: consumed=" + consumedBudget + 
+				", remaining=" + estimatedRemaining + ", total=" + (consumedBudget+estimatedRemaining) + ", budget*1.15=" + (budget*1.15));
 			return;
 		}
+		*/
 	
 		List<ForkJoinTask<?>> labelQueue = new ArrayList<ForkJoinTask<?>>();
 		
@@ -79,9 +86,12 @@ public class BidirectionalLabeling implements Runnable{
 		
 		Node node = Graph.get_node(current_vertex);
 		
+		// System.out.println("[Labeling-" + (isForward ? "FWD" : "BWD") + "] At node " + current_vertex + ", exploring neighbors");
+		
 		if(isForward) {
 			
 			Map<Integer, Edge> temp_outgoing_edge = node.get_outgoing_edges();
+			// System.out.println("[Labeling-FWD] Node " + current_vertex + " has " + temp_outgoing_edge.size() + " outgoing edges");
 			
 			for(Entry<Integer, Edge> entry : temp_outgoing_edge.entrySet()) {
 				Edge edge = entry.getValue();
@@ -91,8 +101,14 @@ public class BidirectionalLabeling implements Runnable{
 	//			if(j==destination) {
 	//				System.out.println("hi");
 	//			}
-                                if(Graph.get_node(j).isFeasible() && Graph.get_node(j).get_forward_hTime()<=budget && !topLabel.getVisited(j)) {
+                                // Only check feasibility - A* preprocessing already filtered by budget
+                                if(Graph.get_node(j).isFeasible() && !topLabel.getVisited(j)) {
                                         Node nextNode = Graph.get_node(j);
+                                        if(isForward && topLabel.get_nodeID() == 72594) {
+                                            System.out.println("[DEBUG] Checking neighbor " + j + ": feasible=" + nextNode.isFeasible() + 
+                                                ", forward_hTime=" + nextNode.get_forward_hTime() + 
+                                                ", visited=" + topLabel.getVisited(j));
+                                        }
                                         if(shouldPrune(nextNode, edge, j)) {
                                                 continue;
                                         }
@@ -295,7 +311,8 @@ public class BidirectionalLabeling implements Runnable{
 	//			if(j==destination) {
 	//				System.out.println("hi");
 	//			}
-                                if(Graph.get_node(j).isFeasible() && Graph.get_node(j).get_backward_hTime()<=budget && !topLabel.getVisited(j)) {
+                                // Only check feasibility - A* preprocessing already filtered by budget
+                                if(Graph.get_node(j).isFeasible() && !topLabel.getVisited(j)) {
                                         Node nextNode = Graph.get_node(j);
                                         if(shouldPrune(nextNode, edge, j)) {
                                                 continue;
@@ -534,8 +551,9 @@ public class BidirectionalLabeling implements Runnable{
                 }
 
                 // Cost-based pruning: if we've seen this node with significantly lower cost, prune
+                // Use more lenient threshold to avoid pruning too many alternatives
                 Double minCost = costCache.get(nextNodeId);
-                if(minCost != null && pathCost >= minCost * 1.20) {
+                if(minCost != null && pathCost >= minCost * 1.50) {
                         return true;
                 }
 
@@ -548,9 +566,19 @@ public class BidirectionalLabeling implements Runnable{
                 double pathDistance = topLabel.getDistance() + edge.get_distance();
                 double estimatedRemainingDistance = isForward ? nextNode.get_backward_hDistance() : nextNode.get_forward_hDistance();
                 
-                // Handle unreachable or unknown distances more conservatively
-                if(estimatedRemainingDistance == Double.MAX_VALUE) {
-                        estimatedRemainingDistance = budget * 0.5; // Conservative estimate
+                // Handle unreachable or unknown distances with geographic distance fallback
+                if(estimatedRemainingDistance == Double.MAX_VALUE || estimatedRemainingDistance <= 0) {
+                        // Use Euclidean distance to goal as heuristic fallback
+                        Node goalNode = Graph.get_node(goal);
+                        if(goalNode != null) {
+                                double geographicDistance = nextNode.euclidean_distance(goalNode);
+                                // Scale geographic distance to approximate road distance
+                                // Typically road distance is 1.2-1.5x Euclidean distance
+                                estimatedRemainingDistance = geographicDistance * 1.3;
+                        } else {
+                                // Last resort: use fraction of budget
+                                estimatedRemainingDistance = budget * 0.3;
+                        }
                 }
                 
                 double totalEstimatedDistance = pathDistance + estimatedRemainingDistance;
@@ -607,15 +635,15 @@ public class BidirectionalLabeling implements Runnable{
                         budgetPressure + combinedWidthPenalty * 0.2));
 
                 // Final heuristic combines all factors with adaptive weights
-                // This maintains admissibility while being sensitive to budget constraints
+                // Simplified to prioritize finding paths over optimality in early stages
                 double heuristic = adaptiveDistanceWeight * normalizedDistance
-                                + adaptiveWidthWeight * combinedWidthPenalty
-                                + adaptiveTurnWeight * totalEstimatedTurns
-                                + (sharpTurn ? adaptiveSharpTurnWeight : 0.0);
+                                + adaptiveWidthWeight * combinedWidthPenalty * 0.5  // Reduced impact
+                                + adaptiveTurnWeight * totalEstimatedTurns * 0.5    // Reduced impact
+                                + (sharpTurn ? adaptiveSharpTurnWeight * 0.5 : 0.0); // Reduced impact
                 
-                // Add small penalty if remaining budget is very tight relative to remaining distance
-                if(remainingBudgetRatio < 0.3 && estimatedRemainingDistance > 0) {
-                        heuristic *= 1.15; // Discourage paths that are cutting it too close
+                // Only apply budget penalty when critically low
+                if(remainingBudgetRatio < 0.15 && estimatedRemainingDistance > 0) {
+                        heuristic *= 1.10; // Mild discouragement for very tight paths
                 }
                 
                 return heuristic;
@@ -655,15 +683,15 @@ public class BidirectionalLabeling implements Runnable{
 	        while (i < arrival_time_breakpoints.size() && j < arrival_time_series.size()) {
 	            if (arrival_time_breakpoints.get(i).getY() <= arrival_time_series.get(j)) {
 	            	
-		            	if(tmp_arrival_time_breakpoints.size()>0 && arrival_time_breakpoints.get(i).getX()-tmp_arrival_time_breakpoints.get(tmp_arrival_time_breakpoints.size()-1).getX()<BidirectionalAstar.THRESHOLD) {
-			            	if(arrival_time_breakpoints.get(i).getX()==width_breakpoints.get(k).getX()) {	
+	            	if(tmp_arrival_time_breakpoints.size()>0 && arrival_time_breakpoints.get(i).getX()-tmp_arrival_time_breakpoints.get(tmp_arrival_time_breakpoints.size()-1).getX()<BidirectionalAstar.THRESHOLD) {
+		            	if(k < width_breakpoints.size() && arrival_time_breakpoints.get(i).getX()==width_breakpoints.get(k).getX()) {	
+	            		
+		            		if(width_breakpoints.get(k).getY()>tmp_width_breakpoints.get(tmp_width_breakpoints.size()-1).getY()) {
+		            			tmp_width_breakpoints.get(tmp_width_breakpoints.size()-1).updateY(width_breakpoints.get(k).getY());
 		            			
-			            		if(width_breakpoints.get(k).getY()>tmp_width_breakpoints.get(tmp_width_breakpoints.size()-1).getY()) {
-			            			tmp_width_breakpoints.get(tmp_width_breakpoints.size()-1).updateY(width_breakpoints.get(k).getY());
-			            			
-			            		}
-			            		k++;
-			            	}
+		            		}
+		            		k++;
+		            	}
 		            	}else {
 			            	tmp_arrival_time_breakpoints.add(arrival_time_breakpoints.get(i));
 			            	if(arrival_time_breakpoints.get(i).getX()==width_breakpoints.get(k).getX()) {
@@ -678,10 +706,10 @@ public class BidirectionalLabeling implements Runnable{
 		            	int current_vertex = topLabel.get_nodeID();
 		            	int tmp_next_vertex = next_vertex;
 		            	boolean is_width = false;
-		            	if(arrival_time_series.get(j)==width_time_series.get(l)) {
+		            	if(l < width_time_series.size() && arrival_time_series.get(j)==width_time_series.get(l)) {
 		            		is_width = true;
 		            	}
-		            	double dep_time = Graph.get_node(tmp_next_vertex).get_incoming_edges().get(current_vertex).get_departure_time(arrival_time_series.get(j));
+		            	double dep_time = Graph.get_node(tmp_next_vertex).get_outgoing_edges().get(current_vertex).get_departure_time(arrival_time_series.get(j));
 		            	int width = 0;
 		            	Map<Integer, Integer> predList = topLabel.getVisitedList();
 		            	
@@ -749,34 +777,32 @@ public class BidirectionalLabeling implements Runnable{
 	        // Merge the lists while both have elements
 	        while (i < arrival_time_breakpoints.size() && j < arrival_time_series.size()) {
 	            if (arrival_time_breakpoints.get(i).getX() <= arrival_time_series.get(j)) {
-		            	if(tmp_arrival_time_breakpoints.size()>0 && arrival_time_breakpoints.get(i).getY()-
-		            			tmp_arrival_time_breakpoints.get(tmp_arrival_time_breakpoints.size()-1).getY()<BidirectionalAstar.THRESHOLD) {
-		            		
-		            		if(arrival_time_breakpoints.get(i).getX()==width_breakpoints.get(k).getX()) {	
-		            			
-			            		if(width_breakpoints.get(k).getY()>tmp_width_breakpoints.get(tmp_width_breakpoints.size()-1).getY())
-			            			tmp_width_breakpoints.get(tmp_width_breakpoints.size()-1).updateY(width_breakpoints.get(k).getY());
-			            		k++;
-		            		}
-		            	}else {
-			            	tmp_arrival_time_breakpoints.add(arrival_time_breakpoints.get(i));
-			            	if(arrival_time_breakpoints.get(i).getX()==width_breakpoints.get(k).getX()) {	
-		            			tmp_width_breakpoints.add(width_breakpoints.get(k));
-		            			k++;
-			            	}
+	            	if(tmp_arrival_time_breakpoints.size()>0 && arrival_time_breakpoints.get(i).getY()-
+	            			tmp_arrival_time_breakpoints.get(tmp_arrival_time_breakpoints.size()-1).getY()<BidirectionalAstar.THRESHOLD) {
+	            		
+	            		if(k < width_breakpoints.size() && arrival_time_breakpoints.get(i).getX()==width_breakpoints.get(k).getX()) {	
+	            			
+		            		if(width_breakpoints.get(k).getY()>tmp_width_breakpoints.get(tmp_width_breakpoints.size()-1).getY())
+		            			tmp_width_breakpoints.get(tmp_width_breakpoints.size()-1).updateY(width_breakpoints.get(k).getY());
+	            		k++;
+	            	}
+	            	}else {
+		            	tmp_arrival_time_breakpoints.add(arrival_time_breakpoints.get(i));
+		            	if(k < width_breakpoints.size() && arrival_time_breakpoints.get(i).getX()==width_breakpoints.get(k).getX()) {
+		            		tmp_width_breakpoints.add(width_breakpoints.get(k));
+		            		k++;
 		            	}
+	            	}
 
-	                i++;
-	            } 
-	            else {
-		            	int current_vertex = topLabel.get_nodeID();
+                i++;
+            } 
+            else {
+	            	int current_vertex = topLabel.get_nodeID();
 		            	int tmp_next_vertex = next_vertex;
 		            	boolean is_width = false;
-		            	if(arrival_time_series.get(j)==width_time_series.get(l)) {
-		            		is_width = true;
-		            	}
-		            	
-		            	double arr_time = Graph.get_node(tmp_next_vertex).get_outgoing_edges().get(current_vertex).get_arrival_time(arrival_time_series.get(j));
+	            	if(l < width_time_series.size() && arrival_time_series.get(j)==width_time_series.get(l)) {
+	            		is_width = true;
+	            	}		            	double arr_time = Graph.get_node(tmp_next_vertex).get_outgoing_edges().get(current_vertex).get_arrival_time(arrival_time_series.get(j));
 		            	int width = 0;
 		            	Map<Integer, Integer> successorList = topLabel.getVisitedList();
 		            	
@@ -791,14 +817,14 @@ public class BidirectionalLabeling implements Runnable{
 		            		arr_time = Graph.get_node(tmp_next_vertex).get_outgoing_edges().get(current_vertex).get_arrival_time(arr_time);
 		            	}
 		            	
-		            	if(arr_time - arrival_time_breakpoints.get(i).getY()<BidirectionalAstar.THRESHOLD) {
-		            		if(is_width) {
-		            			
-			            		if(width>width_breakpoints.get(k).getY())
-			            			tmp_width_breakpoints.get(tmp_width_breakpoints.size()-1).updateY(width);
-			            		l++;
-		            		}
-		            	}
+	            	if(arr_time - arrival_time_breakpoints.get(i).getY()<BidirectionalAstar.THRESHOLD) {
+	            		if(is_width) {
+	            			
+		            		if(k < width_breakpoints.size() && width>width_breakpoints.get(k).getY())
+		            			tmp_width_breakpoints.get(tmp_width_breakpoints.size()-1).updateY(width);
+		            		l++;
+	            		}
+	            	}
 		            	else {
 			            	BreakPoint new_arrival_time_breakpoint = new BreakPoint(arrival_time_series.get(j), arr_time);
 			            	if(arr_time<0) {

@@ -72,7 +72,6 @@ public class Node {
 	private void setFeasibility() {
 		if(this.forward_reachebility && this.backward_reachebility) {
 			this.feasible = true;
-			
 		}
 	}
 	

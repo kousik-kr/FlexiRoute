@@ -489,6 +489,7 @@ public class BidirectionalAstar {
      */
     public static Result runSingleQuery(int source, int destination, double departureMinutes, double intervalMinutes, double budgetMinutes)
             throws InterruptedException, ExecutionException {
+        start = System.currentTimeMillis();  // Initialize timer for query execution
         double interval = intervalMinutes > 0 ? intervalMinutes : budgetMinutes;
         interval_duration = interval;
         Query query = new Query(source, destination, departureMinutes, departureMinutes + interval, budgetMinutes);

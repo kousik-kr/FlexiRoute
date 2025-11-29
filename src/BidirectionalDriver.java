@@ -174,9 +174,21 @@ public class BidirectionalDriver {
 			//backward_task.run();
 			ForkJoinTask<?> forwardFuture = BidirectionalAstar.pool.submit(forward_task);
 			ForkJoinTask<?> backwardFuture = BidirectionalAstar.pool.submit(backward_task);
-			forwardFuture.join();
-			backwardFuture.join();
+			try {
+				forwardFuture.join();
+			} catch(Exception e) {
+				System.out.println("[ERROR] Forward task exception: " + e.getMessage());
+				e.printStackTrace();
+			}
+			try {
+				backwardFuture.join();
+			} catch(Exception e) {
+				System.out.println("[ERROR] Backward task exception: " + e.getMessage());
+				e.printStackTrace();
+			}
 			System.out.println("[Query] Labeling tasks joined. Intersections=" + shared.intersectionNodes.size());
+			System.out.println("[Query] Forward labels generated at " + shared.forwardVisited.size() + " nodes");
+			System.out.println("[Query] Backward labels generated at " + shared.backwardVisited.size() + " nodes");
 //			String analysis_file = "Analysis"+index+"_" + Graph.get_vertex_count() +".txt";
 //			FileWriter fanalysis = new FileWriter(analysis_file);
 //			BufferedWriter writer2 = new BufferedWriter(fanalysis);
