@@ -96,6 +96,27 @@ public class GuiLauncher {
     }
 
     private void start() {
+        // Check if dataset exists, if not offer to download from Google Drive
+        if (!GoogleDriveConfigHelper.checkDatasetExists()) {
+            int choice = JOptionPane.showConfirmDialog(frame,
+                    "Dataset files not found.\n" +
+                    "Would you like to download them from Google Drive?",
+                    "Dataset Not Found",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE);
+            
+            if (choice == JOptionPane.YES_OPTION) {
+                boolean downloaded = GoogleDriveDatasetLoader.downloadDataset(frame);
+                if (!downloaded) {
+                    System.out.println("[GUI] Dataset download cancelled or failed.");
+                    return;
+                }
+            } else {
+                System.out.println("[GUI] User chose not to download dataset.");
+                return;
+            }
+        }
+        
         // Load graph
         BidirectionalAstar.configureDefaults();
         boolean loaded = BidirectionalAstar.loadGraphFromDisk(null, null);
