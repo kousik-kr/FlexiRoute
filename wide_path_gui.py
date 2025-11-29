@@ -236,10 +236,10 @@ class WidePathApp(tk.Tk):
 
 
 def main():
-    nodes_file = os.path.join('/home/oai/share', 'nodes_264346.txt')
-    edges_file = os.path.join('/home/oai/share', 'edges_264346.txt')
+    nodes_file = os.path.join('C:\\Users\\kousi\\eclipse-workspace\\Wide-Path\\', 'nodes_264346.txt')
+    edges_file = os.path.join('C:\\Users\\kousi\\eclipse-workspace\\Wide-Path\\', 'edges_264346.txt')
     if not (os.path.exists(nodes_file) and os.path.exists(edges_file)):
-        print("Error: Dataset files not found in /home/oai/share.")
+        print("Error: Dataset files not found in C:\\Users\\kousi\\eclipse-workspace\\Wide-Path\\.")
         return
     print("Loading graph... this may take a minute...")
     adj, num_nodes = load_graph(nodes_file, edges_file)
