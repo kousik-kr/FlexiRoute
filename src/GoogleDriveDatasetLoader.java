@@ -16,9 +16,12 @@ public class GoogleDriveDatasetLoader {
     public static boolean downloadDataset(JFrame parentFrame) {
         String nodesFileId = GoogleDriveConfigHelper.getNodesFileId();
         String edgesFileId = GoogleDriveConfigHelper.getEdgesFileId();
+        String clustersFileId = GoogleDriveConfigHelper.getClustersFileId();
+        String widthDistFileId = GoogleDriveConfigHelper.getWidthDistFileId();
         String datasetDir = GoogleDriveConfigHelper.getDatasetDirectory();
         
-        if (nodesFileId.isEmpty() || edgesFileId.isEmpty()) {
+        if (nodesFileId.isEmpty() || edgesFileId.isEmpty() || 
+            clustersFileId.isEmpty() || widthDistFileId.isEmpty()) {
             int choice = JOptionPane.showConfirmDialog(parentFrame,
                     "Google Drive file IDs are not configured.\n" +
                     "Would you like to configure them now?",
@@ -56,24 +59,46 @@ public class GoogleDriveDatasetLoader {
                     }
                     
                     // Download nodes file
-                    publish(10);
+                    publish(5);
                     progressBar.setString("Downloading nodes file...");
                     boolean nodesDownloaded = downloadFile(nodesFileId, 
-                            new File(dir, "nodes"), 
-                            progress -> publish(10 + progress / 2));
+                            new File(dir, "nodes_264346.txt"), 
+                            progress -> publish(5 + progress / 4));
                     
                     if (!nodesDownloaded) {
                         return false;
                     }
                     
                     // Download edges file
-                    publish(60);
+                    publish(30);
                     progressBar.setString("Downloading edges file...");
                     boolean edgesDownloaded = downloadFile(edgesFileId, 
-                            new File(dir, "edges"),
-                            progress -> publish(60 + progress / 2));
+                            new File(dir, "edges_264346.txt"),
+                            progress -> publish(30 + progress / 4));
                     
-                    return edgesDownloaded;
+                    if (!edgesDownloaded) {
+                        return false;
+                    }
+                    
+                    // Download clusters file
+                    publish(55);
+                    progressBar.setString("Downloading clusters file...");
+                    boolean clustersDownloaded = downloadFile(clustersFileId, 
+                            new File(dir, "clusters_264346.txt"),
+                            progress -> publish(55 + progress / 4));
+                    
+                    if (!clustersDownloaded) {
+                        return false;
+                    }
+                    
+                    // Download width-distance file
+                    publish(80);
+                    progressBar.setString("Downloading width-distance file...");
+                    boolean widthDistDownloaded = downloadFile(widthDistFileId, 
+                            new File(dir, "width_dist_264346.txt"),
+                            progress -> publish(80 + progress / 4));
+                    
+                    return widthDistDownloaded;
                     
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -126,7 +151,8 @@ public class GoogleDriveDatasetLoader {
      */
     private static boolean downloadFile(String fileId, File destFile, ProgressCallback callback) {
         try {
-            String downloadUrl = "https://drive.google.com/uc?export=download&id=" + fileId;
+            // Use Google Drive download URL with confirmation to bypass virus scan warning
+            String downloadUrl = "https://drive.usercontent.google.com/download?id=" + fileId + "&export=download&confirm=t";
             URL url = new URL(downloadUrl);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
@@ -178,13 +204,19 @@ public class GoogleDriveDatasetLoader {
     private static boolean showConfigDialog(JFrame parentFrame) {
         JTextField nodesField = new JTextField(30);
         JTextField edgesField = new JTextField(30);
+        JTextField clustersField = new JTextField(30);
+        JTextField widthDistField = new JTextField(30);
         JTextField dirField = new JTextField(GoogleDriveConfigHelper.getDatasetDirectory(), 30);
         
-        JPanel panel = new JPanel(new GridLayout(3, 2, 10, 10));
+        JPanel panel = new JPanel(new GridLayout(5, 2, 10, 10));
         panel.add(new JLabel("Nodes File ID:"));
         panel.add(nodesField);
         panel.add(new JLabel("Edges File ID:"));
         panel.add(edgesField);
+        panel.add(new JLabel("Clusters File ID:"));
+        panel.add(clustersField);
+        panel.add(new JLabel("Width-Distance File ID:"));
+        panel.add(widthDistField);
         panel.add(new JLabel("Dataset Directory:"));
         panel.add(dirField);
         
@@ -194,10 +226,13 @@ public class GoogleDriveDatasetLoader {
         if (result == JOptionPane.OK_OPTION) {
             String nodesId = nodesField.getText().trim();
             String edgesId = edgesField.getText().trim();
+            String clustersId = clustersField.getText().trim();
+            String widthDistId = widthDistField.getText().trim();
             String dir = dirField.getText().trim();
             
-            if (!nodesId.isEmpty() && !edgesId.isEmpty()) {
-                GoogleDriveConfigHelper.saveConfig(nodesId, edgesId, dir);
+            if (!nodesId.isEmpty() && !edgesId.isEmpty() && 
+                !clustersId.isEmpty() && !widthDistId.isEmpty()) {
+                GoogleDriveConfigHelper.saveConfig(nodesId, edgesId, clustersId, widthDistId, dir);
                 return downloadDataset(parentFrame);
             }
         }

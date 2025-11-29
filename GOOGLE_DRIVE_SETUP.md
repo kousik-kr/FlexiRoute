@@ -1,7 +1,7 @@
 # Google Drive Dataset Auto-Download Setup
 
 ## Overview
-The Wide-Path GUI now includes automatic dataset download from Google Drive. If the dataset files (`nodes` and `edges`) are not found when launching the application, you'll be prompted to download them.
+The Wide-Path GUI now includes automatic dataset download from Google Drive. If the dataset files (`nodes`, `edges`, `clusters`, and `width_dist`) are not found when launching the application, you'll be prompted to download them.
 
 ## Configuration
 
@@ -12,6 +12,8 @@ The Wide-Path GUI now includes automatic dataset download from Google Drive. If 
 4. Enter the Google Drive file IDs for your datasets:
    - **Nodes File ID**: The Google Drive file ID for the nodes dataset
    - **Edges File ID**: The Google Drive file ID for the edges dataset
+   - **Clusters File ID**: The Google Drive file ID for the cluster information of nodes
+   - **Width-Distance File ID**: The Google Drive file ID for the width and distance information of edges
    - **Dataset Directory**: The directory where datasets should be stored (default: current directory)
 
 ### Getting Google Drive File IDs
@@ -30,6 +32,8 @@ You can also create a `drive_config.properties` file manually:
 ```properties
 drive.nodes.fileId=YOUR_NODES_FILE_ID
 drive.edges.fileId=YOUR_EDGES_FILE_ID
+drive.clusters.fileId=YOUR_CLUSTERS_FILE_ID
+drive.widthDist.fileId=YOUR_WIDTH_DIST_FILE_ID
 dataset.directory=.
 ```
 
@@ -38,14 +42,14 @@ Place this file in the same directory as the application.
 ## Usage
 
 ### Automatic Download on Startup
-- When you launch `GuiLauncher`, it will check for dataset files
+- When you launch `GuiLauncher`, it will check for dataset files (nodes, edges, clusters, width_dist)
 - If not found, you'll be prompted to download them
-- The download progress will be displayed
+- The download progress will be displayed for each file
 - Once complete, the application will load the graph and continue normally
 
 ### Manual Download Trigger
 If you want to re-download or update datasets:
-1. Delete the existing `nodes` and `edges` files
+1. Delete the existing `nodes`, `edges`, `clusters`, and `width_dist` files
 2. Restart the application
 3. Click "Yes" when prompted to download
 

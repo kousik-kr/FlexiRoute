@@ -15,6 +15,7 @@ frontend/.env.local
 
 # Dataset folder - contains large graph data files
 dataset/
+datasets/
 *.txt
 *.dat
 *.csv
