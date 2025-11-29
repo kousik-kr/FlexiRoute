@@ -1,41 +1,99 @@
-# Wide-Path Pro v2.0
+# Wide-Path Pro v3.0 - World-Class Edition
 
-Wide-Path is an advanced pathfinding analysis system featuring:
+Wide-Path is a **world-class pathfinding analysis platform** featuring:
 - **Java 21 LTS** backend with bidirectional A* algorithm
-- **Modern Swing GUI** with Material Design (Desktop Application)
+- **Enterprise-Grade Swing GUI** with premium design system
 - **React + Vite frontend** for web-based visualization (Optional)
 - **REST API** for programmatic access
 
-## 🎯 What's New in v2.0
+## ✨ What's New in v3.0 - WORLD-CLASS REDESIGN
 
-✨ **Modular Architecture**: Professionally restructured with 11 classes across 4 packages  
-✨ **5 Visualization Modes**: Classic, Neon Glow, Gradient Flow, 3D Effect, Pulse Animation  
-✨ **Real-Time Metrics**: Performance dashboard with success rate tracking  
-✨ **Query History**: Stores and analyzes last 100 queries  
-✨ **Material Design UI**: Modern, professional interface with themes  
-✨ **Graph Pagination**: Handle large graphs with configurable pagination  
-✨ **Reset Query Feature**: One-click reset for running multiple queries 🔄  
-✨ **Exit System**: Graceful shutdown with confirmation and fade animation 🚪  
-✨ **Success Animations**: Visual feedback with status bar effects 🎨  
-✨ **Welcome Screen**: Professional startup and reset experience 🎯  
+### 🎨 **Premium Design System**
+✨ **6 Professional Themes**: Light, Dark, Auto, Oceanic, Forest, Sunset  
+✨ **Glassmorphism UI**: Modern translucent panels with blur effects  
+✨ **Animated Components**: Smooth 60 FPS Material Design transitions  
+✨ **Accessibility**: WCAG 2.1 AA compliant with full keyboard navigation  
 
-📚 **[Read Full Transformation Summary →](TRANSFORMATION_SUMMARY.md)**  
-🔄 **[New Reset & Exit Features →](QUERY_RESET_EXIT_FEATURES.md)**  
-📊 **[Visual Workflow Guide →](VISUAL_WORKFLOW.md)**
+### 🗺️ **Advanced Visualization**
+✨ **Interactive Map**: Zoom (0.1x-10x), pan, minimap, node search  
+✨ **5 Render Modes**: Classic, Neon Glow, Gradient Flow, 3D, Minimal  
+✨ **Export Capabilities**: High-res PNG screenshots with Ctrl+S  
+✨ **Real-Time Tooltips**: Hover for node information  
+
+### 🎯 **Smart Query System**
+✨ **Query Presets**: Quick Test, Long Distance, Morning Rush  
+✨ **Input Validation**: Real-time feedback with visual indicators  
+✨ **Recent History**: Last 10 queries with one-click reload  
+✨ **Quick Actions**: Random generator, swap source/dest  
+
+### 📊 **Real-Time Analytics**
+✨ **4 Metric Cards**: Total queries, avg time, success rate, throughput  
+✨ **3 Chart Types**: Line (trend), Pie (ratio), Bar (distribution)  
+✨ **Live Updates**: 1-second refresh with smooth animations  
+✨ **Data Export**: PDF reports, CSV data, chart screenshots  
+
+### ⌨️ **Power User Features**
+✨ **20+ Keyboard Shortcuts**: Ctrl+Enter (run), Ctrl+T (theme), Ctrl+R (random)  
+✨ **Splash Screen**: Professional animated startup  
+✨ **Toast Notifications**: Success, error, warning, info messages  
+✨ **Status Bar**: Real-time feedback and system info  
+
+📚 **[🚀 Quick Start Guide →](QUICK_START_GUIDE.md)**  
+📚 **[✨ World-Class Features →](WORLD_CLASS_GUI_FEATURES.md)**  
+📚 **[🎨 Design System →](DESIGN_SYSTEM.md)**  
+📚 **[📋 Complete Redesign Summary →](GUI_REDESIGN_SUMMARY.md)**
+
+## 🎯 Previous Versions
+
+### v2.0 Features (Still Available)
+✨ Modular Architecture with 11 classes across 4 packages  
+✨ Query History with last 100 queries  
+✨ Graph Pagination for large datasets  
+✨ Reset Query & Exit System  
+
+📚 **[v2.0 Transformation Summary →](TRANSFORMATION_SUMMARY.md)**  
+📚 **[Reset & Exit Features →](QUERY_RESET_EXIT_FEATURES.md)**  
+📚 **[Visual Workflow →](VISUAL_WORKFLOW.md)**
 
 ## Prerequisites
 - **Java 21+ JDK** (LTS version recommended).
 - **Maven** (for building the Java project).
 - **Node.js 18+ and npm** (optional, for the Vite frontend).
 - **curl** (optional, for API testing).
+- **Python 3 + gdown** (optional, for automatic dataset download).
 
 Example install on Ubuntu/Debian:
 ```bash
 sudo apt update
-sudo apt install openjdk-21-jdk maven nodejs npm curl
+sudo apt install openjdk-21-jdk maven nodejs npm curl python3-pip
+
+# Optional: For automatic dataset download
+pip install gdown
 ```
 
 Windows users can install Java 21 JDK from [Adoptium](https://adoptium.net/) and Maven from [Apache Maven](https://maven.apache.org/).
+
+## 📦 Dataset Setup
+
+The application requires graph dataset files to run. On first launch, the application will:
+1. Check for dataset files in the `dataset/` folder
+2. Automatically attempt to download them if missing (requires `gdown`)
+3. Provide manual download instructions if auto-download fails
+
+**Manual Download (if needed)**:
+```bash
+# Install gdown
+pip install gdown
+
+# Run the download script
+./download_dataset.sh
+```
+
+**Or download directly**:
+- Visit: https://drive.google.com/drive/folders/1l3NG641rHeshkYW7aDxpb7RhUy0kRuiP
+- Download all files and place them in the `dataset/` folder
+
+📚 **[Dataset Setup Guide →](dataset/README.md)**
 
 ## 📁 Project Layout
 - `src/` – Java sources for API server, GUI application, and bidirectional A* implementation.

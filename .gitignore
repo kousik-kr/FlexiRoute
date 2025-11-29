@@ -13,5 +13,12 @@ frontend/.vite/
 frontend/.env
 frontend/.env.local
 
-# Large dataset files
-edges_264346.txt
+# Dataset folder - contains large graph data files
+dataset/
+*.txt
+*.dat
+*.csv
+
+# Except configuration files
+!dataset/.gitkeep
+!config/*.txt

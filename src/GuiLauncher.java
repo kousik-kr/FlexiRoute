@@ -575,12 +575,12 @@ public class GuiLauncher {
             @Override
             protected void done() {
                 // Fade out animation
-                Timer fadeTimer = new Timer(30, null);
+                javax.swing.Timer fadeTimer = new javax.swing.Timer(30, null);
                 final float[] opacity = {1.0f};
                 fadeTimer.addActionListener(e -> {
                     opacity[0] -= 0.1f;
                     if (opacity[0] <= 0.0f) {
-                        ((Timer) e.getSource()).stop();
+                        ((javax.swing.Timer) e.getSource()).stop();
                         frame.dispose();
                         System.exit(0);
                     } else {
@@ -596,11 +596,11 @@ public class GuiLauncher {
 
     private void showSuccessAnimation() {
         // Visual success feedback with color flash on status bar
-        Timer flashTimer = new Timer(100, null);
+        javax.swing.Timer flashTimer = new javax.swing.Timer(100, null);
         final int[] flashCount = {0};
         flashTimer.addActionListener(e -> {
             if (flashCount[0]++ >= 6) {
-                ((Timer) e.getSource()).stop();
+                ((javax.swing.Timer) e.getSource()).stop();
             } else {
                 // Toggle between success color and normal
                 statusBar.repaint();

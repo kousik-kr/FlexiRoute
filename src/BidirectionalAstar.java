@@ -36,7 +36,7 @@ public class BidirectionalAstar {
 	/**
 	 * @param args
 	 */
-	private static final String currentDirectory = "C:\\Users\\kousi\\Wide-Path\\";	//current directory of the code
+	private static final String currentDirectory = System.getProperty("user.dir") + "/dataset/";	//current directory of the code
 	private static final int defaultVertexCount = 264346;
     private static String dataDirectory = currentDirectory;
     private static String configuredGraphDataDir = currentDirectory;
@@ -366,6 +366,17 @@ public class BidirectionalAstar {
         interval_duration = interval_duration > 0 ? interval_duration : 360;
         pool = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
         System.out.println("[Init] Defaults configured. Thresholds set and pool size=" + pool.getParallelism());
+        
+        // Ensure dataset exists (auto-download if missing)
+        try {
+            String datasetPath = DatasetDownloader.ensureDatasetExists();
+            if (datasetPath != null && !datasetPath.isEmpty()) {
+                configuredGraphDataDir = datasetPath + "/";
+                dataDirectory = configuredGraphDataDir;
+            }
+        } catch (Exception e) {
+            System.err.println("[Init] Warning: Could not verify dataset: " + e.getMessage());
+        }
     }
 
     /**
