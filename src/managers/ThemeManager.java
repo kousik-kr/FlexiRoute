@@ -1,12 +1,16 @@
 package managers;
 
-import javax.swing.*;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
+
+import javax.swing.JButton;
+import javax.swing.JPanel;
 
 /**
  * Advanced Theme Manager with multiple themes, smooth transitions, and live updates

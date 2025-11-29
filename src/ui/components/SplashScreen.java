@@ -1,8 +1,24 @@
 package ui.components;
 
-import javax.swing.*;
-import java.awt.*;
-import java.awt.geom.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.GradientPaint;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JProgressBar;
+import javax.swing.JWindow;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 
 /**
  * Modern splash screen with animated logo and progress indicator
