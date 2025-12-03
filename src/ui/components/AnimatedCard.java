@@ -1,9 +1,16 @@
 package ui.components;
 
-import javax.swing.*;
-import java.awt.*;
-import java.awt.event.*;
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.geom.RoundRectangle2D;
+
+import javax.swing.BorderFactory;
+import javax.swing.JPanel;
 
 /**
  * Animated card component with hover effects and smooth transitions
@@ -11,7 +18,7 @@ import java.awt.geom.RoundRectangle2D;
 public class AnimatedCard extends JPanel {
     private float elevation = 2.0f;
     private float targetElevation = 2.0f;
-    private final javax.swing.Timer animationTimer;
+    private javax.swing.Timer animationTimer;
     private Color accentColor;
     private boolean isHovered = false;
     
@@ -26,7 +33,7 @@ public class AnimatedCard extends JPanel {
         setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         
         // Animation timer for smooth elevation changes
-        animationTimer = new Timer(16, e -> {
+        animationTimer = new javax.swing.Timer(16, e -> {
             if (Math.abs(elevation - targetElevation) > 0.1f) {
                 elevation += (targetElevation - elevation) * 0.3f;
                 repaint();

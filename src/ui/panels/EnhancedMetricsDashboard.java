@@ -49,7 +49,7 @@ public class EnhancedMetricsDashboard extends JPanel {
         createCharts();
         
         // Update timer with smooth refresh
-        updateTimer = new Timer(1000, e -> updateMetrics());
+        updateTimer = new javax.swing.Timer(1000, e -> updateMetrics());
         updateTimer.start();
     }
     
@@ -211,8 +211,8 @@ public class EnhancedMetricsDashboard extends JPanel {
         executionTimeChart.updateData(executionTimeHistory);
         
         successPieChart.updateData(
-            metricsCollector.getSuccessfulQueries(), 
-            metricsCollector.getFailedQueries()
+            (int) metricsCollector.getSuccessfulQueries(), 
+            (int) metricsCollector.getFailedQueries()
         );
         
         queryHistogramChart.updateData(getQueryDistribution());

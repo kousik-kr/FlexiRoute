@@ -3,6 +3,7 @@ package ui.panels;
 import ui.components.ModernButton;
 import javax.swing.*;
 import javax.swing.border.*;
+import javax.swing.event.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.function.Consumer;
@@ -220,7 +221,7 @@ public class EnhancedQueryInputPanel extends JPanel {
         if (validationTimer != null && validationTimer.isRunning()) {
             validationTimer.restart();
         } else {
-            validationTimer = new Timer(500, e -> {
+            validationTimer = new javax.swing.Timer(500, e -> {
                 validateInputs();
                 validationTimer.stop();
             });

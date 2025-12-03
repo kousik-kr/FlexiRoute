@@ -152,26 +152,89 @@ public class GuiLauncher {
         frame.getRootPane().getActionMap().put("runQuery", runAction);
     }
 
-    private void shutdown() {
-        int choice = JOptionPane.showConfirmDialog(frame,
-                "Are you sure you want to exit Wide-Path Pro?",
-                "Confirm Exit",
-                JOptionPane.YES_NO_OPTION);
+    private void applyThemeToAllComponents() {
+        // Apply theme to main frame and all child components
+        applyThemeToContainer(frame.getContentPane());
         
-        if (choice == JOptionPane.YES_OPTION) {
-            statusBar.dispose();
-            metricsDashboard.dispose();
-            executorService.shutdown();
-            try {
-                if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
-                    executorService.shutdownNow();
-                }
-            } catch (InterruptedException e) {
-                executorService.shutdownNow();
-            }
-            frame.dispose();
-            System.exit(0);
+        // Apply to menu bar
+        if (frame.getJMenuBar() != null) {
+            applyThemeToContainer(frame.getJMenuBar());
         }
+        
+        // Apply to panels
+        if (inputPanel != null) {
+            applyThemeToContainer(inputPanel);
+        }
+        if (mapPanel != null) {
+            applyThemeToContainer(mapPanel);
+        }
+        if (metricsDashboard != null) {
+            applyThemeToContainer(metricsDashboard);
+        }
+        if (historyPanel != null) {
+            applyThemeToContainer(historyPanel);
+        }
+        if (statusBar != null) {
+            applyThemeToContainer(statusBar);
+        }
+        if (tabbedPane != null) {
+            applyThemeToContainer(tabbedPane);
+            tabbedPane.setBackground(themeManager.getColor("panel"));
+            tabbedPane.setForeground(themeManager.getColor("foreground"));
+        }
+        
+        // Force repaint
+        frame.repaint();
+        frame.revalidate();
+    }
+    
+    private void applyThemeToContainer(Container container) {
+        if (container == null) return;
+        
+        // Apply theme colors based on component type
+        boolean isDark = themeManager.isDarkTheme();
+        
+        container.setBackground(themeManager.getColor("background"));
+        container.setForeground(themeManager.getColor("foreground"));
+        
+        // Recursively apply to all child components
+        for (Component comp : container.getComponents()) {
+            if (comp instanceof JPanel) {
+                comp.setBackground(themeManager.getColor("panel"));
+                comp.setForeground(themeManager.getColor("foreground"));
+            } else if (comp instanceof JButton) {
+                comp.setBackground(themeManager.getColor("primary"));
+                comp.setForeground(Color.WHITE);
+            } else if (comp instanceof JTextField || comp instanceof JTextArea) {
+                comp.setBackground(themeManager.getColor("backgroundElevated"));
+                comp.setForeground(themeManager.getColor("foreground"));
+                comp.setFont(comp.getFont());
+            } else if (comp instanceof JLabel) {
+                comp.setForeground(themeManager.getColor("foreground"));
+            } else if (comp instanceof JScrollPane) {
+                comp.setBackground(themeManager.getColor("panel"));
+                JScrollPane scrollPane = (JScrollPane) comp;
+                if (scrollPane.getViewport() != null) {
+                    scrollPane.getViewport().setBackground(themeManager.getColor("backgroundElevated"));
+                }
+            } else if (comp instanceof JTabbedPane) {
+                comp.setBackground(themeManager.getColor("panel"));
+                comp.setForeground(themeManager.getColor("foreground"));
+            } else if (comp instanceof JMenuBar || comp instanceof JMenu || comp instanceof JMenuItem) {
+                comp.setBackground(themeManager.getColor("panel"));
+                comp.setForeground(themeManager.getColor("foreground"));
+            }
+            
+            // Recursively apply to nested containers
+            if (comp instanceof Container) {
+                applyThemeToContainer((Container) comp);
+            }
+        }
+    }
+    
+    private void shutdown() {
+        // Use the same enhanced exit dialog as the button
+        exitApplication();
     }
 
     private void initializeUI(int maxNodeId) {
@@ -187,7 +250,7 @@ public class GuiLauncher {
         mainPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         
         // Create input panel (left side) with reset and exit callbacks
-        inputPanel = new QueryInputPanel(maxNodeId, this::executeQuery, this::resetQuery, this::exitApplication);
+        inputPanel = new QueryInputPanel(maxNodeId, this::executeQuery, this::visualizeQuery, this::resetQuery, this::exitApplication);
         
         // Create tabbed pane for output and visualization
         tabbedPane = new JTabbedPane(JTabbedPane.TOP);
@@ -237,6 +300,24 @@ public class GuiLauncher {
         // File Menu
         JMenu fileMenu = new JMenu("File");
         JMenuItem exportItem = new JMenuItem("Export Results...");
+        exportItem.addActionListener(e -> {
+            if (historyPanel != null) {
+                // Switch to history tab and trigger export
+                tabbedPane.setSelectedComponent(historyPanel);
+                // Use a timer to ensure tab switch completes before showing export dialog
+                javax.swing.Timer timer = new javax.swing.Timer(100, evt -> {
+                    historyPanel.exportHistory();
+                    ((javax.swing.Timer)evt.getSource()).stop();
+                });
+                timer.setRepeats(false);
+                timer.start();
+            } else {
+                JOptionPane.showMessageDialog(frame,
+                    "No query history available to export.",
+                    "Export",
+                    JOptionPane.INFORMATION_MESSAGE);
+            }
+        });
         JMenuItem exitItem = new JMenuItem("Exit");
         exitItem.addActionListener(e -> shutdown());
         fileMenu.add(exportItem);
@@ -246,11 +327,27 @@ public class GuiLauncher {
         // View Menu
         JMenu viewMenu = new JMenu("View");
         JCheckBoxMenuItem darkModeItem = new JCheckBoxMenuItem("Dark Mode");
+        darkModeItem.setSelected(themeManager.getCurrentTheme() == ThemeManager.Theme.DARK);
         darkModeItem.addActionListener(e -> {
             themeManager.toggleTheme();
-            // Apply theme would go here
+            applyThemeToAllComponents();
+            darkModeItem.setSelected(themeManager.getCurrentTheme() == ThemeManager.Theme.DARK);
         });
         viewMenu.add(darkModeItem);
+        
+        // Add theme submenu for other themes
+        JMenu themeMenu = new JMenu("Themes");
+        for (ThemeManager.Theme theme : ThemeManager.Theme.values()) {
+            JMenuItem themeItem = new JMenuItem(theme.getDisplayName());
+            themeItem.setToolTipText(theme.getDescription());
+            themeItem.addActionListener(e -> {
+                themeManager.setTheme(theme);
+                applyThemeToAllComponents();
+                darkModeItem.setSelected(themeManager.isDarkTheme());
+            });
+            themeMenu.add(themeItem);
+        }
+        viewMenu.add(themeMenu);
         
         // Help Menu
         JMenu helpMenu = new JMenu("Help");
@@ -290,6 +387,18 @@ public class GuiLauncher {
         if (isQueryRunning) {
             statusBar.setMessage("A query is already running!", StatusBar.MessageType.WARNING);
             return;
+        }
+        
+        // Clear any query preview
+        mapPanel.clearQueryPreview();
+        
+        // Set heuristic mode based on user selection
+        if ("Aggressive".equals(params.heuristicMode)) {
+            BidirectionalLabeling.setAggressiveMode();
+            System.out.println("[GUI] Heuristic Mode: Aggressive (Frontier Threshold = 10)");
+        } else {
+            BidirectionalLabeling.setBalancedMode();
+            System.out.println("[GUI] Heuristic Mode: Balanced (Frontier Threshold = 50)");
         }
         
         isQueryRunning = true;
@@ -415,11 +524,19 @@ public class GuiLauncher {
         sb.append(String.format("🏁 Destination Node:   %d\n", params.destination));
         sb.append(String.format("🕐 Departure Time:     %d min (%.2f hrs)\n", params.departure, params.departure/60.0));
         sb.append(String.format("⏱  Interval Duration:  %d min\n", params.interval));
-        sb.append(String.format("💰 Budget:             %d min\n\n", params.budget));
+        sb.append(String.format("💰 Budget:             %d min\n", params.budget));
+        sb.append(String.format("🧠 Heuristic Mode:     %s (%d frontiers)\n\n", 
+            params.heuristicMode, 
+            "Aggressive".equals(params.heuristicMode) ? 10 : 50));
         sb.append("Processing query, please wait...\n");
         sb.append("═══════════════════════════════════════\n\n");
         
         outputPane.setText(sb.toString());
+    }
+    
+    private void visualizeQuery(QueryInputPanel.QueryPreview preview) {
+        mapPanel.setQueryPreview(preview.source, preview.destination);
+        tabbedPane.setSelectedIndex(1); // Switch to visualization tab
     }
 
     private void displayResults(QueryResult result) {
@@ -595,20 +712,40 @@ public class GuiLauncher {
 
             @Override
             protected void done() {
-                // Fade out animation
-                javax.swing.Timer fadeTimer = new javax.swing.Timer(30, null);
-                final float[] opacity = {1.0f};
-                fadeTimer.addActionListener(e -> {
-                    opacity[0] -= 0.1f;
-                    if (opacity[0] <= 0.0f) {
-                        ((javax.swing.Timer) e.getSource()).stop();
+                // Fade out animation (with platform compatibility check)
+                try {
+                    if (frame.isUndecorated() || !GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().isWindowTranslucencySupported(GraphicsDevice.WindowTranslucency.TRANSLUCENT)) {
+                        // Platform doesn't support opacity, just dispose immediately
                         frame.dispose();
                         System.exit(0);
-                    } else {
-                        frame.setOpacity(opacity[0]);
+                        return;
                     }
-                });
-                fadeTimer.start();
+                    
+                    javax.swing.Timer fadeTimer = new javax.swing.Timer(30, null);
+                    final float[] opacity = {1.0f};
+                    fadeTimer.addActionListener(e -> {
+                        opacity[0] -= 0.1f;
+                        if (opacity[0] <= 0.0f) {
+                            ((javax.swing.Timer) e.getSource()).stop();
+                            frame.dispose();
+                            System.exit(0);
+                        } else {
+                            try {
+                                frame.setOpacity(opacity[0]);
+                            } catch (Exception ex) {
+                                // Opacity not supported, just dispose
+                                ((javax.swing.Timer) e.getSource()).stop();
+                                frame.dispose();
+                                System.exit(0);
+                            }
+                        }
+                    });
+                    fadeTimer.start();
+                } catch (Exception ex) {
+                    // Fallback: just dispose and exit
+                    frame.dispose();
+                    System.exit(0);
+                }
             }
         };
         

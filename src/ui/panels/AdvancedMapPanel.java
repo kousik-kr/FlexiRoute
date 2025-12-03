@@ -8,7 +8,6 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.FontMetrics;
-import java.awt.GradientPaint;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
@@ -23,6 +22,7 @@ import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JList;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSlider;
@@ -60,6 +60,16 @@ public class AdvancedMapPanel extends JPanel {
     private List<Integer> wideEdges = Collections.emptyList();
     private VisualizationMode currentMode = VisualizationMode.CLASSIC;
     private boolean showPathOnly = false;
+    
+    // Graph data for full/partial visualization
+    private boolean showFullGraph = false;
+    private static final int MAX_GRAPH_SIZE = 6000; // Maximum nodes to visualize
+    private List<Integer> graphNodesToShow = new ArrayList<>();
+    
+    // Query preview fields
+    private Integer querySourceNode = null;
+    private Integer queryDestNode = null;
+    private boolean showQueryPreview = false;
     
     // Pagination
     private int nodesPerPage = 50;
@@ -148,6 +158,19 @@ public class AdvancedMapPanel extends JPanel {
         });
         topRow.add(pathOnlyCheckbox);
         
+        topRow.add(Box.createHorizontalStrut(20));
+        
+        // Graph visualization controls
+        ModernButton showGraphButton = new ModernButton("📍 Show Graph Sample", new Color(156, 39, 176));
+        showGraphButton.setToolTipText("Display a sample of the loaded graph");
+        showGraphButton.addActionListener(e -> showGraphVisualization());
+        topRow.add(showGraphButton);
+        
+        ModernButton clearGraphButton = new ModernButton("🗑 Clear Graph", new Color(158, 158, 158));
+        clearGraphButton.setToolTipText("Clear graph visualization");
+        clearGraphButton.addActionListener(e -> clearGraphVisualization());
+        topRow.add(clearGraphButton);
+        
         // Bottom row: Pagination controls
         JPanel bottomRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         bottomRow.setOpaque(false);
@@ -220,6 +243,18 @@ public class AdvancedMapPanel extends JPanel {
     }
     
     private void renderVisualization(Graphics2D g2d) {
+        // Priority: Query preview > Graph sample > Path > Empty state
+        if (showQueryPreview && querySourceNode != null && queryDestNode != null) {
+            renderQueryPreview(g2d);
+            return;
+        }
+        
+        // Show graph visualization if no path is set but graph nodes are available
+        if (pathNodes.isEmpty() && !graphNodesToShow.isEmpty()) {
+            renderGraphSample(g2d);
+            return;
+        }
+        
         if (pathNodes.isEmpty()) {
             drawEmptyState(g2d);
             return;
@@ -252,198 +287,139 @@ public class AdvancedMapPanel extends JPanel {
     }
     
     private void renderClassic(Graphics2D g2d) {
-        int startIdx = currentPage * nodesPerPage;
-        int endIdx = Math.min(startIdx + nodesPerPage, pathNodes.size());
-        
-        for (int i = startIdx; i < endIdx - 1; i++) {
-            int x1 = 50 + (i - startIdx) * 60;
-            int y1 = 300;
-            int x2 = 50 + (i - startIdx + 1) * 60;
-            int y2 = 300;
+        try {
+            // Get all nodes using reflection
+            Class<?> graphClass = Class.forName("Graph");
+            java.lang.reflect.Method getNodesMethod = graphClass.getMethod("get_nodes");
+            @SuppressWarnings("unchecked")
+            java.util.Map<Integer, Object> allNodes = (java.util.Map<Integer, Object>) getNodesMethod.invoke(null);
             
-            boolean isWideEdge = wideEdges != null && wideEdges.contains(i);
+            if (allNodes == null || pathNodes.isEmpty()) return;
             
-            // Draw edge
-            g2d.setStroke(new BasicStroke(isWideEdge ? 4 : 2));
-            g2d.setColor(isWideEdge ? new Color(255, 87, 34) : new Color(100, 100, 100));
-            g2d.drawLine(x1, y1, x2, y2);
+            // Calculate bounds for normalization
+            double minLat = Double.MAX_VALUE, maxLat = Double.MIN_VALUE;
+            double minLon = Double.MAX_VALUE, maxLon = Double.MIN_VALUE;
+            
+            for (Integer nodeId : pathNodes) {
+                Object node = allNodes.get(nodeId);
+                if (node != null) {
+                    double lat = (Double) node.getClass().getMethod("get_latitude").invoke(node);
+                    double lon = (Double) node.getClass().getMethod("get_longitude").invoke(node);
+                    minLat = Math.min(minLat, lat);
+                    maxLat = Math.max(maxLat, lat);
+                    minLon = Math.min(minLon, lon);
+                    maxLon = Math.max(maxLon, lon);
+                }
+            }
+            
+            int width = getWidth();
+            int height = getHeight();
+            int padding = 60;
+            
+            // Draw directed edges with arrows
+            for (int i = 0; i < pathNodes.size() - 1; i++) {
+                Object node1 = allNodes.get(pathNodes.get(i));
+                Object node2 = allNodes.get(pathNodes.get(i + 1));
+                
+                if (node1 != null && node2 != null) {
+                    double lat1 = (Double) node1.getClass().getMethod("get_latitude").invoke(node1);
+                    double lon1 = (Double) node1.getClass().getMethod("get_longitude").invoke(node1);
+                    double lat2 = (Double) node2.getClass().getMethod("get_latitude").invoke(node2);
+                    double lon2 = (Double) node2.getClass().getMethod("get_longitude").invoke(node2);
+                    
+                    int x1 = padding + (int)((lon1 - minLon) / Math.max(0.0001, maxLon - minLon) * (width - 2 * padding));
+                    int y1 = height - padding - (int)((lat1 - minLat) / Math.max(0.0001, maxLat - minLat) * (height - 2 * padding));
+                    int x2 = padding + (int)((lon2 - minLon) / Math.max(0.0001, maxLon - minLon) * (width - 2 * padding));
+                    int y2 = height - padding - (int)((lat2 - minLat) / Math.max(0.0001, maxLat - minLat) * (height - 2 * padding));
+                    
+                    boolean isWideEdge = wideEdges != null && wideEdges.contains(i);
+                    
+                    // Draw edge
+                    g2d.setStroke(new BasicStroke(isWideEdge ? 4 : 2));
+                    g2d.setColor(isWideEdge ? new Color(255, 87, 34) : new Color(100, 100, 100));
+                    g2d.drawLine(x1, y1, x2, y2);
+                    
+                    // Draw arrow head
+                    drawArrowHead(g2d, x1, y1, x2, y2, isWideEdge ? new Color(255, 87, 34) : new Color(100, 100, 100));
+                }
+            }
+            
+            // Draw nodes on top
+            for (int i = 0; i < pathNodes.size(); i++) {
+                Object node = allNodes.get(pathNodes.get(i));
+                if (node != null) {
+                    double lat = (Double) node.getClass().getMethod("get_latitude").invoke(node);
+                    double lon = (Double) node.getClass().getMethod("get_longitude").invoke(node);
+                    
+                    int x = padding + (int)((lon - minLon) / Math.max(0.0001, maxLon - minLon) * (width - 2 * padding));
+                    int y = height - padding - (int)((lat - minLat) / Math.max(0.0001, maxLat - minLat) * (height - 2 * padding));
+                    
+                    boolean isStart = i == 0;
+                    boolean isEnd = i == pathNodes.size() - 1;
+                    
+                    Color nodeColor = isStart ? new Color(76, 175, 80) : 
+                                     isEnd ? new Color(244, 67, 54) : 
+                                     new Color(33, 150, 243);
+                    
+                    g2d.setColor(nodeColor);
+                    g2d.fillOval(x - 8, y - 8, 16, 16);
+                    g2d.setColor(Color.WHITE);
+                    g2d.setStroke(new BasicStroke(2));
+                    g2d.drawOval(x - 8, y - 8, 16, 16);
+                    
+                    // Node label (only for start/end)
+                    if (isStart || isEnd) {
+                        String label = isStart ? "S" : "E";
+                        g2d.setFont(new Font("Segoe UI", Font.BOLD, 10));
+                        FontMetrics fm = g2d.getFontMetrics();
+                        int textX = x - fm.stringWidth(label) / 2;
+                        int textY = y + fm.getAscent() / 2 - 1;
+                        g2d.drawString(label, textX, textY);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            g2d.setColor(Color.RED);
+            g2d.drawString("Error rendering path: " + e.getMessage(), 10, 20);
         }
+    }
+    
+    private void drawArrowHead(Graphics2D g2d, int x1, int y1, int x2, int y2, Color color) {
+        double angle = Math.atan2(y2 - y1, x2 - x1);
+        int arrowSize = 10;
         
-        // Draw nodes
-        for (int i = startIdx; i < endIdx; i++) {
-            int x = 50 + (i - startIdx) * 60;
-            int y = 300;
-            
-            boolean isStart = i == 0;
-            boolean isEnd = i == pathNodes.size() - 1;
-            
-            Color nodeColor = isStart ? new Color(76, 175, 80) : 
-                             isEnd ? new Color(244, 67, 54) : 
-                             new Color(33, 150, 243);
-            
-            g2d.setColor(nodeColor);
-            g2d.fillOval(x - 15, y - 15, 30, 30);
-            g2d.setColor(Color.WHITE);
-            g2d.setStroke(new BasicStroke(2));
-            g2d.drawOval(x - 15, y - 15, 30, 30);
-            
-            // Node label
-            String label = isStart ? "S" : isEnd ? "E" : String.valueOf(pathNodes.get(i));
-            g2d.setFont(new Font("Segoe UI", Font.BOLD, 11));
-            FontMetrics fm = g2d.getFontMetrics();
-            int textX = x - fm.stringWidth(label) / 2;
-            int textY = y + fm.getAscent() / 2 - 2;
-            g2d.drawString(label, textX, textY);
-        }
+        int[] xPoints = new int[3];
+        int[] yPoints = new int[3];
+        
+        xPoints[0] = x2;
+        yPoints[0] = y2;
+        xPoints[1] = (int) (x2 - arrowSize * Math.cos(angle - Math.PI / 6));
+        yPoints[1] = (int) (y2 - arrowSize * Math.sin(angle - Math.PI / 6));
+        xPoints[2] = (int) (x2 - arrowSize * Math.cos(angle + Math.PI / 6));
+        yPoints[2] = (int) (y2 - arrowSize * Math.sin(angle + Math.PI / 6));
+        
+        g2d.setColor(color);
+        g2d.fillPolygon(xPoints, yPoints, 3);
     }
     
     private void renderNeonGlow(Graphics2D g2d) {
-        // Similar to classic but with glow effects
-        for (int i = 0; i < pathNodes.size() - 1; i++) {
-            int x1 = 50 + i * 60;
-            int y1 = 300;
-            int x2 = 50 + (i + 1) * 60;
-            int y2 = 300;
-            
-            // Glow effect (multiple overlays)
-            for (int j = 6; j >= 2; j--) {
-                int alpha = 40 - j * 5;
-                g2d.setStroke(new BasicStroke(j * 2));
-                g2d.setColor(new Color(0, 255, 255, alpha));
-                g2d.drawLine(x1, y1, x2, y2);
-            }
-        }
-        
-        // Glowing nodes
-        for (int i = 0; i < pathNodes.size(); i++) {
-            int x = 50 + i * 60;
-            int y = 300;
-            
-            // Outer glow
-            for (int r = 25; r >= 15; r--) {
-                int alpha = 150 - (25 - r) * 10;
-                g2d.setColor(new Color(0, 255, 255, alpha));
-                g2d.fillOval(x - r, y - r, r * 2, r * 2);
-            }
-            
-            // Core node
-            g2d.setColor(new Color(0, 255, 255));
-            g2d.fillOval(x - 12, y - 12, 24, 24);
-        }
+        // Render using classic mode as base (with geographic coordinates)
+        renderClassic(g2d);
     }
     
     private void renderGradientFlow(Graphics2D g2d) {
-        for (int i = 0; i < pathNodes.size() - 1; i++) {
-            int x1 = 50 + i * 60;
-            int y1 = 300;
-            int x2 = 50 + (i + 1) * 60;
-            int y2 = 300;
-            
-            float ratio = (float) i / pathNodes.size();
-            Color c1 = new Color(33, 150, 243);
-            Color c2 = new Color(255, 87, 34);
-            
-            GradientPaint gradient = new GradientPaint(x1, y1, c1, x2, y2, c2);
-            g2d.setPaint(gradient);
-            g2d.setStroke(new BasicStroke(4));
-            g2d.drawLine(x1, y1, x2, y2);
-        }
-        
-        // Gradient nodes
-        for (int i = 0; i < pathNodes.size(); i++) {
-            int x = 50 + i * 60;
-            int y = 300;
-            
-            float ratio = (float) i / (pathNodes.size() - 1);
-            int r = (int) (33 + ratio * (255 - 33));
-            int g = (int) (150 - ratio * (150 - 87));
-            int b = (int) (243 - ratio * (243 - 34));
-            
-            g2d.setColor(new Color(r, g, b));
-            g2d.fillOval(x - 15, y - 15, 30, 30);
-        }
+        // Render using classic mode as base (with geographic coordinates)
+        renderClassic(g2d);
     }
     
     private void render3DEffect(Graphics2D g2d) {
-        // Similar to classic with shadow effects
-        int shadowOffset = 3;
-        
-        // Draw shadows first
-        for (int i = 0; i < pathNodes.size(); i++) {
-            int x = 50 + i * 60;
-            int y = 300;
-            
-            g2d.setColor(new Color(0, 0, 0, 60));
-            g2d.fillOval(x - 15 + shadowOffset, y - 15 + shadowOffset, 30, 30);
-        }
-        
-        // Draw nodes with 3D effect
-        for (int i = 0; i < pathNodes.size(); i++) {
-            int x = 50 + i * 60;
-            int y = 300;
-            
-            // Base
-            g2d.setColor(new Color(33, 150, 243));
-            g2d.fillOval(x - 15, y - 15, 30, 30);
-            
-            // Highlight
-            GradientPaint highlight = new GradientPaint(
-                x - 10, y - 10, new Color(150, 200, 255),
-                x + 10, y + 10, new Color(33, 150, 243)
-            );
-            g2d.setPaint(highlight);
-            g2d.fillOval(x - 12, y - 12, 24, 24);
-        }
+        // Render using classic mode as base (with geographic coordinates)
+        renderClassic(g2d);
     }
     
     private void renderPulseAnimation(Graphics2D g2d) {
-        // Animated traveling marker
-        double progress = animationProgress * (pathNodes.size() - 1);
-        int currentIndex = (int) progress;
-        double fraction = progress - currentIndex;
-        
-        // Draw path
-        g2d.setColor(new Color(200, 200, 200));
-        g2d.setStroke(new BasicStroke(2));
-        for (int i = 0; i < pathNodes.size() - 1; i++) {
-            int x1 = 50 + i * 60;
-            int y1 = 300;
-            int x2 = 50 + (i + 1) * 60;
-            int y2 = 300;
-            g2d.drawLine(x1, y1, x2, y2);
-        }
-        
-        // Draw nodes
-        for (int i = 0; i < pathNodes.size(); i++) {
-            int x = 50 + i * 60;
-            int y = 300;
-            
-            boolean isStart = i == 0;
-            boolean isEnd = i == pathNodes.size() - 1;
-            
-            Color nodeColor = isStart ? new Color(76, 175, 80) : 
-                             isEnd ? new Color(244, 67, 54) : 
-                             new Color(150, 150, 150);
-            
-            g2d.setColor(nodeColor);
-            g2d.fillOval(x - 10, y - 10, 20, 20);
-        }
-        
-        // Animated marker
-        if (currentIndex < pathNodes.size() - 1) {
-            int x1 = 50 + currentIndex * 60;
-            int x2 = 50 + (currentIndex + 1) * 60;
-            int markerX = (int) (x1 + (x2 - x1) * fraction);
-            int markerY = 300;
-            
-            // Pulsing glow
-            int pulseSize = (int) (20 + 10 * Math.sin(animationFrame * 0.2));
-            g2d.setColor(new Color(255, 215, 0, 100));
-            g2d.fillOval(markerX - pulseSize/2, markerY - pulseSize/2, pulseSize, pulseSize);
-            
-            g2d.setColor(new Color(255, 215, 0));
-            g2d.fillOval(markerX - 8, markerY - 8, 16, 16);
-        }
+        // Render using classic mode as base (with geographic coordinates)
+        renderClassic(g2d);
     }
     
     public void setPath(List<Integer> pathNodes, List<Integer> wideEdges) {
@@ -490,5 +466,288 @@ public class AdvancedMapPanel extends JPanel {
         pageSlider.setValue(nodesPerPage);
         currentPage = 0;
         updatePagination();
+    }
+    
+    private void showGraphVisualization() {
+        try {
+            // Get nodes from the Graph class using reflection
+            Class<?> graphClass = Class.forName("Graph");
+            java.lang.reflect.Method getNodesMethod = graphClass.getMethod("get_nodes");
+            @SuppressWarnings("unchecked")
+            java.util.Map<Integer, Object> allNodes = (java.util.Map<Integer, Object>) getNodesMethod.invoke(null);
+            
+            if (allNodes == null || allNodes.isEmpty()) {
+                JOptionPane.showMessageDialog(this,
+                    "No graph data loaded. Please load a dataset first.",
+                    "Graph Not Loaded",
+                    JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            
+            // Check if graph is too large
+            List<Integer> nodeIds = new ArrayList<>(allNodes.keySet());
+            int totalNodes = nodeIds.size();
+            
+            System.out.println("Graph visualization: Total nodes = " + totalNodes + ", MAX_GRAPH_SIZE = " + MAX_GRAPH_SIZE);
+            
+            if (totalNodes > MAX_GRAPH_SIZE) {
+                System.out.println("Graph too large! Showing warning dialog.");
+                JOptionPane.showMessageDialog(this,
+                    String.format("Graph is too large to visualize!\n\n" +
+                        "Total nodes: %,d\n" +
+                        "Maximum allowed: %,d\n\n" +
+                        "Visualizing such a large graph would be too congested.\n" +
+                        "Please use the query visualization feature instead.",
+                        totalNodes, MAX_GRAPH_SIZE),
+                    "Large Graph Warning",
+                    JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            
+            // Visualize full graph (all nodes)
+            graphNodesToShow.clear();
+            graphNodesToShow.addAll(nodeIds);
+            Collections.sort(graphNodesToShow);
+            
+            JOptionPane.showMessageDialog(this,
+                String.format("Visualizing full graph with %d nodes.",
+                    graphNodesToShow.size()),
+                "Graph Visualization",
+                JOptionPane.INFORMATION_MESSAGE);
+            
+            repaint();
+            
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this,
+                "Error loading graph visualization: " + e.getMessage(),
+                "Error",
+                JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    
+    private void clearGraphVisualization() {
+        graphNodesToShow.clear();
+        repaint();
+    }
+    
+    public void setQueryPreview(int sourceNode, int destNode) {
+        this.querySourceNode = sourceNode;
+        this.queryDestNode = destNode;
+        this.showQueryPreview = true;
+        repaint();
+    }
+    
+    public void clearQueryPreview() {
+        this.querySourceNode = null;
+        this.queryDestNode = null;
+        this.showQueryPreview = false;
+        repaint();
+    }
+    
+    private void renderGraphSample(Graphics2D g2d) {
+        try {
+            // Get nodes from the Graph class using reflection
+            Class<?> graphClass = Class.forName("Graph");
+            java.lang.reflect.Method getNodesMethod = graphClass.getMethod("get_nodes");
+            @SuppressWarnings("unchecked")
+            java.util.Map<Integer, Object> allNodes = (java.util.Map<Integer, Object>) getNodesMethod.invoke(null);
+            
+            if (allNodes == null || graphNodesToShow.isEmpty()) {
+                return;
+            }
+            
+            // Calculate bounds for normalization using reflection to call Node methods
+            double minLat = Double.MAX_VALUE, maxLat = Double.MIN_VALUE;
+            double minLon = Double.MAX_VALUE, maxLon = Double.MIN_VALUE;
+            
+            for (Integer nodeId : graphNodesToShow) {
+                Object node = allNodes.get(nodeId);
+                if (node != null) {
+                    double lat = (Double) node.getClass().getMethod("get_latitude").invoke(node);
+                    double lon = (Double) node.getClass().getMethod("get_longitude").invoke(node);
+                    minLat = Math.min(minLat, lat);
+                    maxLat = Math.max(maxLat, lat);
+                    minLon = Math.min(minLon, lon);
+                    maxLon = Math.max(maxLon, lon);
+                }
+            }
+            
+            int width = getWidth();
+            int height = getHeight();
+            int padding = 40;
+            
+            // Draw nodes
+            g2d.setColor(new Color(33, 150, 243, 180));
+            for (Integer nodeId : graphNodesToShow) {
+                Object node = allNodes.get(nodeId);
+                if (node != null) {
+                    double lat = (Double) node.getClass().getMethod("get_latitude").invoke(node);
+                    double lon = (Double) node.getClass().getMethod("get_longitude").invoke(node);
+                    
+                    // Normalize coordinates to canvas
+                    int x = padding + (int)((lon - minLon) / (maxLon - minLon) * (width - 2 * padding));
+                    int y = height - padding - (int)((lat - minLat) / (maxLat - minLat) * (height - 2 * padding));
+                    
+                    g2d.fillOval(x - 3, y - 3, 6, 6);
+                }
+            }
+            
+            // Draw edges
+            g2d.setColor(new Color(158, 158, 158, 100));
+            g2d.setStroke(new BasicStroke(1.0f));
+            for (Integer nodeId : graphNodesToShow) {
+                Object node = allNodes.get(nodeId);
+                if (node != null) {
+                    double nodeLat = (Double) node.getClass().getMethod("get_latitude").invoke(node);
+                    double nodeLon = (Double) node.getClass().getMethod("get_longitude").invoke(node);
+                    
+                    // Get outgoing edges using reflection
+                    @SuppressWarnings("unchecked")
+                    java.util.Map<Integer, Object> outgoingEdges = 
+                        (java.util.Map<Integer, Object>) node.getClass().getMethod("get_outgoing_edges").invoke(node);
+                    
+                    if (outgoingEdges != null) {
+                        for (Object edge : outgoingEdges.values()) {
+                            Integer targetId = (Integer) edge.getClass().getMethod("get_destination").invoke(edge);
+                            if (graphNodesToShow.contains(targetId)) {
+                                Object targetNode = allNodes.get(targetId);
+                                if (targetNode != null) {
+                                    double targetLat = (Double) targetNode.getClass().getMethod("get_latitude").invoke(targetNode);
+                                    double targetLon = (Double) targetNode.getClass().getMethod("get_longitude").invoke(targetNode);
+                                    
+                                    int x1 = padding + (int)((nodeLon - minLon) / (maxLon - minLon) * (width - 2 * padding));
+                                    int y1 = height - padding - (int)((nodeLat - minLat) / (maxLat - minLat) * (height - 2 * padding));
+                                    int x2 = padding + (int)((targetLon - minLon) / (maxLon - minLon) * (width - 2 * padding));
+                                    int y2 = height - padding - (int)((targetLat - minLat) / (maxLat - minLat) * (height - 2 * padding));
+                                    g2d.drawLine(x1, y1, x2, y2);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Draw info text
+            g2d.setColor(Color.BLACK);
+            g2d.setFont(new Font("Segoe UI", Font.BOLD, 14));
+            String info = String.format("Graph Sample: %d nodes (out of %d total)", 
+                graphNodesToShow.size(), allNodes.size());
+            g2d.drawString(info, 10, 20);
+            
+        } catch (Exception e) {
+            g2d.setColor(Color.RED);
+            g2d.setFont(new Font("Segoe UI", Font.BOLD, 14));
+            g2d.drawString("Error rendering graph: " + e.getMessage(), 10, 20);
+        }
+    }
+    
+    private void renderQueryPreview(Graphics2D g2d) {
+        try {
+            // Get nodes from the Graph class using reflection
+            Class<?> graphClass = Class.forName("Graph");
+            java.lang.reflect.Method getNodesMethod = graphClass.getMethod("get_nodes");
+            @SuppressWarnings("unchecked")
+            java.util.Map<Integer, Object> allNodes = (java.util.Map<Integer, Object>) getNodesMethod.invoke(null);
+            
+            Object sourceNode = allNodes.get(querySourceNode);
+            Object destNode = allNodes.get(queryDestNode);
+            
+            if (sourceNode == null || destNode == null) {
+                g2d.setColor(Color.RED);
+                g2d.drawString("Invalid source or destination node!", 50, 50);
+                return;
+            }
+            
+            // Get coordinates using reflection
+            double sourceLat = (Double) sourceNode.getClass().getMethod("get_latitude").invoke(sourceNode);
+            double sourceLon = (Double) sourceNode.getClass().getMethod("get_longitude").invoke(sourceNode);
+            double destLat = (Double) destNode.getClass().getMethod("get_latitude").invoke(destNode);
+            double destLon = (Double) destNode.getClass().getMethod("get_longitude").invoke(destNode);
+            
+            // Calculate bounds
+            double minLat = Math.min(sourceLat, destLat);
+            double maxLat = Math.max(sourceLat, destLat);
+            double minLon = Math.min(sourceLon, destLon);
+            double maxLon = Math.max(sourceLon, destLon);
+            
+            // Add padding to bounds (20% on each side)
+            double latRange = Math.max(0.001, maxLat - minLat);
+            double lonRange = Math.max(0.001, maxLon - minLon);
+            minLat -= latRange * 0.2;
+            maxLat += latRange * 0.2;
+            minLon -= lonRange * 0.2;
+            maxLon += lonRange * 0.2;
+            
+            int width = getWidth();
+            int height = getHeight();
+            int padding = 80;
+            
+            // Normalize coordinates
+            int sourceX = padding + (int)((sourceLon - minLon) / Math.max(0.0001, maxLon - minLon) * (width - 2*padding));
+            int sourceY = height - padding - (int)((sourceLat - minLat) / Math.max(0.0001, maxLat - minLat) * (height - 2*padding));
+            int destX = padding + (int)((destLon - minLon) / Math.max(0.0001, maxLon - minLon) * (width - 2*padding));
+            int destY = height - padding - (int)((destLat - minLat) / Math.max(0.0001, maxLat - minLat) * (height - 2*padding));
+            
+            // Draw dashed curved line between source and destination
+            g2d.setStroke(new BasicStroke(3, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10.0f, new float[]{10.0f, 6.0f}, 0.0f));
+            g2d.setColor(new Color(100, 100, 100, 180));
+            
+            // Calculate control point for quadratic curve (offset perpendicular to line)
+            int midX = (sourceX + destX) / 2;
+            int midY = (sourceY + destY) / 2;
+            double angle = Math.atan2(destY - sourceY, destX - sourceX);
+            double perpAngle = angle + Math.PI / 2;
+            int offset = 60; // Curve offset
+            int ctrlX = midX + (int)(offset * Math.cos(perpAngle));
+            int ctrlY = midY + (int)(offset * Math.sin(perpAngle));
+            
+            // Draw quadratic curve
+            java.awt.geom.QuadCurve2D curve = new java.awt.geom.QuadCurve2D.Float(sourceX, sourceY, ctrlX, ctrlY, destX, destY);
+            g2d.draw(curve);
+            
+            // Draw arrow head at destination
+            g2d.setStroke(new BasicStroke(2));
+            double arrowAngle = Math.atan2(destY - ctrlY, destX - ctrlX);
+            int arrowSize = 15;
+            int[] arrowX = new int[3];
+            int[] arrowY = new int[3];
+            arrowX[0] = destX;
+            arrowY[0] = destY;
+            arrowX[1] = destX - (int)(arrowSize * Math.cos(arrowAngle - Math.PI/6));
+            arrowY[1] = destY - (int)(arrowSize * Math.sin(arrowAngle - Math.PI/6));
+            arrowX[2] = destX - (int)(arrowSize * Math.cos(arrowAngle + Math.PI/6));
+            arrowY[2] = destY - (int)(arrowSize * Math.sin(arrowAngle + Math.PI/6));
+            g2d.fillPolygon(arrowX, arrowY, 3);
+            
+            // Draw source node (green)
+            g2d.setColor(new Color(76, 175, 80));
+            g2d.fillOval(sourceX - 12, sourceY - 12, 24, 24);
+            g2d.setColor(Color.WHITE);
+            g2d.setFont(new Font("Segoe UI", Font.BOLD, 14));
+            FontMetrics fm = g2d.getFontMetrics();
+            g2d.drawString("S", sourceX - fm.stringWidth("S")/2, sourceY + fm.getAscent()/2 - 2);
+            
+            // Draw destination node (red)
+            g2d.setColor(new Color(244, 67, 54));
+            g2d.fillOval(destX - 12, destY - 12, 24, 24);
+            g2d.setColor(Color.WHITE);
+            g2d.drawString("D", destX - fm.stringWidth("D")/2, destY + fm.getAscent()/2 - 2);
+            
+            // Draw labels with node IDs
+            g2d.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            g2d.setColor(new Color(76, 175, 80));
+            g2d.drawString("Source: " + querySourceNode, sourceX - 30, sourceY - 20);
+            g2d.setColor(new Color(244, 67, 54));
+            g2d.drawString("Destination: " + queryDestNode, destX - 30, destY + 30);
+            
+            // Draw title
+            g2d.setColor(new Color(33, 150, 243));
+            g2d.setFont(new Font("Segoe UI", Font.BOLD, 16));
+            g2d.drawString("Query Preview - Source to Destination", 20, 30);
+            
+        } catch (Exception e) {
+            g2d.setColor(Color.RED);
+            g2d.drawString("Error rendering query preview: " + e.getMessage(), 50, 50);
+        }
     }
 }

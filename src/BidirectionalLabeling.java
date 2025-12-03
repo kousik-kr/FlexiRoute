@@ -23,6 +23,19 @@ public class BidirectionalLabeling implements Runnable{
         // Track search progress to enable progressive pruning
         private static final ConcurrentHashMap<Integer, Double> forwardMinCost = new ConcurrentHashMap<>();
         private static final ConcurrentHashMap<Integer, Double> backwardMinCost = new ConcurrentHashMap<>();
+        
+        // Dynamic pruning: only prune when frontier exceeds this threshold
+        // Configurable based on heuristic mode: Aggressive (10) or Balanced (50)
+        private static int FRONTIER_THRESHOLD = 10; // Default: Aggressive
+        
+        // Track frontier sizes for dynamic pruning decision
+        private static final ConcurrentHashMap<Integer, Integer> forwardFrontierCount = new ConcurrentHashMap<>();
+        private static final ConcurrentHashMap<Integer, Integer> backwardFrontierCount = new ConcurrentHashMap<>();
+        
+        // Heuristic modes
+        public static void setAggressiveMode() { FRONTIER_THRESHOLD = 10; }
+        public static void setBalancedMode() { FRONTIER_THRESHOLD = 50; }
+        public static int getFrontierThreshold() { return FRONTIER_THRESHOLD; }
 
         // Refined baseline weights for the adaptive heuristic. These ensure admissibility while
         // providing strong guidance. Distance weight is higher to prioritize budget satisfaction.
@@ -48,7 +61,8 @@ public class BidirectionalLabeling implements Runnable{
 
 		System.out.println("[Labeling-" + (isForward ? "FWD" : "BWD") + "] Starting from node " + topLabel.get_nodeID());
 		
-		// Enhanced termination condition 1: Time limit check
+		// Time limit check removed - queries can run without time constraints
+		/*
 		long current = System.currentTimeMillis();
 		float elapsed = (current-BidirectionalAstar.start)/1000F;
 		System.out.println("[Labeling-" + (isForward ? "FWD" : "BWD") + "] Elapsed time: " + elapsed + "s, TIME_LIMIT: " + BidirectionalAstar.TIME_LIMIT + "s");
@@ -59,6 +73,7 @@ public class BidirectionalLabeling implements Runnable{
 			BidirectionalAstar.forceStop=true;
 			return;
 		}
+		*/
 		
 		// Enhanced termination condition 2: Budget exhaustion check (DISABLED - A* preprocessing handles this)
 		// The A* preprocessing phase already filters nodes by budget via feasibility marking.
@@ -112,6 +127,10 @@ public class BidirectionalLabeling implements Runnable{
                                         if(shouldPrune(nextNode, edge, j)) {
                                                 continue;
                                         }
+                                        
+                                        // Track frontier expansion for dynamic pruning
+                                        forwardFrontierCount.merge(j, 1, Integer::sum);
+                                        
                                         Function current_arrivaltime_function = topLabel.get_arrivalTime();//current function at node i
                                         Function current_width_function = topLabel.get_wide_distance();
 					
@@ -317,6 +336,10 @@ public class BidirectionalLabeling implements Runnable{
                                         if(shouldPrune(nextNode, edge, j)) {
                                                 continue;
                                         }
+                                        
+                                        // Track frontier expansion for dynamic pruning
+                                        backwardFrontierCount.merge(j, 1, Integer::sum);
+                                        
                                         Function current_arrivaltime_function = topLabel.get_arrivalTime();//current function at node i
                                         Function current_width_function = topLabel.get_wide_distance();
 					
@@ -531,6 +554,22 @@ public class BidirectionalLabeling implements Runnable{
         }
 
         private boolean shouldPrune(Node nextNode, Edge edge, int nextNodeId) {
+                // Dynamic pruning: only activate when frontier size exceeds threshold
+                ConcurrentHashMap<Integer, Integer> frontierCount = isForward ? forwardFrontierCount : backwardFrontierCount;
+                int currentFrontierSize = frontierCount.values().stream().mapToInt(Integer::intValue).sum();
+                
+                // If frontier is small, don't prune - allow exploration
+                if(currentFrontierSize <= FRONTIER_THRESHOLD) {
+                        return false;
+                }
+                
+                // Log when pruning activates (only once per direction)
+                if(currentFrontierSize == FRONTIER_THRESHOLD + 1) {
+                        System.out.println("[DynamicPruning-" + (isForward ? "FWD" : "BWD") + "] Activated at frontier size: " + currentFrontierSize + 
+                                " - Now keeping only top " + FRONTIER_THRESHOLD + " candidates");
+                }
+                
+                // Frontier exceeded threshold - apply aggressive pruning to keep top candidates
                 double heuristicScore = computeHeuristicScore(nextNode, edge);
                 ConcurrentHashMap<Integer, Double> scoreCache = isForward ? forwardBestScore : backwardBestScore;
                 ConcurrentHashMap<Integer, Double> costCache = isForward ? forwardMinCost : backwardMinCost;
@@ -544,7 +583,7 @@ public class BidirectionalLabeling implements Runnable{
                 double pruneThreshold = (globalMinCost < Double.MAX_VALUE && pathCost > globalMinCost * 0.8) ?
                         STRICT_PRUNE_THRESHOLD : INITIAL_PRUNE_THRESHOLD;
 
-                // Heuristic-based pruning
+                // Heuristic-based pruning - keep only top candidates
                 Double best = scoreCache.get(nextNodeId);
                 if(best != null && heuristicScore >= best * pruneThreshold) {
                         return true;

@@ -76,7 +76,7 @@ public class BidirectionalAstar {
 		density = 20;//Integer.parseInt(args[2]);
 		overhead = 30;//Double.parseDouble(args[3]);
 		no_of_core = 16;//Integer.parseInt(args[4]);
-		TIME_LIMIT = 5;//Double.parseDouble(args[5]);
+		// TIME_LIMIT removed - no query execution time limit
 		interval_duration = 360;//Integer.parseInt(args[6]);
 		THRESHOLD = 10;//Integer.parseInt(args[7]);
 		Optimization = true;
@@ -362,7 +362,7 @@ public class BidirectionalAstar {
         THRESHOLD = 10;
         SHARP_THRESHOLD = 60;
         WIDENESS_THRESHOLD = 12.8;
-        TIME_LIMIT = 5;
+        // TIME_LIMIT removed - no query execution time limit
         interval_duration = interval_duration > 0 ? interval_duration : 360;
         pool = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
         System.out.println("[Init] Defaults configured. Thresholds set and pool size=" + pool.getParallelism());
