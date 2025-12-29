@@ -20,14 +20,17 @@ public class GoogleDriveConfigHelper {
         Properties props = loadConfig();
         String datasetDir = props.getProperty(DATASET_DIR_KEY, "dataset");
         
-        // Check for files with the naming convention used by BidirectionalAstar
-        File nodesFile = new File(datasetDir, "nodes_264346.txt");
-        File edgesFile = new File(datasetDir, "edges_264346.txt");
-        File clustersFile = new File(datasetDir, "clusters_264346.txt");
-        File widthDistFile = new File(datasetDir, "width_dist_264346.txt");
+        // Check for any nodes_*.txt and edges_*.txt files (merged format support)
+        File dir = new File(datasetDir);
+        if (!dir.exists() || !dir.isDirectory()) {
+            return false;
+        }
         
-        return nodesFile.exists() && edgesFile.exists() && 
-               clustersFile.exists() && widthDistFile.exists();
+        File[] nodesFiles = dir.listFiles((d, name) -> name.matches("nodes_\\d+\\.txt"));
+        File[] edgesFiles = dir.listFiles((d, name) -> name.matches("edges_\\d+\\.txt"));
+        
+        return nodesFiles != null && nodesFiles.length > 0 && 
+               edgesFiles != null && edgesFiles.length > 0;
     }
     
     /**

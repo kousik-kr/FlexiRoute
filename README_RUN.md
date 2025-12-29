@@ -7,12 +7,7 @@
 #### Option 1: Double-click to run (Easiest)
 Simply double-click `run.bat` in the project root directory.
 
-#### Option 2: Using PowerShell
-```powershell
-.\run.ps1
-```
-
-#### Option 3: Using Command Prompt
+#### Option 2: Using Command Prompt or PowerShell
 ```cmd
 run.bat
 ```

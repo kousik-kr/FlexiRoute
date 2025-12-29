@@ -237,10 +237,22 @@ public final class Graph {
             }
 
             Node node = get_node(current_vertex);
-            double current_cost = gTime.get(current_vertex);
-            double current_wide_distance = gWideDistance.get(current_vertex);
-            double current_distance = gDistance.get(current_vertex);
-            int current_right_turn = gRightTurn.get(current_vertex);
+
+            // Defensive: guards against missing bookkeeping entries that would NPE on auto-unboxing.
+            Double currentCostObj = gTime.get(current_vertex);
+            Double currentWideObj = gWideDistance.get(current_vertex);
+            Double currentDistObj = gDistance.get(current_vertex);
+            Integer currentRightTurnObj = gRightTurn.get(current_vertex);
+
+            if (currentCostObj == null || currentWideObj == null || currentDistObj == null || currentRightTurnObj == null) {
+                System.err.println("[BackwardA*] Missing state for node " + current_vertex + " (gTime=" + currentCostObj + ", gWide=" + currentWideObj + ", gDist=" + currentDistObj + ", gRT=" + currentRightTurnObj + ") – skipping");
+                continue;
+            }
+
+            double current_cost = currentCostObj;
+            double current_wide_distance = currentWideObj;
+            double current_distance = currentDistObj;
+            int current_right_turn = currentRightTurnObj;
 
             Map<Integer, Edge> temp_outgoing_edge = node.get_outgoing_edges();
 

@@ -1,0 +1,543 @@
+package ui.panels;
+
+import java.awt.*;
+import java.awt.event.*;
+import java.awt.geom.*;
+import java.awt.image.BufferedImage;
+import java.util.*;
+import java.util.List;
+import javax.swing.*;
+import javax.swing.Timer;
+
+/**
+ * World-Class Map Visualization Panel with Advanced Features
+ * Works with coordinates directly (no dependency on Node class)
+ */
+public class WorldClassMapPanel extends JPanel {
+    
+    public enum RenderMode {
+        SATELLITE("🛰️ Satellite View", "Realistic map-style rendering"),
+        NEON("🌟 Neon Glow", "Futuristic glowing path effects"),
+        HEATMAP("🔥 Heat Map", "Traffic density visualization"),
+        BLUEPRINT("📐 Blueprint", "Technical schematic view"),
+        MINIMAL("⚪ Minimal", "Clean, simple visualization");
+        
+        private final String name;
+        private final String desc;
+        RenderMode(String name, String desc) { this.name = name; this.desc = desc; }
+        public String getName() { return name; }
+    }
+    
+    private List<Integer> pathNodes = Collections.emptyList();
+    private List<Integer> wideEdges = Collections.emptyList();
+    private List<double[]> pathCoordinates = new ArrayList<>();
+    private RenderMode currentMode = RenderMode.SATELLITE;
+    
+    private double zoomLevel = 1.0;
+    private double panX = 0, panY = 0;
+    private Point dragStart = null;
+    private boolean showLabels = true;
+    private boolean showGrid = false;
+    private boolean animatePath = false;
+    
+    private Timer animationTimer;
+    private float pulsePhase = 0f;
+    
+    private Integer previewSource = null;
+    private Integer previewDest = null;
+    private double[] previewSourceCoord = null;
+    private double[] previewDestCoord = null;
+    
+    private int searchProgress = 0;
+    private String progressMessage = "";
+    private boolean showSearchProgress = false;
+    
+    private double minLat, maxLat, minLon, maxLon;
+    private boolean boundsCalculated = false;
+    
+    private static final Color PATH_COLOR = new Color(33, 150, 243);
+    private static final Color WIDE_PATH_COLOR = new Color(255, 152, 0);
+    private static final Color SOURCE_COLOR = new Color(76, 175, 80);
+    private static final Color DEST_COLOR = new Color(244, 67, 54);
+    
+    public WorldClassMapPanel() {
+        setBackground(new Color(250, 250, 250));
+        setPreferredSize(new Dimension(800, 600));
+        setupInteraction();
+        setupAnimation();
+        setupControls();
+    }
+    
+    private void setupInteraction() {
+        addMouseWheelListener(e -> {
+            double factor = e.getWheelRotation() < 0 ? 1.1 : 0.9;
+            zoomLevel = Math.max(0.1, Math.min(10.0, zoomLevel * factor));
+            repaint();
+        });
+        
+        addMouseListener(new MouseAdapter() {
+            public void mousePressed(MouseEvent e) {
+                if (SwingUtilities.isLeftMouseButton(e)) {
+                    dragStart = e.getPoint();
+                    setCursor(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR));
+                }
+            }
+            public void mouseReleased(MouseEvent e) {
+                dragStart = null;
+                setCursor(Cursor.getDefaultCursor());
+            }
+        });
+        
+        addMouseMotionListener(new MouseMotionAdapter() {
+            public void mouseDragged(MouseEvent e) {
+                if (dragStart != null) {
+                    panX += e.getX() - dragStart.x;
+                    panY += e.getY() - dragStart.y;
+                    dragStart = e.getPoint();
+                    repaint();
+                }
+            }
+        });
+    }
+    
+    private void setupAnimation() {
+        animationTimer = new Timer(50, e -> {
+            pulsePhase += 0.1f;
+            if (pulsePhase > 2 * Math.PI) pulsePhase = 0;
+            if (animatePath) repaint();
+        });
+        animationTimer.start();
+    }
+    
+    private void setupControls() {
+        setLayout(new BorderLayout());
+        add(createToolbar(), BorderLayout.NORTH);
+        add(createLegend(), BorderLayout.EAST);
+    }
+    
+    private JPanel createToolbar() {
+        JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
+        toolbar.setBackground(new Color(245, 245, 245));
+        toolbar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(220, 220, 220)));
+        
+        JComboBox<RenderMode> modeCombo = new JComboBox<>(RenderMode.values());
+        modeCombo.setRenderer(new DefaultListCellRenderer() {
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean sel, boolean focus) {
+                super.getListCellRendererComponent(list, value, index, sel, focus);
+                if (value instanceof RenderMode) setText(((RenderMode) value).getName());
+                return this;
+            }
+        });
+        modeCombo.addActionListener(e -> { currentMode = (RenderMode) modeCombo.getSelectedItem(); repaint(); });
+        
+        toolbar.add(new JLabel("View: "));
+        toolbar.add(modeCombo);
+        toolbar.add(Box.createHorizontalStrut(15));
+        
+        JButton zoomIn = new JButton("🔍+");
+        zoomIn.addActionListener(e -> { zoomLevel = Math.min(10, zoomLevel * 1.2); repaint(); });
+        toolbar.add(zoomIn);
+        
+        JButton zoomOut = new JButton("🔍-");
+        zoomOut.addActionListener(e -> { zoomLevel = Math.max(0.1, zoomLevel / 1.2); repaint(); });
+        toolbar.add(zoomOut);
+        
+        JButton reset = new JButton("🔄");
+        reset.addActionListener(e -> { zoomLevel = 1.0; panX = 0; panY = 0; repaint(); });
+        toolbar.add(reset);
+        
+        toolbar.add(Box.createHorizontalStrut(15));
+        
+        JCheckBox labels = new JCheckBox("Labels", showLabels);
+        labels.addActionListener(e -> { showLabels = labels.isSelected(); repaint(); });
+        toolbar.add(labels);
+        
+        JCheckBox grid = new JCheckBox("Grid", showGrid);
+        grid.addActionListener(e -> { showGrid = grid.isSelected(); repaint(); });
+        toolbar.add(grid);
+        
+        JCheckBox anim = new JCheckBox("Animate", animatePath);
+        anim.addActionListener(e -> animatePath = anim.isSelected());
+        toolbar.add(anim);
+        
+        toolbar.add(Box.createHorizontalStrut(15));
+        
+        JButton export = new JButton("💾 Export");
+        export.addActionListener(e -> exportImage());
+        toolbar.add(export);
+        
+        return toolbar;
+    }
+    
+    private JPanel createLegend() {
+        JPanel legend = new JPanel();
+        legend.setLayout(new BoxLayout(legend, BoxLayout.Y_AXIS));
+        legend.setBackground(new Color(250, 250, 250));
+        legend.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(0, 1, 0, 0, new Color(220, 220, 220)),
+            BorderFactory.createEmptyBorder(10, 10, 10, 10)));
+        legend.setPreferredSize(new Dimension(140, 0));
+        
+        legend.add(new JLabel("<html><b>Legend</b></html>"));
+        legend.add(Box.createVerticalStrut(10));
+        legend.add(createLegendItem("● Source", SOURCE_COLOR));
+        legend.add(createLegendItem("● Dest", DEST_COLOR));
+        legend.add(createLegendItem("─ Path", PATH_COLOR));
+        legend.add(createLegendItem("─ Wide", WIDE_PATH_COLOR));
+        legend.add(Box.createVerticalGlue());
+        
+        return legend;
+    }
+    
+    private JLabel createLegendItem(String text, Color color) {
+        JLabel label = new JLabel(text);
+        label.setForeground(color);
+        label.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        return label;
+    }
+    
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        Graphics2D g2d = (Graphics2D) g.create();
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        
+        int cx = getWidth() / 2, cy = getHeight() / 2;
+        g2d.translate(cx + panX, cy + panY);
+        g2d.scale(zoomLevel, zoomLevel);
+        g2d.translate(-cx, -cy);
+        
+        if (previewSourceCoord != null && previewDestCoord != null) {
+            renderQueryPreview(g2d);
+        } else if (pathCoordinates.isEmpty()) {
+            renderEmptyState(g2d);
+        } else {
+            switch (currentMode) {
+                case SATELLITE -> renderSatelliteView(g2d);
+                case NEON -> renderNeonView(g2d);
+                case HEATMAP -> renderHeatmapView(g2d);
+                case BLUEPRINT -> renderBlueprintView(g2d);
+                case MINIMAL -> renderMinimalView(g2d);
+            }
+        }
+        
+        if (showSearchProgress) renderProgressOverlay(g2d);
+        g2d.dispose();
+    }
+    
+    private void renderEmptyState(Graphics2D g2d) {
+        int cx = getWidth() / 2, cy = getHeight() / 2;
+        
+        g2d.setColor(new Color(200, 200, 200));
+        g2d.setStroke(new BasicStroke(2));
+        g2d.drawOval(cx - 60, cy - 60, 120, 120);
+        
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        g2d.setColor(PATH_COLOR);
+        String title = "Wide-Path Navigator";
+        FontMetrics fm = g2d.getFontMetrics();
+        g2d.drawString(title, cx - fm.stringWidth(title) / 2, cy - 100);
+        
+        g2d.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        g2d.setColor(new Color(120, 120, 120));
+        String hint = "Run a query to visualize the path";
+        fm = g2d.getFontMetrics();
+        g2d.drawString(hint, cx - fm.stringWidth(hint) / 2, cy + 100);
+    }
+    
+    private void calculateBounds() {
+        if (boundsCalculated || pathCoordinates.isEmpty()) return;
+        
+        minLat = Double.MAX_VALUE; maxLat = -Double.MAX_VALUE;
+        minLon = Double.MAX_VALUE; maxLon = -Double.MAX_VALUE;
+        
+        for (double[] c : pathCoordinates) {
+            minLat = Math.min(minLat, c[0]); maxLat = Math.max(maxLat, c[0]);
+            minLon = Math.min(minLon, c[1]); maxLon = Math.max(maxLon, c[1]);
+        }
+        
+        double latPad = (maxLat - minLat) * 0.15;
+        double lonPad = (maxLon - minLon) * 0.15;
+        minLat -= latPad; maxLat += latPad;
+        minLon -= lonPad; maxLon += lonPad;
+        boundsCalculated = true;
+    }
+    
+    private Point2D.Double toScreen(double lat, double lon, int w, int h, int pad) {
+        double x = pad + (lon - minLon) / Math.max(0.0001, maxLon - minLon) * (w - 2 * pad);
+        double y = h - pad - (lat - minLat) / Math.max(0.0001, maxLat - minLat) * (h - 2 * pad);
+        return new Point2D.Double(x, y);
+    }
+    
+    private void renderSatelliteView(Graphics2D g2d) {
+        calculateBounds();
+        int w = getWidth(), h = getHeight(), pad = 80;
+        
+        if (showGrid) drawGrid(g2d, w, h, pad);
+        
+        // Draw edges
+        for (int i = 0; i < pathCoordinates.size() - 1; i++) {
+            Point2D.Double p1 = toScreen(pathCoordinates.get(i)[0], pathCoordinates.get(i)[1], w, h, pad);
+            Point2D.Double p2 = toScreen(pathCoordinates.get(i + 1)[0], pathCoordinates.get(i + 1)[1], w, h, pad);
+            
+            boolean isWide = wideEdges.contains(i);
+            Color color = isWide ? WIDE_PATH_COLOR : PATH_COLOR;
+            
+            if (animatePath) {
+                float alpha = (float) (0.5 + 0.5 * Math.sin(pulsePhase + i * 0.3));
+                color = new Color(color.getRed(), color.getGreen(), color.getBlue(), (int)(255 * alpha));
+            }
+            
+            g2d.setColor(new Color(0, 0, 0, 30));
+            g2d.setStroke(new BasicStroke(isWide ? 7 : 5, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g2d.draw(new Line2D.Double(p1.x + 2, p1.y + 2, p2.x + 2, p2.y + 2));
+            
+            g2d.setColor(color);
+            g2d.setStroke(new BasicStroke(isWide ? 5 : 3, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g2d.draw(new Line2D.Double(p1, p2));
+        }
+        
+        // Draw nodes
+        for (int i = 0; i < pathCoordinates.size(); i++) {
+            Point2D.Double p = toScreen(pathCoordinates.get(i)[0], pathCoordinates.get(i)[1], w, h, pad);
+            
+            if (i == 0 || i == pathCoordinates.size() - 1) {
+                Color c = i == 0 ? SOURCE_COLOR : DEST_COLOR;
+                g2d.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), 50));
+                g2d.fill(new Ellipse2D.Double(p.x - 20, p.y - 20, 40, 40));
+                g2d.setColor(c);
+                g2d.fill(new Ellipse2D.Double(p.x - 12, p.y - 12, 24, 24));
+                g2d.setColor(Color.WHITE);
+                g2d.setStroke(new BasicStroke(2));
+                g2d.draw(new Ellipse2D.Double(p.x - 12, p.y - 12, 24, 24));
+                g2d.setFont(new Font("Segoe UI", Font.BOLD, 14));
+                g2d.drawString(i == 0 ? "S" : "D", (int) p.x - 5, (int) p.y + 5);
+            } else {
+                g2d.setColor(PATH_COLOR);
+                g2d.fill(new Ellipse2D.Double(p.x - 3, p.y - 3, 6, 6));
+            }
+        }
+        
+        drawInfoOverlay(g2d);
+    }
+    
+    private void renderNeonView(Graphics2D g2d) {
+        g2d.setColor(new Color(20, 25, 35));
+        g2d.fillRect(0, 0, getWidth(), getHeight());
+        
+        calculateBounds();
+        int w = getWidth(), h = getHeight(), pad = 80;
+        
+        for (int glow = 4; glow >= 1; glow--) {
+            for (int i = 0; i < pathCoordinates.size() - 1; i++) {
+                Point2D.Double p1 = toScreen(pathCoordinates.get(i)[0], pathCoordinates.get(i)[1], w, h, pad);
+                Point2D.Double p2 = toScreen(pathCoordinates.get(i + 1)[0], pathCoordinates.get(i + 1)[1], w, h, pad);
+                boolean isWide = wideEdges.contains(i);
+                Color c = isWide ? new Color(255, 100, 50) : new Color(0, 255, 200);
+                g2d.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), 40 * glow));
+                g2d.setStroke(new BasicStroke(2 + glow * 3, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2d.draw(new Line2D.Double(p1, p2));
+            }
+        }
+        
+        for (int i : new int[]{0, pathCoordinates.size() - 1}) {
+            if (i >= pathCoordinates.size()) continue;
+            Point2D.Double p = toScreen(pathCoordinates.get(i)[0], pathCoordinates.get(i)[1], w, h, pad);
+            Color c = i == 0 ? new Color(0, 255, 100) : new Color(255, 50, 100);
+            for (int glow = 5; glow >= 1; glow--) {
+                int size = 8 + glow * 6;
+                g2d.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), 30 * glow));
+                g2d.fill(new Ellipse2D.Double(p.x - size/2, p.y - size/2, size, size));
+            }
+            g2d.setColor(Color.WHITE);
+            g2d.fill(new Ellipse2D.Double(p.x - 6, p.y - 6, 12, 12));
+        }
+    }
+    
+    private void renderHeatmapView(Graphics2D g2d) {
+        calculateBounds();
+        int w = getWidth(), h = getHeight(), pad = 80;
+        
+        for (int i = 0; i < pathCoordinates.size(); i++) {
+            Point2D.Double p = toScreen(pathCoordinates.get(i)[0], pathCoordinates.get(i)[1], w, h, pad);
+            float hue = 0.3f * i / Math.max(1, pathCoordinates.size());
+            Color heat = Color.getHSBColor(hue, 0.9f, 0.9f);
+            for (int r = 30; r >= 5; r -= 5) {
+                g2d.setColor(new Color(heat.getRed(), heat.getGreen(), heat.getBlue(), 30));
+                g2d.fill(new Ellipse2D.Double(p.x - r, p.y - r, r * 2, r * 2));
+            }
+        }
+        
+        g2d.setColor(new Color(50, 50, 50, 200));
+        g2d.setStroke(new BasicStroke(2));
+        for (int i = 0; i < pathCoordinates.size() - 1; i++) {
+            Point2D.Double p1 = toScreen(pathCoordinates.get(i)[0], pathCoordinates.get(i)[1], w, h, pad);
+            Point2D.Double p2 = toScreen(pathCoordinates.get(i + 1)[0], pathCoordinates.get(i + 1)[1], w, h, pad);
+            g2d.draw(new Line2D.Double(p1, p2));
+        }
+    }
+    
+    private void renderBlueprintView(Graphics2D g2d) {
+        g2d.setColor(new Color(30, 60, 100));
+        g2d.fillRect(0, 0, getWidth(), getHeight());
+        
+        calculateBounds();
+        int w = getWidth(), h = getHeight(), pad = 80;
+        
+        g2d.setColor(new Color(50, 80, 130));
+        for (int x = pad; x < w - pad; x += 30) g2d.drawLine(x, pad, x, h - pad);
+        for (int y = pad; y < h - pad; y += 30) g2d.drawLine(pad, y, w - pad, y);
+        
+        g2d.setColor(new Color(200, 220, 255));
+        g2d.setStroke(new BasicStroke(2));
+        for (int i = 0; i < pathCoordinates.size() - 1; i++) {
+            Point2D.Double p1 = toScreen(pathCoordinates.get(i)[0], pathCoordinates.get(i)[1], w, h, pad);
+            Point2D.Double p2 = toScreen(pathCoordinates.get(i + 1)[0], pathCoordinates.get(i + 1)[1], w, h, pad);
+            g2d.draw(new Line2D.Double(p1, p2));
+        }
+    }
+    
+    private void renderMinimalView(Graphics2D g2d) {
+        calculateBounds();
+        int w = getWidth(), h = getHeight(), pad = 80;
+        
+        g2d.setColor(new Color(50, 50, 50));
+        g2d.setStroke(new BasicStroke(3, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        
+        GeneralPath path = new GeneralPath();
+        for (int i = 0; i < pathCoordinates.size(); i++) {
+            Point2D.Double p = toScreen(pathCoordinates.get(i)[0], pathCoordinates.get(i)[1], w, h, pad);
+            if (i == 0) path.moveTo(p.x, p.y);
+            else path.lineTo(p.x, p.y);
+        }
+        g2d.draw(path);
+        
+        if (!pathCoordinates.isEmpty()) {
+            Point2D.Double ps = toScreen(pathCoordinates.get(0)[0], pathCoordinates.get(0)[1], w, h, pad);
+            g2d.setColor(SOURCE_COLOR);
+            g2d.fill(new Ellipse2D.Double(ps.x - 8, ps.y - 8, 16, 16));
+            
+            Point2D.Double pe = toScreen(pathCoordinates.get(pathCoordinates.size()-1)[0], pathCoordinates.get(pathCoordinates.size()-1)[1], w, h, pad);
+            g2d.setColor(DEST_COLOR);
+            g2d.fill(new Ellipse2D.Double(pe.x - 8, pe.y - 8, 16, 16));
+        }
+    }
+    
+    private void renderQueryPreview(Graphics2D g2d) {
+        minLat = Math.min(previewSourceCoord[0], previewDestCoord[0]) - 0.01;
+        maxLat = Math.max(previewSourceCoord[0], previewDestCoord[0]) + 0.01;
+        minLon = Math.min(previewSourceCoord[1], previewDestCoord[1]) - 0.01;
+        maxLon = Math.max(previewSourceCoord[1], previewDestCoord[1]) + 0.01;
+        
+        int w = getWidth(), h = getHeight(), pad = 100;
+        Point2D.Double pSrc = toScreen(previewSourceCoord[0], previewSourceCoord[1], w, h, pad);
+        Point2D.Double pDst = toScreen(previewDestCoord[0], previewDestCoord[1], w, h, pad);
+        
+        g2d.setColor(new Color(100, 100, 100, 150));
+        g2d.setStroke(new BasicStroke(3, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10f, new float[]{15, 10}, 0f));
+        QuadCurve2D curve = new QuadCurve2D.Double(pSrc.x, pSrc.y, (pSrc.x + pDst.x) / 2, (pSrc.y + pDst.y) / 2 - 50, pDst.x, pDst.y);
+        g2d.draw(curve);
+        
+        g2d.setColor(SOURCE_COLOR);
+        g2d.fill(new Ellipse2D.Double(pSrc.x - 15, pSrc.y - 15, 30, 30));
+        g2d.setColor(Color.WHITE);
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        g2d.drawString("S", (int) pSrc.x - 5, (int) pSrc.y + 5);
+        
+        g2d.setColor(DEST_COLOR);
+        g2d.fill(new Ellipse2D.Double(pDst.x - 15, pDst.y - 15, 30, 30));
+        g2d.setColor(Color.WHITE);
+        g2d.drawString("D", (int) pDst.x - 5, (int) pDst.y + 5);
+        
+        g2d.setColor(PATH_COLOR);
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        g2d.drawString("Query Preview", 30, 40);
+    }
+    
+    private void renderProgressOverlay(Graphics2D g2d) {
+        int w = getWidth(), h = getHeight();
+        g2d.setColor(new Color(255, 255, 255, 220));
+        g2d.fillRoundRect(w/2 - 150, h/2 - 50, 300, 100, 10, 10);
+        g2d.setColor(PATH_COLOR);
+        g2d.setStroke(new BasicStroke(2));
+        g2d.drawRoundRect(w/2 - 150, h/2 - 50, 300, 100, 10, 10);
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        g2d.drawString("Searching...", w/2 - 40, h/2 - 20);
+        g2d.setColor(new Color(220, 220, 220));
+        g2d.fillRoundRect(w/2 - 120, h/2, 240, 20, 10, 10);
+        g2d.setColor(PATH_COLOR);
+        g2d.fillRoundRect(w/2 - 120, h/2, (int)(240 * searchProgress / 100.0), 20, 10, 10);
+        g2d.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        g2d.setColor(new Color(100, 100, 100));
+        g2d.drawString(progressMessage, w/2 - 100, h/2 + 40);
+    }
+    
+    private void drawGrid(Graphics2D g2d, int w, int h, int pad) {
+        g2d.setColor(new Color(200, 200, 200, 50));
+        for (int x = pad; x < w - pad; x += 50) g2d.drawLine(x, pad, x, h - pad);
+        for (int y = pad; y < h - pad; y += 50) g2d.drawLine(pad, y, w - pad, y);
+    }
+    
+    private void drawInfoOverlay(Graphics2D g2d) {
+        g2d.setColor(new Color(255, 255, 255, 220));
+        g2d.fillRoundRect(10, 10, 180, 70, 10, 10);
+        g2d.setColor(new Color(60, 60, 60));
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        g2d.drawString("Path Info", 20, 30);
+        g2d.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        g2d.drawString("Nodes: " + pathCoordinates.size(), 20, 48);
+        g2d.drawString("Zoom: " + String.format("%.0f%%", zoomLevel * 100), 20, 64);
+    }
+    
+    private void exportImage() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setSelectedFile(new java.io.File("wide_path_map.png"));
+        if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+            try {
+                BufferedImage img = new BufferedImage(getWidth(), getHeight(), BufferedImage.TYPE_INT_ARGB);
+                paint(img.createGraphics());
+                javax.imageio.ImageIO.write(img, "PNG", chooser.getSelectedFile());
+                JOptionPane.showMessageDialog(this, "Exported!", "Success", JOptionPane.INFORMATION_MESSAGE);
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(this, "Export failed: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+    
+    // === PUBLIC API ===
+    
+    public void setPath(List<Integer> nodes, List<Integer> wideEdgeIndices, List<double[]> coordinates) {
+        this.pathNodes = nodes != null ? new ArrayList<>(nodes) : Collections.emptyList();
+        this.wideEdges = wideEdgeIndices != null ? new ArrayList<>(wideEdgeIndices) : Collections.emptyList();
+        this.pathCoordinates = coordinates != null ? new ArrayList<>(coordinates) : new ArrayList<>();
+        this.boundsCalculated = false;
+        clearQueryPreview();
+        repaint();
+    }
+    
+    public void setQueryPreview(int source, int dest, double[] sourceCoord, double[] destCoord) {
+        this.previewSource = source;
+        this.previewDest = dest;
+        this.previewSourceCoord = sourceCoord;
+        this.previewDestCoord = destCoord;
+        repaint();
+    }
+    
+    public void clearQueryPreview() {
+        previewSource = previewDest = null;
+        previewSourceCoord = previewDestCoord = null;
+        repaint();
+    }
+    
+    public void setSearchProgress(int progress, String message) {
+        this.searchProgress = progress;
+        this.progressMessage = message;
+        this.showSearchProgress = progress < 100;
+        repaint();
+    }
+    
+    public void clearSearchFrontier() {
+        showSearchProgress = false;
+        repaint();
+    }
+}

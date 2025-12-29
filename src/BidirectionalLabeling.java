@@ -733,54 +733,71 @@ public class BidirectionalLabeling implements Runnable{
 		            	}
 		            	}else {
 			            	tmp_arrival_time_breakpoints.add(arrival_time_breakpoints.get(i));
-			            	if(arrival_time_breakpoints.get(i).getX()==width_breakpoints.get(k).getX()) {
-			            		tmp_width_breakpoints.add(width_breakpoints.get(k));
-			            		k++;
-			            	}
+	            			if(k < width_breakpoints.size() && arrival_time_breakpoints.get(i).getX()==width_breakpoints.get(k).getX()) {
+	            				tmp_width_breakpoints.add(width_breakpoints.get(k));
+	            				k++;
+	            			}
 		            	}
 	
 	                i++;
 	            } 
 	            else {
-		            	int current_vertex = topLabel.get_nodeID();
-		            	int tmp_next_vertex = next_vertex;
-		            	boolean is_width = false;
-		            	if(l < width_time_series.size() && arrival_time_series.get(j)==width_time_series.get(l)) {
-		            		is_width = true;
-		            	}
-		            	double dep_time = Graph.get_node(tmp_next_vertex).get_outgoing_edges().get(current_vertex).get_departure_time(arrival_time_series.get(j));
-		            	int width = 0;
-		            	Map<Integer, Integer> predList = topLabel.getVisitedList();
-		            	
-		            	while(predList.get(current_vertex)!=-1) {
-		            		tmp_next_vertex = current_vertex;
-		            		current_vertex = predList.get(tmp_next_vertex);
-		            		dep_time = Graph.get_node(tmp_next_vertex).get_incoming_edges().get(current_vertex).get_departure_time(dep_time);
-		            		if(is_width)
-		            			width += Graph.get_node(tmp_next_vertex).get_incoming_edges().get(current_vertex).get_width(dep_time);
-		            	}
-		            	
-		            	if(dep_time - arrival_time_breakpoints.get(i).getX()<BidirectionalAstar.THRESHOLD) {
-			            	if(is_width) {	
-		            			
-			            		if(width>width_breakpoints.get(k).getY())
-			            			tmp_width_breakpoints.get(tmp_width_breakpoints.size()-1).updateY(width);
-			            		l++;
-			            	}
-		            	}
-		            	else {
-			            	BreakPoint new_arrival_time_breakpoint = new BreakPoint(dep_time, arrival_time_series.get(j));
-			            	if(dep_time<0) {
-			            		System.out.println("Hi");
-			            	}
-			            	tmp_arrival_time_breakpoints.add(new_arrival_time_breakpoint);
-			            	
-			            	if(is_width) {
-			            		BreakPoint new_width_breakpoint = new BreakPoint(dep_time, width);
-				            	tmp_width_breakpoints.add(new_width_breakpoint);
-				            	l++;
-			            	}
-		            	}
+	            	int current_vertex = topLabel.get_nodeID();
+	            	int tmp_next_vertex = next_vertex;
+	            	boolean is_width = false;
+	            	if(l < width_time_series.size() && arrival_time_series.get(j)==width_time_series.get(l)) {
+	            		is_width = true;
+	            	}
+	            	Node nextNode = Graph.get_node(tmp_next_vertex);
+	            	Node curNode = Graph.get_node(current_vertex);
+	            	Edge edge = (nextNode != null && nextNode.get_outgoing_edges() != null) ? nextNode.get_outgoing_edges().get(current_vertex) : null;
+	            	if(edge == null) {
+	            		j++;
+	            		continue; // missing edge; skip this breakpoint
+	            	}
+	            	double dep_time = edge.get_departure_time(arrival_time_series.get(j));
+	            	int width = 0;
+	            	Map<Integer, Integer> predList = topLabel.getVisitedList();
+	            	boolean pathValid = true;
+	            	
+	            	while(predList.get(current_vertex)!=-1) {
+	            		tmp_next_vertex = current_vertex;
+	            		current_vertex = predList.get(tmp_next_vertex);
+	            		Node tmpNode = Graph.get_node(tmp_next_vertex);
+	            		Edge incoming = (tmpNode != null && tmpNode.get_incoming_edges() != null) ? tmpNode.get_incoming_edges().get(current_vertex) : null;
+	            		if(incoming == null) {
+	            			pathValid = false;
+	            			break;
+	            		}
+	            		dep_time = incoming.get_departure_time(dep_time);
+	            		if(is_width)
+	            			width += incoming.get_width(dep_time);
+	            	}
+	            	if(!pathValid) {
+	            		j++;
+	            		continue;
+	            	}
+	            	
+	            	if(dep_time - arrival_time_breakpoints.get(i).getX()<BidirectionalAstar.THRESHOLD) {
+	            		if(is_width && k < width_breakpoints.size() && tmp_width_breakpoints.size() > 0) {
+	            			if(width>width_breakpoints.get(k).getY())
+	            				tmp_width_breakpoints.get(tmp_width_breakpoints.size()-1).updateY(width);
+	            			l++;
+	            		}
+	            	}
+	            	else {
+	            		BreakPoint new_arrival_time_breakpoint = new BreakPoint(dep_time, arrival_time_series.get(j));
+	            		if(dep_time<0) {
+	            			System.out.println("Hi");
+	            		}
+	            		tmp_arrival_time_breakpoints.add(new_arrival_time_breakpoint);
+	            		
+	            		if(is_width) {
+	            			BreakPoint new_width_breakpoint = new BreakPoint(dep_time, width);
+		            		tmp_width_breakpoints.add(new_width_breakpoint);
+		            		l++;
+	            		}
+	            	}
 	                j++;
 	            }
 	        }
@@ -835,25 +852,39 @@ public class BidirectionalLabeling implements Runnable{
 
                 i++;
             } 
-            else {
+	            else {
 	            	int current_vertex = topLabel.get_nodeID();
 		            	int tmp_next_vertex = next_vertex;
 		            	boolean is_width = false;
 	            	if(l < width_time_series.size() && arrival_time_series.get(j)==width_time_series.get(l)) {
 	            		is_width = true;
-	            	}		            	double arr_time = Graph.get_node(tmp_next_vertex).get_outgoing_edges().get(current_vertex).get_arrival_time(arrival_time_series.get(j));
+	            	}		            	Node nextNode = Graph.get_node(tmp_next_vertex);
+		            	Edge edge = (nextNode != null && nextNode.get_outgoing_edges() != null) ? nextNode.get_outgoing_edges().get(current_vertex) : null;
+		            	if(edge == null) {
+		            		j++;
+		            		continue;
+		            	}
+		            	double arr_time = edge.get_arrival_time(arrival_time_series.get(j));
 		            	int width = 0;
 		            	Map<Integer, Integer> successorList = topLabel.getVisitedList();
+		            	boolean pathValid = true;
 		            	
-		            //	if(successorList.get(current_vertex)==null)
-		            		
-		            		
 		            	while(successorList.get(current_vertex)!=-1) {
 		            		tmp_next_vertex = current_vertex;
 		            		current_vertex = successorList.get(tmp_next_vertex);
+		            		Node tmpNode = Graph.get_node(tmp_next_vertex);
+		            		Edge outgoing = (tmpNode != null && tmpNode.get_outgoing_edges() != null) ? tmpNode.get_outgoing_edges().get(current_vertex) : null;
+		            		if(outgoing == null) {
+		            			pathValid = false;
+		            			break;
+		            		}
 		            		if(is_width)
-		            			width += Graph.get_node(tmp_next_vertex).get_outgoing_edges().get(current_vertex).get_width(arr_time);
-		            		arr_time = Graph.get_node(tmp_next_vertex).get_outgoing_edges().get(current_vertex).get_arrival_time(arr_time);
+		            			width += outgoing.get_width(arr_time);
+		            		arr_time = outgoing.get_arrival_time(arr_time);
+		            	}
+		            	if(!pathValid) {
+		            		j++;
+		            		continue;
 		            	}
 		            	
 	            	if(arr_time - arrival_time_breakpoints.get(i).getY()<BidirectionalAstar.THRESHOLD) {
@@ -864,20 +895,20 @@ public class BidirectionalLabeling implements Runnable{
 		            		l++;
 	            		}
 	            	}
-		            	else {
-			            	BreakPoint new_arrival_time_breakpoint = new BreakPoint(arrival_time_series.get(j), arr_time);
-			            	if(arr_time<0) {
-			            		System.out.println("Hi");
-			            	}
-			            	tmp_arrival_time_breakpoints.add(new_arrival_time_breakpoint);
-			            	
-			            	if(is_width) {
-				            	BreakPoint new_width_breakpoint = new BreakPoint(width_time_series.get(l), width);
-				            	
-				            	tmp_width_breakpoints.add(new_width_breakpoint);
-				            	l++;
-			            	}
-		            	}
+	            	else {
+	            		BreakPoint new_arrival_time_breakpoint = new BreakPoint(arrival_time_series.get(j), arr_time);
+	            		if(arr_time<0) {
+	            			System.out.println("Hi");
+	            		}
+	            		tmp_arrival_time_breakpoints.add(new_arrival_time_breakpoint);
+	            		
+	            		if(is_width) {
+		            		BreakPoint new_width_breakpoint = new BreakPoint(width_time_series.get(l), width);
+		            		
+		            		tmp_width_breakpoints.add(new_width_breakpoint);
+		            		l++;
+	            		}
+	            	}
 	                j++;
 	            }
 	        }

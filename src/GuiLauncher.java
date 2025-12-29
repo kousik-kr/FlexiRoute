@@ -561,6 +561,18 @@ public class GuiLauncher {
                 sb.append(String.format("   Nodes in path:     %d\n", result.getPathNodes().size()));
                 sb.append(String.format("   Wide edges:        %d\n", 
                     result.getWideEdgeIndices() != null ? result.getWideEdgeIndices().size() : 0));
+
+                // Emit full path for external plotting: node IDs and lat,lon pairs
+                sb.append("\n🛣️ Path (node IDs):\n");
+                sb.append(formatPathIds(result.getPathNodes()));
+
+                sb.append("\n🗺️ Path (lat, lon):\n");
+                sb.append(formatPathCoords(result.getPathNodes()));
+
+                String pathFile = writePathToFile(result.getPathNodes());
+                if (pathFile != null) {
+                    sb.append(String.format("\n💾 Full path saved to: %s\n", pathFile));
+                }
             }
             
             sb.append(String.format("\n⚡ Execution Time:     %d ms\n", result.getExecutionTimeMs()));
@@ -649,6 +661,64 @@ public class GuiLauncher {
         sb.append("═══════════════════════════════════════\n");
         
         outputPane.setText(sb.toString());
+    }
+
+    private String formatPathIds(List<Integer> path) {
+        if (path == null || path.isEmpty()) return "   (no path)\n";
+        StringBuilder sb = new StringBuilder();
+        sb.append("   ");
+        int perLine = 20;
+        for (int i = 0; i < path.size(); i++) {
+            sb.append(path.get(i));
+            if (i < path.size() - 1) sb.append(" -> ");
+            if ((i + 1) % perLine == 0 && i < path.size() - 1) {
+                sb.append("\n   ");
+            }
+        }
+        sb.append("\n");
+        return sb.toString();
+    }
+
+    private String formatPathCoords(List<Integer> path) {
+        if (path == null || path.isEmpty()) return "   (no coordinates)\n";
+        StringBuilder sb = new StringBuilder();
+        sb.append("   ");
+        int perLine = 6;
+        for (int i = 0; i < path.size(); i++) {
+            int nodeId = path.get(i);
+            Node node = Graph.get_node(nodeId);
+            if (node != null) {
+                sb.append(String.format("%.6f,%.6f", node.get_latitude(), node.get_longitude()));
+            } else {
+                sb.append(nodeId).append("(missing)");
+            }
+            if (i < path.size() - 1) sb.append(" -> ");
+            if ((i + 1) % perLine == 0 && i < path.size() - 1) {
+                sb.append("\n   ");
+            }
+        }
+        sb.append("\n");
+        return sb.toString();
+    }
+
+    private String writePathToFile(List<Integer> path) {
+        if (path == null || path.isEmpty()) return null;
+        try {
+            java.nio.file.Path dir = java.nio.file.Paths.get("output");
+            java.nio.file.Files.createDirectories(dir);
+            java.nio.file.Path file = dir.resolve("last_path.txt");
+
+            try (java.io.BufferedWriter w = java.nio.file.Files.newBufferedWriter(file)) {
+                w.write("Path node IDs:\n");
+                w.write(formatPathIds(path));
+                w.write("\nPath lat,lon:\n");
+                w.write(formatPathCoords(path));
+            }
+            return file.toAbsolutePath().toString();
+        } catch (Exception e) {
+            System.out.println("[GUI] Failed to write path file: " + e.getMessage());
+            return null;
+        }
     }
 
     private void exitApplication() {

@@ -117,10 +117,11 @@ pip install gdown
 Run the modern Swing GUI application:
 
 ```bash
-# Build the project
-mvn clean compile
+# Windows: use the launcher
+run.bat
 
-# Run the GUI
+# Linux/Mac: build + run manually
+mvn clean compile
 java -cp target/classes GuiLauncher
 ```
 
@@ -144,7 +145,7 @@ mvn exec:java -Dexec.mainClass="GuiLauncher"
 For the complete web-based experience:
 
 ```bash
-./run.sh
+run.bat
 ```
 
 This compiles the Java sources, starts the API on port **8080**, and launches the Vite dev server on **5173** with `VITE_API_BASE` pointed at the API. Visit http://localhost:5173 to use the web UI.
@@ -206,7 +207,7 @@ ui/panels/       → Complex composite views
 
 Run only the Java API server (good for headless benchmarking or hooking up a different client):
 ```bash
-./run.sh --backend-only --port 9000
+run.bat --backend-only --port 9000
 ```
 The server seeds a tiny in-memory network so the endpoints respond immediately even without a dataset on disk.
 
@@ -214,7 +215,7 @@ The server seeds a tiny in-memory network so the endpoints respond immediately e
 
 Point the web UI at an existing API host:
 ```bash
-./run.sh --frontend-only --api-base "http://localhost:8080/api" --frontend-port 5173
+run.bat --frontend-only --api-base "http://localhost:8080/api" --frontend-port 5173
 ```
 Alternatively, run the commands manually:
 ```bash

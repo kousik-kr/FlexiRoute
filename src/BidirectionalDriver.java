@@ -210,6 +210,13 @@ public class BidirectionalDriver {
 //			Map<Integer,List<Label>> backward_labels = backwardSolver.call();
 			//Map<Integer,Result> pruned_backward_labels = pruneDomination(backward_labels);
 			Result result = formOutputLabels(shared.intersectionNodes, shared.forwardVisited, shared.backwardVisited);
+			if (result == null) {
+				// Fallback: return the fastest path found by plain time Dijkstra when labeling yields nothing
+				result = fallbackFastestPath(source, destination, budget, start_departure_time);
+				if (result != null) {
+					System.out.println("[Query] Fallback fastest-path returned due to empty label merge.");
+				}
+			}
 			System.out.println("[Query] Result built, returning to caller.");
 			return result;
 		}
@@ -583,6 +590,95 @@ public class BidirectionalDriver {
 			breakpoints.add(break_point);
 		}
 		return breakpoints; 
+	}
+
+	/**
+	 * Fallback: compute a fastest (time-minimizing) path using only travel times.
+	 * Returns a Result when a path within the given budget exists, otherwise null.
+	 */
+	private Result fallbackFastestPath(int src, int dest, double budget, double startDepartureMinutes) {
+		class NodeCost {
+			int node;
+			double cost;
+			NodeCost(int n, double c) { node = n; cost = c; }
+		}
+
+		java.util.PriorityQueue<NodeCost> pq = new java.util.PriorityQueue<>(java.util.Comparator.comparingDouble(n -> n.cost));
+		java.util.Map<Integer, Double> dist = new java.util.HashMap<>();
+		java.util.Map<Integer, Integer> prev = new java.util.HashMap<>();
+
+		dist.put(src, 0.0);
+		pq.add(new NodeCost(src, 0.0));
+
+		while (!pq.isEmpty()) {
+			NodeCost cur = pq.poll();
+			if (cur.cost > budget) continue; // over budget; skip
+			if (cur.cost > dist.getOrDefault(cur.node, Double.MAX_VALUE)) continue; // stale
+			if (cur.node == dest) break; // reached destination with shortest known cost
+
+			Node node = Graph.get_node(cur.node);
+			if (node == null) continue;
+			for (Map.Entry<Integer, Edge> entry : node.get_outgoing_edges().entrySet()) {
+				Edge edge = entry.getValue();
+				int next = entry.getKey();
+				double newCost = cur.cost + edge.getLowestCost();
+				if (newCost <= budget && newCost < dist.getOrDefault(next, Double.MAX_VALUE)) {
+					dist.put(next, newCost);
+					prev.put(next, cur.node);
+					pq.add(new NodeCost(next, newCost));
+				}
+			}
+		}
+
+		if (!dist.containsKey(dest) || dist.get(dest) > budget) {
+			return null; // no feasible path
+		}
+
+		// Reconstruct path
+		java.util.List<Integer> path = new java.util.ArrayList<>();
+		int cur = dest;
+		while (true) {
+			path.add(0, cur);
+			if (cur == src || !prev.containsKey(cur)) break;
+			cur = prev.get(cur);
+		}
+		if (path.isEmpty() || path.get(0) != src) {
+			return null; // could not rebuild a valid path
+		}
+
+		// Compute right turns, sharp turns, and wide edges
+		int rightTurns = 0;
+		int sharpTurns = 0;
+		java.util.List<Integer> wideEdgeIndices = new java.util.ArrayList<>();
+		double travelTime = dist.get(dest);
+
+		for (int i = 0; i < path.size() - 1; i++) {
+			int u = path.get(i);
+			int v = path.get(i + 1);
+			Node from = Graph.get_node(u);
+			Edge edge = from != null ? from.get_outgoing_edges().get(v) : null;
+			if (edge != null) {
+				if (!edge.is_clearway() && edge.get_width(0) >= BidirectionalAstar.WIDENESS_THRESHOLD) {
+					wideEdgeIndices.add(i);
+				}
+			}
+			if (i > 0) {
+				Node prevNode = Graph.get_node(path.get(i - 1));
+				Node curNode = from;
+				Node nextNode = Graph.get_node(v);
+				if (prevNode != null && curNode != null && nextNode != null) {
+					if (Graph.isSharpRightTurn(prevNode, curNode, nextNode)) {
+						sharpTurns++;
+					}
+					// Approximate right turns by reusing sharp-turn check as proxy
+					if (Graph.isSharpRightTurn(prevNode, curNode, nextNode)) {
+						rightTurns++;
+					}
+				}
+			}
+		}
+
+		return new Result(startDepartureMinutes, 0 /*score unknown for fallback*/, rightTurns, sharpTurns, travelTime, path, wideEdgeIndices);
 	}
 
 }
