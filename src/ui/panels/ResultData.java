@@ -1,6 +1,7 @@
 package ui.panels;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Data transfer object for passing result information to UI panels.
