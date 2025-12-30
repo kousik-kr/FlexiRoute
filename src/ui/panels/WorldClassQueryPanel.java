@@ -1,485 +1,455 @@
 package ui.panels;
 
-import java.awt.*;
-import java.awt.event.*;
-import java.awt.geom.*;
-import java.util.*;
-import java.util.List;
-import javax.swing.*;
-import javax.swing.border.*;
-import ui.components.ModernButton;
+import java.awt.BasicStroke;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GridLayout;
+import java.awt.RenderingHints;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.geom.RoundRectangle2D;
+import java.util.Random;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JSlider;
+import javax.swing.JTextField;
+import javax.swing.SwingConstants;
+import javax.swing.border.EmptyBorder;
 
 /**
- * World-Class Query Input Panel with enhanced UX
- * - Smart input validation
- * - Quick presets
- * - Visual feedback
- * - City/Dataset selector
- * - Recent queries
+ * Query Panel - 500px width with large readable fonts
  */
 public class WorldClassQueryPanel extends JPanel {
     
-    // Colors
-    private static final Color PRIMARY = new Color(33, 150, 243);
-    private static final Color PRIMARY_DARK = new Color(25, 118, 210);
-    private static final Color SUCCESS = new Color(76, 175, 80);
-    private static final Color ERROR = new Color(244, 67, 54);
-    private static final Color WARNING = new Color(255, 152, 0);
-    private static final Color CARD_BG = Color.WHITE;
-    private static final Color BORDER = new Color(230, 230, 230);
+    // 🌈 VIBRANT RAINBOW COLOR PALETTE
+    private static final Color CORAL_PINK = new Color(255, 107, 107);
+    private static final Color ELECTRIC_BLUE = new Color(59, 130, 246);
+    private static final Color VIVID_PURPLE = new Color(168, 85, 247);
+    private static final Color NEON_GREEN = new Color(16, 185, 129);
+    private static final Color SUNSET_ORANGE = new Color(251, 146, 60);
+    private static final Color HOT_PINK = new Color(236, 72, 153);
+    private static final Color CYBER_YELLOW = new Color(250, 204, 21);
+    private static final Color OCEAN_TEAL = new Color(20, 184, 166);
+    private static final Color ROYAL_INDIGO = new Color(99, 102, 241);
+    private static final Color LIME_GREEN = new Color(132, 204, 22);
+    
+    private static final Color TEXT_PRIMARY = new Color(30, 41, 59);
+    private static final Color TEXT_SECONDARY = new Color(100, 116, 139);
+    private static final Color BG_SURFACE = new Color(248, 250, 252);
     
     // Components
     private JTextField sourceField, destField;
     private JSlider departureSlider, intervalSlider, budgetSlider;
     private JLabel departureValue, intervalValue, budgetValue;
     private JComboBox<String> heuristicCombo, datasetCombo;
-    private JButton runButton, randomButton, swapButton, clearButton;
-    private JPanel presetPanel;
-    private JTextArea validationArea;
-    private JLabel statusIcon;
+    private JButton runButton;
+    private JLabel statusLabel;
     
     // Callbacks
     private Runnable onRunQuery;
     private Runnable onRandomQuery;
     private java.util.function.BiConsumer<Integer, Integer> onPreviewChange;
     
-    // State
     private int maxNodeId = 21048;
     
     public WorldClassQueryPanel() {
-        setLayout(new BorderLayout(0, 0));
-        setBackground(new Color(245, 247, 250));
-        setBorder(new EmptyBorder(15, 15, 15, 15));
-        
+        setLayout(new BorderLayout());
+        setBackground(BG_SURFACE);
+        setBorder(new EmptyBorder(12, 12, 12, 12));
         initComponents();
     }
     
     private void initComponents() {
-        // Main container with card style
-        JPanel mainCard = createCard();
-        mainCard.setLayout(new BoxLayout(mainCard, BoxLayout.Y_AXIS));
+        JPanel mainPanel = new JPanel();
+        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+        mainPanel.setOpaque(false);
         
-        // Header
-        JPanel header = createHeader();
-        mainCard.add(header);
-        mainCard.add(Box.createVerticalStrut(15));
-        mainCard.add(new JSeparator());
-        mainCard.add(Box.createVerticalStrut(15));
+        // === HEADER ===
+        mainPanel.add(createHeader());
+        mainPanel.add(Box.createVerticalStrut(14));
         
-        // Dataset selector
-        JPanel datasetSection = createDatasetSection();
-        mainCard.add(datasetSection);
-        mainCard.add(Box.createVerticalStrut(15));
+        // === DATASET (full width) ===
+        mainPanel.add(createLabeledCombo("Dataset", OCEAN_TEAL, new String[]{"21048", "California"}, true));
+        mainPanel.add(Box.createVerticalStrut(12));
         
-        // Source/Destination inputs
-        JPanel nodeInputSection = createNodeInputSection();
-        mainCard.add(nodeInputSection);
-        mainCard.add(Box.createVerticalStrut(15));
+        // === ALGORITHM (full width) ===
+        mainPanel.add(createLabeledCombo("Algorithm", VIVID_PURPLE, new String[]{"Best", "Euclidean", "Manhattan"}, false));
+        mainPanel.add(Box.createVerticalStrut(14));
         
-        // Quick actions
-        JPanel quickActions = createQuickActions();
-        mainCard.add(quickActions);
-        mainCard.add(Box.createVerticalStrut(15));
+        // === SOURCE (full width) ===
+        mainPanel.add(createInputField("Source", NEON_GREEN, true));
+        mainPanel.add(Box.createVerticalStrut(12));
         
-        // Sliders
-        JPanel slidersSection = createSlidersSection();
-        mainCard.add(slidersSection);
-        mainCard.add(Box.createVerticalStrut(15));
+        // === DESTINATION (full width) ===
+        mainPanel.add(createInputField("Destination", CORAL_PINK, false));
+        mainPanel.add(Box.createVerticalStrut(12));
         
-        // Algorithm selector
-        JPanel algoSection = createAlgorithmSection();
-        mainCard.add(algoSection);
-        mainCard.add(Box.createVerticalStrut(15));
+        // === QUICK ACTIONS (3 buttons) ===
+        mainPanel.add(createActionsPanel());
+        mainPanel.add(Box.createVerticalStrut(14));
         
-        // Presets
-        JPanel presetSection = createPresetSection();
-        mainCard.add(presetSection);
-        mainCard.add(Box.createVerticalStrut(20));
+        // === SLIDERS ===
+        mainPanel.add(createSlidersPanel());
+        mainPanel.add(Box.createVerticalStrut(14));
         
-        // Run button
-        JPanel buttonSection = createButtonSection();
-        mainCard.add(buttonSection);
-        mainCard.add(Box.createVerticalStrut(15));
+        // === PRESETS (2x2 grid) ===
+        mainPanel.add(createPresetsPanel());
+        mainPanel.add(Box.createVerticalStrut(16));
         
-        // Validation feedback
-        JPanel validationSection = createValidationSection();
-        mainCard.add(validationSection);
+        // === RUN BUTTON ===
+        mainPanel.add(createRunPanel());
+        mainPanel.add(Box.createVerticalStrut(10));
         
-        mainCard.add(Box.createVerticalGlue());
+        // === STATUS ===
+        statusLabel = new JLabel("Enter source and destination");
+        statusLabel.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+        statusLabel.setForeground(TEXT_SECONDARY);
+        statusLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        mainPanel.add(statusLabel);
         
-        // Scroll pane
-        JScrollPane scroll = new JScrollPane(mainCard);
+        mainPanel.add(Box.createVerticalGlue());
+        
+        // Wrap in scroll pane
+        JScrollPane scroll = new JScrollPane(mainPanel);
         scroll.setBorder(null);
+        scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         scroll.getVerticalScrollBar().setUnitIncrement(16);
         add(scroll, BorderLayout.CENTER);
-    }
-    
-    private JPanel createCard() {
-        JPanel card = new JPanel() {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2d = (Graphics2D) g.create();
-                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2d.setColor(CARD_BG);
-                g2d.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 15, 15));
-                g2d.dispose();
-                super.paintComponent(g);
-            }
-        };
-        card.setOpaque(false);
-        card.setBorder(new CompoundBorder(
-            new LineBorder(BORDER, 1, true),
-            new EmptyBorder(20, 20, 20, 20)
-        ));
-        return card;
     }
     
     private JPanel createHeader() {
         JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
-        
-        JLabel icon = new JLabel("🗺️");
-        icon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 28));
-        
-        JPanel titlePanel = new JPanel();
-        titlePanel.setOpaque(false);
-        titlePanel.setLayout(new BoxLayout(titlePanel, BoxLayout.Y_AXIS));
+        header.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        header.setAlignmentX(Component.LEFT_ALIGNMENT);
         
         JLabel title = new JLabel("Query Builder");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 20));
-        title.setForeground(new Color(40, 40, 40));
-        
-        JLabel subtitle = new JLabel("Configure your pathfinding query");
-        subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        subtitle.setForeground(new Color(120, 120, 120));
-        
-        titlePanel.add(title);
-        titlePanel.add(subtitle);
-        
-        header.add(icon, BorderLayout.WEST);
-        header.add(Box.createHorizontalStrut(15));
-        header.add(titlePanel, BorderLayout.CENTER);
-        
-        statusIcon = new JLabel("⚪");
-        statusIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 16));
-        statusIcon.setToolTipText("Ready");
-        header.add(statusIcon, BorderLayout.EAST);
+        title.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        title.setForeground(ROYAL_INDIGO);
+        header.add(title, BorderLayout.WEST);
         
         return header;
     }
     
-    private JPanel createDatasetSection() {
-        JPanel section = new JPanel(new BorderLayout(10, 5));
-        section.setOpaque(false);
+    private JPanel createLabeledCombo(String labelText, Color color, String[] items, boolean isDataset) {
+        JPanel panel = new JPanel(new BorderLayout(6, 4));
+        panel.setOpaque(false);
+        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 65));
+        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
         
-        JLabel label = createSectionLabel("📁 Dataset");
-        section.add(label, BorderLayout.NORTH);
+        JLabel label = new JLabel(labelText);
+        label.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        label.setForeground(color);
+        panel.add(label, BorderLayout.NORTH);
         
-        datasetCombo = new JComboBox<>(new String[]{
-            "21048 - Default Road Network",
-            "California - Full State",
-            "Custom Dataset..."
-        });
-        styleComboBox(datasetCombo);
-        datasetCombo.addActionListener(e -> {
-            String selected = (String) datasetCombo.getSelectedItem();
-            if (selected != null && selected.contains("21048")) {
-                maxNodeId = 21048;
-            } else if (selected != null && selected.contains("California")) {
-                maxNodeId = 100000; // Adjust as needed
-            }
-            updateValidation();
-        });
+        JComboBox<String> combo = new JComboBox<>(items);
+        combo.setFont(new Font("Segoe UI", Font.PLAIN, 18));
+        combo.setBackground(Color.WHITE);
+        combo.setBorder(BorderFactory.createLineBorder(color, 2, true));
         
-        section.add(datasetCombo, BorderLayout.CENTER);
-        return section;
+        if (isDataset) {
+            datasetCombo = combo;
+        } else {
+            heuristicCombo = combo;
+        }
+        
+        panel.add(combo, BorderLayout.CENTER);
+        return panel;
     }
     
-    private JPanel createNodeInputSection() {
-        JPanel section = new JPanel();
-        section.setOpaque(false);
-        section.setLayout(new BoxLayout(section, BoxLayout.Y_AXIS));
+    private JPanel createInputField(String labelText, Color color, boolean isSource) {
+        JPanel panel = new JPanel(new BorderLayout(6, 4));
+        panel.setOpaque(false);
+        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 70));
+        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
         
-        JLabel label = createSectionLabel("📍 Endpoints");
-        label.setAlignmentX(Component.LEFT_ALIGNMENT);
-        section.add(label);
-        section.add(Box.createVerticalStrut(10));
-        
-        // Source row
-        JPanel sourceRow = createInputRow("Source Node", "🟢");
-        sourceField = (JTextField) ((JPanel) sourceRow.getComponent(1)).getComponent(0);
-        sourceRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-        section.add(sourceRow);
-        section.add(Box.createVerticalStrut(8));
-        
-        // Destination row
-        JPanel destRow = createInputRow("Destination Node", "🔴");
-        destField = (JTextField) ((JPanel) destRow.getComponent(1)).getComponent(0);
-        destRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-        section.add(destRow);
-        
-        // Add change listeners for preview
-        sourceField.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyReleased(KeyEvent e) {
-                updateValidation();
-                triggerPreview();
-            }
-        });
-        destField.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyReleased(KeyEvent e) {
-                updateValidation();
-                triggerPreview();
-            }
-        });
-        
-        return section;
-    }
-    
-    private JPanel createInputRow(String label, String icon) {
-        JPanel row = new JPanel(new BorderLayout(10, 0));
-        row.setOpaque(false);
-        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
-        
-        JLabel iconLabel = new JLabel(icon + " " + label);
-        iconLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        iconLabel.setPreferredSize(new Dimension(130, 30));
-        row.add(iconLabel, BorderLayout.WEST);
-        
-        JPanel inputWrapper = new JPanel(new BorderLayout());
-        inputWrapper.setOpaque(false);
+        JLabel label = new JLabel(labelText);
+        label.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        label.setForeground(color);
+        panel.add(label, BorderLayout.NORTH);
         
         JTextField field = new JTextField();
-        field.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        field.setFont(new Font("Segoe UI", Font.PLAIN, 20));
         field.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(BORDER, 1, true),
-            BorderFactory.createEmptyBorder(8, 12, 8, 12)
+            BorderFactory.createLineBorder(color, 2, true),
+            BorderFactory.createEmptyBorder(8, 10, 8, 10)
+        ));
+        field.setBackground(new Color(
+            Math.min(255, color.getRed() + 200),
+            Math.min(255, color.getGreen() + 200),
+            Math.min(255, color.getBlue() + 200)
         ));
         
-        inputWrapper.add(field, BorderLayout.CENTER);
-        row.add(inputWrapper, BorderLayout.CENTER);
+        if (isSource) {
+            sourceField = field;
+        } else {
+            destField = field;
+        }
         
-        return row;
+        field.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyReleased(KeyEvent e) {
+                updateStatus();
+                triggerPreview();
+            }
+        });
+        
+        panel.add(field, BorderLayout.CENTER);
+        return panel;
     }
     
-    private JPanel createQuickActions() {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+    private JPanel createActionsPanel() {
+        JPanel panel = new JPanel(new GridLayout(1, 3, 10, 0));
         panel.setOpaque(false);
+        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
+        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
         
-        swapButton = createSmallButton("🔄 Swap", "Swap source and destination");
-        swapButton.addActionListener(e -> {
+        panel.add(createSmallButton("Swap", ELECTRIC_BLUE, () -> {
             String temp = sourceField.getText();
             sourceField.setText(destField.getText());
             destField.setText(temp);
-            triggerPreview();
-        });
+        }));
         
-        randomButton = createSmallButton("🎲 Random", "Generate random endpoints");
-        randomButton.addActionListener(e -> {
+        panel.add(createSmallButton("Random", VIVID_PURPLE, () -> {
             if (onRandomQuery != null) {
                 onRandomQuery.run();
             } else {
                 Random rand = new Random();
                 sourceField.setText(String.valueOf(rand.nextInt(maxNodeId) + 1));
                 destField.setText(String.valueOf(rand.nextInt(maxNodeId) + 1));
-                updateValidation();
-                triggerPreview();
             }
-        });
+            updateStatus();
+        }));
         
-        clearButton = createSmallButton("🗑️ Clear", "Clear all inputs");
-        clearButton.addActionListener(e -> {
+        panel.add(createSmallButton("Clear", SUNSET_ORANGE, () -> {
             sourceField.setText("");
             destField.setText("");
             departureSlider.setValue(0);
             intervalSlider.setValue(10);
             budgetSlider.setValue(60);
-            updateValidation();
-        });
-        
-        panel.add(swapButton);
-        panel.add(randomButton);
-        panel.add(clearButton);
+            updateStatus();
+        }));
         
         return panel;
     }
     
-    private JPanel createSlidersSection() {
-        JPanel section = new JPanel();
-        section.setOpaque(false);
-        section.setLayout(new BoxLayout(section, BoxLayout.Y_AXIS));
-        
-        JLabel label = createSectionLabel("⚙️ Parameters");
-        label.setAlignmentX(Component.LEFT_ALIGNMENT);
-        section.add(label);
-        section.add(Box.createVerticalStrut(10));
-        
-        // Departure time
-        JPanel depRow = createSliderRow("🕐 Departure Time", 0, 1440, 0, val -> {
-            int hours = val / 60;
-            int mins = val % 60;
-            return String.format("%02d:%02d", hours, mins);
-        });
-        departureSlider = (JSlider) depRow.getComponent(1);
-        departureValue = (JLabel) depRow.getComponent(2);
-        section.add(depRow);
-        section.add(Box.createVerticalStrut(8));
-        
-        // Time interval
-        JPanel intRow = createSliderRow("⏱️ Time Interval", 1, 60, 10, val -> val + " min");
-        intervalSlider = (JSlider) intRow.getComponent(1);
-        intervalValue = (JLabel) intRow.getComponent(2);
-        section.add(intRow);
-        section.add(Box.createVerticalStrut(8));
-        
-        // Budget
-        JPanel budgetRow = createSliderRow("💰 Travel Budget", 10, 500, 60, val -> val + " units");
-        budgetSlider = (JSlider) budgetRow.getComponent(1);
-        budgetValue = (JLabel) budgetRow.getComponent(2);
-        section.add(budgetRow);
-        
-        return section;
+    private JButton createSmallButton(String text, Color color, Runnable action) {
+        JButton btn = new JButton(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                
+                Color bg = getModel().isRollover() ? color : new Color(color.getRed(), color.getGreen(), color.getBlue(), 50);
+                g2d.setColor(bg);
+                g2d.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 10, 10));
+                
+                g2d.setColor(color);
+                g2d.setStroke(new BasicStroke(2f));
+                g2d.draw(new RoundRectangle2D.Float(1, 1, getWidth()-2, getHeight()-2, 8, 8));
+                g2d.dispose();
+                
+                g.setColor(getModel().isRollover() ? Color.WHITE : color.darker());
+                g.setFont(getFont());
+                FontMetrics fm = g.getFontMetrics();
+                g.drawString(getText(), (getWidth() - fm.stringWidth(getText())) / 2,
+                    (getHeight() + fm.getAscent() - fm.getDescent()) / 2);
+            }
+        };
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        btn.setFocusPainted(false);
+        btn.setBorderPainted(false);
+        btn.setContentAreaFilled(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.addActionListener(e -> action.run());
+        return btn;
     }
     
-    private JPanel createSliderRow(String label, int min, int max, int value, java.util.function.IntFunction<String> formatter) {
-        JPanel row = new JPanel(new BorderLayout(10, 0));
+    private JPanel createSlidersPanel() {
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setOpaque(false);
+        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        JLabel title = new JLabel("Parameters");
+        title.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        title.setForeground(HOT_PINK);
+        title.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(title);
+        panel.add(Box.createVerticalStrut(10));
+        
+        // Departure slider
+        JPanel depPanel = createSliderRow("Depart", 0, 1440, 0, ELECTRIC_BLUE, 
+            val -> String.format("%02d:%02d", val/60, val%60));
+        departureSlider = (JSlider) depPanel.getClientProperty("slider");
+        departureValue = (JLabel) depPanel.getClientProperty("value");
+        panel.add(depPanel);
+        panel.add(Box.createVerticalStrut(8));
+        
+        // Interval slider
+        JPanel intPanel = createSliderRow("Interval", 1, 60, 10, SUNSET_ORANGE, val -> val + "m");
+        intervalSlider = (JSlider) intPanel.getClientProperty("slider");
+        intervalValue = (JLabel) intPanel.getClientProperty("value");
+        panel.add(intPanel);
+        panel.add(Box.createVerticalStrut(8));
+        
+        // Budget slider
+        JPanel budPanel = createSliderRow("Budget", 10, 500, 60, LIME_GREEN, val -> String.valueOf(val));
+        budgetSlider = (JSlider) budPanel.getClientProperty("slider");
+        budgetValue = (JLabel) budPanel.getClientProperty("value");
+        panel.add(budPanel);
+        
+        return panel;
+    }
+    
+    private JPanel createSliderRow(String labelText, int min, int max, int value, Color color, 
+                                   java.util.function.IntFunction<String> formatter) {
+        JPanel row = new JPanel(new BorderLayout(8, 0));
         row.setOpaque(false);
-        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
         row.setAlignmentX(Component.LEFT_ALIGNMENT);
         
-        JLabel labelComp = new JLabel(label);
-        labelComp.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        labelComp.setPreferredSize(new Dimension(130, 30));
-        row.add(labelComp, BorderLayout.WEST);
+        JLabel label = new JLabel(labelText);
+        label.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        label.setForeground(color);
+        label.setPreferredSize(new Dimension(80, 30));
+        row.add(label, BorderLayout.WEST);
         
         JSlider slider = new JSlider(min, max, value);
         slider.setOpaque(false);
         slider.setFocusable(false);
         row.add(slider, BorderLayout.CENTER);
         
-        JLabel valueLabel = new JLabel(formatter.apply(value));
-        valueLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        valueLabel.setForeground(PRIMARY);
-        valueLabel.setPreferredSize(new Dimension(70, 30));
-        valueLabel.setHorizontalAlignment(SwingConstants.RIGHT);
-        row.add(valueLabel, BorderLayout.EAST);
+        JLabel valLabel = new JLabel(formatter.apply(value));
+        valLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        valLabel.setForeground(color);
+        valLabel.setPreferredSize(new Dimension(60, 30));
+        valLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+        row.add(valLabel, BorderLayout.EAST);
         
-        slider.addChangeListener(e -> valueLabel.setText(formatter.apply(slider.getValue())));
+        slider.addChangeListener(e -> valLabel.setText(formatter.apply(slider.getValue())));
+        
+        row.putClientProperty("slider", slider);
+        row.putClientProperty("value", valLabel);
         
         return row;
     }
     
-    private JPanel createAlgorithmSection() {
-        JPanel section = new JPanel(new BorderLayout(10, 5));
-        section.setOpaque(false);
+    private JPanel createPresetsPanel() {
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setOpaque(false);
+        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
         
-        JLabel label = createSectionLabel("🧠 Algorithm");
-        section.add(label, BorderLayout.NORTH);
+        JLabel title = new JLabel("Quick Presets");
+        title.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        title.setForeground(CYBER_YELLOW.darker());
+        title.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(title);
+        panel.add(Box.createVerticalStrut(10));
         
-        heuristicCombo = new JComboBox<>(new String[]{
-            "🚀 Best Bounds (Recommended)",
-            "📏 Euclidean Distance",
-            "🔲 Manhattan Distance",
-            "⭕ No Heuristic"
-        });
-        styleComboBox(heuristicCombo);
-        section.add(heuristicCombo, BorderLayout.CENTER);
+        JPanel grid = new JPanel(new GridLayout(2, 2, 10, 10));
+        grid.setOpaque(false);
+        grid.setMaximumSize(new Dimension(Integer.MAX_VALUE, 90));
+        grid.setAlignmentX(Component.LEFT_ALIGNMENT);
         
-        return section;
+        grid.add(createPresetButton("Short", 1, 100, 30, NEON_GREEN));
+        grid.add(createPresetButton("Medium", 1, 5000, 60, ELECTRIC_BLUE));
+        grid.add(createPresetButton("Long", 1, 15000, 120, VIVID_PURPLE));
+        grid.add(createPresetButton("City", 100, 20000, 200, SUNSET_ORANGE));
+        
+        panel.add(grid);
+        return panel;
     }
     
-    private JPanel createPresetSection() {
-        JPanel section = new JPanel();
-        section.setOpaque(false);
-        section.setLayout(new BoxLayout(section, BoxLayout.Y_AXIS));
-        
-        JLabel label = createSectionLabel("⚡ Quick Presets");
-        label.setAlignmentX(Component.LEFT_ALIGNMENT);
-        section.add(label);
-        section.add(Box.createVerticalStrut(8));
-        
-        presetPanel = new JPanel(new GridLayout(2, 2, 8, 8));
-        presetPanel.setOpaque(false);
-        presetPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 80));
-        presetPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        
-        addPreset("🏃 Short Trip", 1, 100, 30);
-        addPreset("🚗 Medium Route", 1, 5000, 60);
-        addPreset("✈️ Long Journey", 1, 15000, 120);
-        addPreset("🎯 Cross City", 100, 20000, 200);
-        
-        section.add(presetPanel);
-        return section;
-    }
-    
-    private void addPreset(String name, int src, int dst, int budget) {
-        JButton btn = new JButton(name);
-        btn.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        btn.setFocusPainted(false);
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.setBackground(new Color(240, 245, 250));
-        btn.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(BORDER, 1, true),
-            BorderFactory.createEmptyBorder(8, 12, 8, 12)
-        ));
-        
-        btn.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                btn.setBackground(new Color(230, 240, 250));
-            }
-            @Override
-            public void mouseExited(MouseEvent e) {
-                btn.setBackground(new Color(240, 245, 250));
-            }
-        });
-        
-        btn.addActionListener(e -> {
-            sourceField.setText(String.valueOf(src));
-            destField.setText(String.valueOf(dst));
-            budgetSlider.setValue(budget);
-            updateValidation();
-            triggerPreview();
-        });
-        
-        presetPanel.add(btn);
-    }
-    
-    private JPanel createButtonSection() {
-        JPanel section = new JPanel(new BorderLayout(10, 0));
-        section.setOpaque(false);
-        section.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
-        section.setAlignmentX(Component.LEFT_ALIGNMENT);
-        
-        runButton = new JButton("🔍  Find Wide Path") {
+    private JButton createPresetButton(String text, int src, int dst, int budget, Color color) {
+        JButton btn = new JButton(text) {
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 
-                if (getModel().isPressed()) {
-                    g2d.setColor(PRIMARY_DARK.darker());
-                } else if (getModel().isRollover()) {
-                    g2d.setColor(PRIMARY_DARK);
-                } else {
-                    g2d.setColor(PRIMARY);
-                }
-                
+                Color bg = getModel().isRollover() ? color : new Color(color.getRed(), color.getGreen(), color.getBlue(), 50);
+                g2d.setColor(bg);
                 g2d.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 10, 10));
+                
+                g2d.setColor(color);
+                g2d.setStroke(new BasicStroke(2f));
+                g2d.draw(new RoundRectangle2D.Float(1, 1, getWidth()-2, getHeight()-2, 8, 8));
+                g2d.dispose();
+                
+                g.setColor(getModel().isRollover() ? Color.WHITE : color.darker());
+                g.setFont(getFont());
+                FontMetrics fm = g.getFontMetrics();
+                g.drawString(getText(), (getWidth() - fm.stringWidth(getText())) / 2,
+                    (getHeight() + fm.getAscent() - fm.getDescent()) / 2);
+            }
+        };
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        btn.setFocusPainted(false);
+        btn.setBorderPainted(false);
+        btn.setContentAreaFilled(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.addActionListener(e -> {
+            sourceField.setText(String.valueOf(src));
+            destField.setText(String.valueOf(dst));
+            budgetSlider.setValue(budget);
+            updateStatus();
+            triggerPreview();
+        });
+        return btn;
+    }
+    
+    private JPanel createRunPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setOpaque(false);
+        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 55));
+        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        runButton = new JButton("Find Wide Path") {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                
+                java.awt.GradientPaint gp;
+                if (getModel().isPressed()) {
+                    gp = new java.awt.GradientPaint(0, 0, HOT_PINK.darker(), getWidth(), 0, VIVID_PURPLE.darker());
+                } else if (getModel().isRollover()) {
+                    gp = new java.awt.GradientPaint(0, 0, new Color(244, 114, 182), getWidth(), 0, new Color(192, 132, 252));
+                } else {
+                    gp = new java.awt.GradientPaint(0, 0, HOT_PINK, getWidth(), 0, VIVID_PURPLE);
+                }
+                g2d.setPaint(gp);
+                g2d.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 14, 14));
+                
+                // Shine
+                g2d.setColor(new Color(255, 255, 255, 50));
+                g2d.fill(new RoundRectangle2D.Float(2, 2, getWidth()-4, getHeight()/2-2, 12, 12));
                 g2d.dispose();
                 
                 g.setColor(Color.WHITE);
-                g.setFont(new Font("Segoe UI", Font.BOLD, 14));
+                g.setFont(new Font("Segoe UI", Font.BOLD, 20));
                 FontMetrics fm = g.getFontMetrics();
-                String text = getText();
-                int x = (getWidth() - fm.stringWidth(text)) / 2;
-                int y = (getHeight() + fm.getAscent() - fm.getDescent()) / 2;
-                g.drawString(text, x, y);
+                g.drawString(getText(), (getWidth() - fm.stringWidth(getText())) / 2,
+                    (getHeight() + fm.getAscent() - fm.getDescent()) / 2);
             }
         };
-        
-        runButton.setPreferredSize(new Dimension(0, 45));
+        runButton.setPreferredSize(new Dimension(0, 50));
         runButton.setFocusPainted(false);
         runButton.setBorderPainted(false);
         runButton.setContentAreaFilled(false);
@@ -490,108 +460,37 @@ public class WorldClassQueryPanel extends JPanel {
             }
         });
         
-        section.add(runButton, BorderLayout.CENTER);
-        return section;
+        panel.add(runButton, BorderLayout.CENTER);
+        return panel;
     }
     
-    private JPanel createValidationSection() {
-        JPanel section = new JPanel(new BorderLayout());
-        section.setOpaque(false);
-        section.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
-        section.setAlignmentX(Component.LEFT_ALIGNMENT);
-        
-        validationArea = new JTextArea(2, 30);
-        validationArea.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        validationArea.setEditable(false);
-        validationArea.setOpaque(false);
-        validationArea.setForeground(new Color(100, 100, 100));
-        validationArea.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
-        validationArea.setLineWrap(true);
-        validationArea.setWrapStyleWord(true);
-        
-        section.add(validationArea, BorderLayout.CENTER);
-        return section;
-    }
-    
-    private JLabel createSectionLabel(String text) {
-        JLabel label = new JLabel(text);
-        label.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        label.setForeground(new Color(80, 80, 80));
-        return label;
-    }
-    
-    private JButton createSmallButton(String text, String tooltip) {
-        JButton btn = new JButton(text);
-        btn.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        btn.setToolTipText(tooltip);
-        btn.setFocusPainted(false);
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.setBackground(new Color(245, 245, 245));
-        btn.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(BORDER, 1, true),
-            BorderFactory.createEmptyBorder(5, 10, 5, 10)
-        ));
-        return btn;
-    }
-    
-    private void styleComboBox(JComboBox<?> combo) {
-        combo.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        combo.setBackground(Color.WHITE);
-        combo.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(BORDER, 1, true),
-            BorderFactory.createEmptyBorder(5, 10, 5, 10)
-        ));
-    }
-    
-    private void updateValidation() {
-        StringBuilder sb = new StringBuilder();
-        boolean valid = true;
-        
+    private void updateStatus() {
         try {
             String srcText = sourceField.getText().trim();
             String dstText = destField.getText().trim();
             
             if (srcText.isEmpty() || dstText.isEmpty()) {
-                sb.append("⚠️ Enter source and destination nodes to begin");
-                statusIcon.setText("⚪");
-                statusIcon.setToolTipText("Waiting for input");
+                statusLabel.setText("Enter source and destination");
+                statusLabel.setForeground(TEXT_SECONDARY);
             } else {
                 int src = Integer.parseInt(srcText);
                 int dst = Integer.parseInt(dstText);
                 
-                if (src < 1 || src > maxNodeId) {
-                    sb.append("❌ Source must be between 1 and ").append(maxNodeId).append("\n");
-                    valid = false;
-                }
-                if (dst < 1 || dst > maxNodeId) {
-                    sb.append("❌ Destination must be between 1 and ").append(maxNodeId).append("\n");
-                    valid = false;
-                }
-                if (src == dst) {
-                    sb.append("⚠️ Source and destination are the same\n");
-                }
-                
-                if (valid && sb.length() == 0) {
-                    sb.append("✅ Ready to find the optimal wide path!");
-                    statusIcon.setText("🟢");
-                    statusIcon.setToolTipText("Ready to run");
-                } else if (!valid) {
-                    statusIcon.setText("🔴");
-                    statusIcon.setToolTipText("Invalid input");
+                if (src < 1 || src > maxNodeId || dst < 1 || dst > maxNodeId) {
+                    statusLabel.setText("Node ID: 1-" + maxNodeId);
+                    statusLabel.setForeground(CORAL_PINK);
+                } else if (src == dst) {
+                    statusLabel.setText("Source = Destination");
+                    statusLabel.setForeground(SUNSET_ORANGE);
                 } else {
-                    statusIcon.setText("🟡");
-                    statusIcon.setToolTipText("Warning");
+                    statusLabel.setText("Ready! Click Find Wide Path");
+                    statusLabel.setForeground(NEON_GREEN);
                 }
             }
         } catch (NumberFormatException e) {
-            sb.append("❌ Please enter valid numeric node IDs");
-            valid = false;
-            statusIcon.setText("🔴");
-            statusIcon.setToolTipText("Invalid input");
+            statusLabel.setText("Enter valid numbers");
+            statusLabel.setForeground(CORAL_PINK);
         }
-        
-        validationArea.setText(sb.toString());
-        runButton.setEnabled(valid);
     }
     
     private boolean validateInputs() {
@@ -611,69 +510,35 @@ public class WorldClassQueryPanel extends JPanel {
                 int dst = Integer.parseInt(destField.getText().trim());
                 onPreviewChange.accept(src, dst);
             } catch (NumberFormatException e) {
-                // Invalid input, ignore preview
+                // ignore
             }
         }
     }
     
     // === PUBLIC API ===
     
-    public void setOnRunQuery(Runnable callback) {
-        this.onRunQuery = callback;
-    }
+    public void setOnRunQuery(Runnable callback) { this.onRunQuery = callback; }
+    public void setOnRandomQuery(Runnable callback) { this.onRandomQuery = callback; }
+    public void setOnPreviewChange(java.util.function.BiConsumer<Integer, Integer> callback) { this.onPreviewChange = callback; }
     
-    public void setOnRandomQuery(Runnable callback) {
-        this.onRandomQuery = callback;
-    }
-    
-    public void setOnPreviewChange(java.util.function.BiConsumer<Integer, Integer> callback) {
-        this.onPreviewChange = callback;
-    }
-    
-    public int getSource() {
-        return Integer.parseInt(sourceField.getText().trim());
-    }
-    
-    public int getDestination() {
-        return Integer.parseInt(destField.getText().trim());
-    }
-    
-    public int getDeparture() {
-        return departureSlider.getValue();
-    }
-    
-    public int getInterval() {
-        return intervalSlider.getValue();
-    }
-    
-    public int getBudget() {
-        return budgetSlider.getValue();
-    }
+    public int getSource() { return Integer.parseInt(sourceField.getText().trim()); }
+    public int getDestination() { return Integer.parseInt(destField.getText().trim()); }
+    public int getDeparture() { return departureSlider.getValue(); }
+    public int getInterval() { return intervalSlider.getValue(); }
+    public int getBudget() { return budgetSlider.getValue(); }
     
     public int getHeuristicMode() {
-        int index = heuristicCombo.getSelectedIndex();
-        return index == 0 ? 3 : (index == 1 ? 1 : (index == 2 ? 2 : 0));
+        int idx = heuristicCombo.getSelectedIndex();
+        return idx == 0 ? 3 : (idx == 1 ? 1 : 2);
     }
     
-    public void setSource(int value) {
-        sourceField.setText(String.valueOf(value));
-        updateValidation();
-    }
-    
-    public void setDestination(int value) {
-        destField.setText(String.valueOf(value));
-        updateValidation();
-    }
-    
-    public void setMaxNodeId(int max) {
-        this.maxNodeId = max;
-        updateValidation();
-    }
+    public void setSource(int value) { sourceField.setText(String.valueOf(value)); updateStatus(); }
+    public void setDestination(int value) { destField.setText(String.valueOf(value)); updateStatus(); }
+    public void setMaxNodeId(int max) { this.maxNodeId = max; updateStatus(); }
     
     public void setRunning(boolean running) {
         runButton.setEnabled(!running);
-        runButton.setText(running ? "⏳  Processing..." : "🔍  Find Wide Path");
-        statusIcon.setText(running ? "🔵" : "🟢");
-        statusIcon.setToolTipText(running ? "Running query..." : "Ready");
+        runButton.setText(running ? "Processing..." : "Find Wide Path");
+        statusLabel.setText(running ? "Running query..." : "Ready!");
     }
 }

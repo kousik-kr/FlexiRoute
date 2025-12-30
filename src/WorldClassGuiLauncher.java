@@ -58,16 +58,27 @@ import ui.panels.WorldClassResultsPanel;
 public class WorldClassGuiLauncher extends JFrame {
     
     // === CONSTANTS ===
-    private static final String APP_TITLE = "Wide-Path Navigator";
-    private static final String VERSION = "v3.0 World Class";
-    private static final int DEFAULT_WIDTH = 1400;
-    private static final int DEFAULT_HEIGHT = 900;
+    private static final String APP_TITLE = "🌟 Wide-Path Navigator🌟";
+    private static final String VERSION = "v3.0 Rainbow Edition";
+    private static final int DEFAULT_WIDTH = 1550;
+    private static final int DEFAULT_HEIGHT = 980;
     
-    // === COLORS ===
-    private static final Color PRIMARY = new Color(33, 150, 243);
-    private static final Color PRIMARY_DARK = new Color(25, 118, 210);
-    private static final Color BG_COLOR = new Color(245, 247, 250);
-    private static final Color SIDEBAR_BG = new Color(250, 252, 255);
+    // === 🌈 VIBRANT RAINBOW COLOR PALETTE ===
+    private static final Color CORAL_PINK = new Color(255, 107, 107);      // Coral
+    private static final Color ELECTRIC_BLUE = new Color(59, 130, 246);    // Electric Blue
+    private static final Color VIVID_PURPLE = new Color(168, 85, 247);     // Vivid Purple
+    private static final Color NEON_GREEN = new Color(16, 185, 129);       // Neon Green
+    private static final Color SUNSET_ORANGE = new Color(251, 146, 60);    // Sunset Orange
+    private static final Color HOT_PINK = new Color(236, 72, 153);         // Hot Pink
+    private static final Color CYBER_YELLOW = new Color(250, 204, 21);     // Cyber Yellow
+    private static final Color OCEAN_TEAL = new Color(20, 184, 166);       // Ocean Teal
+    private static final Color ROYAL_INDIGO = new Color(99, 102, 241);     // Royal Indigo
+    private static final Color LIME_GREEN = new Color(132, 204, 22);       // Lime Green
+    
+    private static final Color BG_COLOR = new Color(248, 250, 252);        // Off White
+    private static final Color SIDEBAR_BG = new Color(255, 255, 255);      // White
+    private static final Color TEXT_PRIMARY = new Color(30, 41, 59);       // Dark Slate
+    private static final Color TEXT_SECONDARY = new Color(100, 116, 139);  // Cool Gray
     
     // === UI COMPONENTS ===
     private WorldClassQueryPanel queryPanel;
@@ -92,12 +103,20 @@ public class WorldClassGuiLauncher extends JFrame {
         // Frame setup
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(DEFAULT_WIDTH, DEFAULT_HEIGHT);
-        setMinimumSize(new Dimension(1000, 700));
+        setMinimumSize(new Dimension(1100, 750));
         setLocationRelativeTo(null);
         
-        // Set system look and feel
+        // Set system look and feel with enhanced defaults
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+            // Enhanced font defaults for better readability
+            UIManager.put("Label.font", new Font("Segoe UI", Font.PLAIN, 14));
+            UIManager.put("Button.font", new Font("Segoe UI", Font.PLAIN, 14));
+            UIManager.put("TextField.font", new Font("Segoe UI", Font.PLAIN, 14));
+            UIManager.put("ComboBox.font", new Font("Segoe UI", Font.PLAIN, 14));
+            UIManager.put("Menu.font", new Font("Segoe UI", Font.PLAIN, 14));
+            UIManager.put("MenuItem.font", new Font("Segoe UI", Font.PLAIN, 14));
+            UIManager.put("TabbedPane.font", new Font("Segoe UI", Font.BOLD, 14));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -124,12 +143,31 @@ public class WorldClassGuiLauncher extends JFrame {
     }
     
     private JMenuBar createMenuBar() {
-        JMenuBar menuBar = new JMenuBar();
-        menuBar.setBackground(Color.WHITE);
-        menuBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(230, 230, 230)));
+        JMenuBar menuBar = new JMenuBar() {
+            @Override
+            protected void paintComponent(java.awt.Graphics g) {
+                java.awt.Graphics2D g2d = (java.awt.Graphics2D) g.create();
+                // Rainbow gradient menu bar
+                java.awt.GradientPaint gp = new java.awt.GradientPaint(
+                    0, 0, new Color(248, 250, 255),
+                    getWidth(), 0, new Color(250, 245, 255)
+                );
+                g2d.setPaint(gp);
+                g2d.fillRect(0, 0, getWidth(), getHeight());
+                g2d.dispose();
+            }
+        };
+        menuBar.setOpaque(false);
+        menuBar.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(0, 0, 2, 0, VIVID_PURPLE),
+            BorderFactory.createEmptyBorder(6, 10, 6, 10)
+        ));
+        menuBar.setFont(new Font("Segoe UI", Font.BOLD, 15));
         
-        // File Menu
-        JMenu fileMenu = new JMenu("File");
+        // File Menu - Blue themed
+        JMenu fileMenu = new JMenu("📁 File");
+        fileMenu.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        fileMenu.setForeground(ELECTRIC_BLUE);
         fileMenu.setMnemonic(KeyEvent.VK_F);
         
         JMenuItem loadDataset = new JMenuItem("Load Dataset...", KeyEvent.VK_L);
@@ -152,8 +190,10 @@ public class WorldClassGuiLauncher extends JFrame {
         fileMenu.addSeparator();
         fileMenu.add(exit);
         
-        // View Menu
-        JMenu viewMenu = new JMenu("View");
+        // View Menu - Purple themed
+        JMenu viewMenu = new JMenu("🎨 View");
+        viewMenu.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        viewMenu.setForeground(VIVID_PURPLE);
         viewMenu.setMnemonic(KeyEvent.VK_V);
         
         JCheckBoxMenuItem darkMode = new JCheckBoxMenuItem("Dark Mode");
@@ -175,8 +215,10 @@ public class WorldClassGuiLauncher extends JFrame {
         viewMenu.add(zoomOut);
         viewMenu.add(resetView);
         
-        // Query Menu
-        JMenu queryMenu = new JMenu("Query");
+        // Query Menu - Green themed
+        JMenu queryMenu = new JMenu("🔍 Query");
+        queryMenu.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        queryMenu.setForeground(NEON_GREEN);
         queryMenu.setMnemonic(KeyEvent.VK_Q);
         
         JMenuItem runQuery = new JMenuItem("Run Query", KeyEvent.VK_R);
@@ -194,8 +236,10 @@ public class WorldClassGuiLauncher extends JFrame {
         queryMenu.addSeparator();
         queryMenu.add(clearResults);
         
-        // Help Menu
-        JMenu helpMenu = new JMenu("Help");
+        // Help Menu - Orange themed
+        JMenu helpMenu = new JMenu("❓ Help");
+        helpMenu.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        helpMenu.setForeground(SUNSET_ORANGE);
         helpMenu.setMnemonic(KeyEvent.VK_H);
         
         JMenuItem userGuide = new JMenuItem("User Guide", KeyEvent.VK_U);
@@ -220,8 +264,8 @@ public class WorldClassGuiLauncher extends JFrame {
     private JSplitPane createMainSplit() {
         // Left side: Query Panel
         queryPanel = new WorldClassQueryPanel();
-        queryPanel.setPreferredSize(new Dimension(350, 0));
-        queryPanel.setMinimumSize(new Dimension(300, 0));
+        queryPanel.setPreferredSize(new Dimension(500, 0));
+        queryPanel.setMinimumSize(new Dimension(500, 0));
         
         // Set callbacks
         queryPanel.setOnRunQuery(this::executeQuery);
@@ -230,7 +274,8 @@ public class WorldClassGuiLauncher extends JFrame {
         
         // Right side: Tabbed pane with map and results
         rightTabs = new JTabbedPane(JTabbedPane.TOP);
-        rightTabs.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        rightTabs.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        rightTabs.setBackground(BG_COLOR);
         
         // Map Panel
         mapPanel = new WorldClassMapPanel();
@@ -246,8 +291,8 @@ public class WorldClassGuiLauncher extends JFrame {
         
         // Main split pane
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, queryPanel, rightTabs);
-        split.setDividerLocation(350);
-        split.setDividerSize(5);
+        split.setDividerLocation(500);
+        split.setDividerSize(4);
         split.setContinuousLayout(true);
         split.setBorder(null);
         
@@ -257,36 +302,76 @@ public class WorldClassGuiLauncher extends JFrame {
     private JPanel createMetricsPanel() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(BG_COLOR);
-        panel.setBorder(new EmptyBorder(20, 20, 20, 20));
+        panel.setBorder(new EmptyBorder(30, 30, 30, 30));
         
         JLabel placeholder = new JLabel("📈 Detailed metrics and statistics will appear here after running queries.", SwingConstants.CENTER);
-        placeholder.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        placeholder.setForeground(new Color(120, 120, 120));
+        placeholder.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+        placeholder.setForeground(TEXT_SECONDARY);
         
         panel.add(placeholder, BorderLayout.CENTER);
         return panel;
     }
     
     private JPanel createStatusBar() {
-        JPanel statusBar = new JPanel(new BorderLayout(10, 0));
-        statusBar.setBackground(Color.WHITE);
+        JPanel statusBar = new JPanel(new BorderLayout(15, 0)) {
+            @Override
+            protected void paintComponent(java.awt.Graphics g) {
+                java.awt.Graphics2D g2d = (java.awt.Graphics2D) g.create();
+                // Gradient status bar
+                java.awt.GradientPaint gp = new java.awt.GradientPaint(
+                    0, 0, new Color(248, 250, 255),
+                    getWidth(), 0, new Color(255, 248, 250)
+                );
+                g2d.setPaint(gp);
+                g2d.fillRect(0, 0, getWidth(), getHeight());
+                g2d.dispose();
+            }
+        };
+        statusBar.setOpaque(false);
         statusBar.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(230, 230, 230)),
-            BorderFactory.createEmptyBorder(8, 15, 8, 15)
+            BorderFactory.createMatteBorder(2, 0, 0, 0, VIVID_PURPLE),
+            BorderFactory.createEmptyBorder(14, 22, 14, 22)
         ));
         
-        statusLabel = new JLabel("Ready — Load a dataset to begin");
-        statusLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        statusLabel.setForeground(new Color(80, 80, 80));
+        statusLabel = new JLabel("🚀 Ready — Load a dataset to begin your adventure!");
+        statusLabel.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        statusLabel.setForeground(NEON_GREEN);
         
-        globalProgress = new JProgressBar();
+        globalProgress = new JProgressBar() {
+            @Override
+            protected void paintComponent(java.awt.Graphics g) {
+                java.awt.Graphics2D g2d = (java.awt.Graphics2D) g.create();
+                g2d.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+                // Background
+                g2d.setColor(new Color(226, 232, 240));
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
+                // Progress gradient
+                int w = (int) ((getValue() / 100.0) * getWidth());
+                if (w > 0) {
+                    java.awt.GradientPaint gp = new java.awt.GradientPaint(0, 0, HOT_PINK, getWidth(), 0, VIVID_PURPLE);
+                    g2d.setPaint(gp);
+                    g2d.fillRoundRect(0, 0, w, getHeight(), 10, 10);
+                }
+                // Text
+                g2d.setColor(Color.WHITE);
+                g2d.setFont(getFont());
+                java.awt.FontMetrics fm = g2d.getFontMetrics();
+                String text = getString();
+                int x = (getWidth() - fm.stringWidth(text)) / 2;
+                int y = (getHeight() + fm.getAscent() - fm.getDescent()) / 2;
+                g2d.drawString(text, x, y);
+                g2d.dispose();
+            }
+        };
         globalProgress.setVisible(false);
-        globalProgress.setPreferredSize(new Dimension(200, 15));
+        globalProgress.setPreferredSize(new Dimension(280, 22));
         globalProgress.setStringPainted(true);
+        globalProgress.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        globalProgress.setBorder(null);
         
-        JLabel versionLabel = new JLabel(VERSION);
-        versionLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        versionLabel.setForeground(new Color(150, 150, 150));
+        JLabel versionLabel = new JLabel("🌟 " + VERSION + " 🌟");
+        versionLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        versionLabel.setForeground(HOT_PINK);
         
         statusBar.add(statusLabel, BorderLayout.WEST);
         statusBar.add(globalProgress, BorderLayout.CENTER);

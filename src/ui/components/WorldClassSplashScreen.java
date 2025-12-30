@@ -36,7 +36,7 @@ public class WorldClassSplashScreen extends JWindow {
     }
     
     private void initUI() {
-        setSize(500, 350);
+        setSize(600, 450);
         setLocationRelativeTo(null);
         
         contentPanel = new JPanel() {
@@ -46,64 +46,83 @@ public class WorldClassSplashScreen extends JWindow {
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
                 
-                // Gradient background
+                // 🌈 RAINBOW gradient background - Pink to Purple to Blue
                 GradientPaint gradient = new GradientPaint(
-                    0, 0, new Color(30, 60, 114),
-                    0, getHeight(), new Color(42, 82, 152)
+                    0, 0, new Color(236, 72, 153),  // Hot Pink
+                    getWidth(), getHeight(), new Color(99, 102, 241)  // Royal Indigo
                 );
                 g2d.setPaint(gradient);
-                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 28, 28);
                 
-                // Animated circles
-                g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.1f));
+                // Animated rainbow circles
+                Color[] colors = {
+                    new Color(255, 107, 107, 40),  // Coral
+                    new Color(250, 204, 21, 40),   // Yellow
+                    new Color(16, 185, 129, 40),   // Green
+                    new Color(59, 130, 246, 40),   // Blue
+                    new Color(168, 85, 247, 40)    // Purple
+                };
                 for (int i = 0; i < 5; i++) {
-                    float offset = (pulsePhase + i * 0.5f) % (float)(2 * Math.PI);
-                    int size = 100 + (int)(50 * Math.sin(offset));
-                    g2d.setColor(Color.WHITE);
-                    g2d.fillOval(50 + i * 80, 50 + (int)(20 * Math.sin(offset)), size, size);
+                    float offset = (pulsePhase + i * 0.6f) % (float)(2 * Math.PI);
+                    int size = 120 + (int)(60 * Math.sin(offset));
+                    g2d.setColor(colors[i]);
+                    g2d.fillOval(30 + i * 100, 40 + (int)(30 * Math.sin(offset)), size, size);
+                }
+                
+                // Sparkle effect
+                g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
+                for (int i = 0; i < 8; i++) {
+                    float twinkle = (float) Math.abs(Math.sin(pulsePhase * 2 + i));
+                    g2d.setColor(new Color(255, 255, 255, (int)(twinkle * 200)));
+                    int x = 50 + (i * 70) % (getWidth() - 100);
+                    int y = 30 + (i * 50) % (getHeight() - 100);
+                    g2d.fillOval(x, y, 8, 8);
                 }
                 
                 g2d.dispose();
             }
         };
         contentPanel.setLayout(new BorderLayout());
-        contentPanel.setBorder(BorderFactory.createLineBorder(new Color(60, 100, 160), 2, true));
+        contentPanel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(250, 204, 21), 3, true),
+            BorderFactory.createLineBorder(new Color(236, 72, 153), 2, true)
+        ));
         
         // Center content
         JPanel centerPanel = new JPanel();
         centerPanel.setOpaque(false);
         centerPanel.setLayout(new BoxLayout(centerPanel, BoxLayout.Y_AXIS));
         
-        // Logo/Icon
-        JLabel iconLabel = new JLabel("🗺️");
-        iconLabel.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 72));
+        // Logo/Icon - Rainbow emoji
+        JLabel iconLabel = new JLabel("🌈🗺️🌟");
+        iconLabel.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 70));
         iconLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         
-        // Title
-        JLabel titleLabel = new JLabel("Wide-Path Navigator");
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 32));
+        // Title with sparkle
+        JLabel titleLabel = new JLabel("✨ Wide-Path Navigator ✨");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 42));
         titleLabel.setForeground(Color.WHITE);
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         
-        // Version
-        JLabel versionLabel = new JLabel("v3.0 — World Class Edition");
-        versionLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        versionLabel.setForeground(new Color(180, 200, 220));
+        // Version with rainbow styling
+        JLabel versionLabel = new JLabel("🌟 v3.0 — Rainbow Edition 🌟");
+        versionLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        versionLabel.setForeground(new Color(250, 204, 21));
         versionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         
         // Subtitle
-        JLabel subtitleLabel = new JLabel("Advanced Pathfinding with Wide Road Optimization");
-        subtitleLabel.setFont(new Font("Segoe UI", Font.ITALIC, 12));
-        subtitleLabel.setForeground(new Color(160, 180, 200));
+        JLabel subtitleLabel = new JLabel("🚀 Advanced Pathfinding with Wide Road Optimization 🚀");
+        subtitleLabel.setFont(new Font("Segoe UI", Font.ITALIC, 15));
+        subtitleLabel.setForeground(new Color(255, 220, 255));
         subtitleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         
-        centerPanel.add(Box.createVerticalStrut(50));
+        centerPanel.add(Box.createVerticalStrut(60));
         centerPanel.add(iconLabel);
-        centerPanel.add(Box.createVerticalStrut(15));
+        centerPanel.add(Box.createVerticalStrut(20));
         centerPanel.add(titleLabel);
-        centerPanel.add(Box.createVerticalStrut(5));
-        centerPanel.add(versionLabel);
         centerPanel.add(Box.createVerticalStrut(10));
+        centerPanel.add(versionLabel);
+        centerPanel.add(Box.createVerticalStrut(15));
         centerPanel.add(subtitleLabel);
         
         contentPanel.add(centerPanel, BorderLayout.CENTER);
@@ -112,25 +131,43 @@ public class WorldClassSplashScreen extends JWindow {
         JPanel bottomPanel = new JPanel();
         bottomPanel.setOpaque(false);
         bottomPanel.setLayout(new BoxLayout(bottomPanel, BoxLayout.Y_AXIS));
-        bottomPanel.setBorder(BorderFactory.createEmptyBorder(0, 40, 30, 40));
+        bottomPanel.setBorder(BorderFactory.createEmptyBorder(0, 55, 40, 55));
         
-        progressBar = new JProgressBar(0, 100);
+        progressBar = new JProgressBar(0, 100) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                // Background
+                g2d.setColor(new Color(255, 255, 255, 60));
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
+                // Rainbow progress gradient
+                int w = (int) ((getValue() / 100.0) * getWidth());
+                if (w > 0) {
+                    GradientPaint gp = new GradientPaint(
+                        0, 0, new Color(250, 204, 21),  // Yellow
+                        getWidth(), 0, new Color(16, 185, 129)  // Green
+                    );
+                    g2d.setPaint(gp);
+                    g2d.fillRoundRect(0, 0, w, getHeight(), 12, 12);
+                }
+                g2d.dispose();
+            }
+        };
         progressBar.setValue(0);
         progressBar.setStringPainted(false);
-        progressBar.setForeground(new Color(100, 180, 255));
-        progressBar.setBackground(new Color(40, 70, 130));
-        progressBar.setBorder(BorderFactory.createEmptyBorder());
-        progressBar.setPreferredSize(new Dimension(420, 6));
-        progressBar.setMaximumSize(new Dimension(420, 6));
+        progressBar.setBorder(null);
+        progressBar.setPreferredSize(new Dimension(490, 12));
+        progressBar.setMaximumSize(new Dimension(490, 12));
         progressBar.setAlignmentX(Component.CENTER_ALIGNMENT);
         
-        statusLabel = new JLabel("Initializing...");
-        statusLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        statusLabel.setForeground(new Color(150, 170, 190));
+        statusLabel = new JLabel("✨ Initializing magic...");
+        statusLabel.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        statusLabel.setForeground(new Color(255, 240, 255));
         statusLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         
         bottomPanel.add(progressBar);
-        bottomPanel.add(Box.createVerticalStrut(10));
+        bottomPanel.add(Box.createVerticalStrut(12));
         bottomPanel.add(statusLabel);
         
         contentPanel.add(bottomPanel, BorderLayout.SOUTH);

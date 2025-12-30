@@ -1,12 +1,44 @@
 package ui.panels;
 
-import java.awt.*;
-import java.awt.event.*;
-import java.awt.geom.*;
+import java.awt.BasicStroke;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Point;
+import java.awt.RenderingHints;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
+import java.awt.geom.Ellipse2D;
+import java.awt.geom.GeneralPath;
+import java.awt.geom.Line2D;
+import java.awt.geom.Point2D;
+import java.awt.geom.QuadCurve2D;
 import java.awt.image.BufferedImage;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import javax.swing.*;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
+import javax.swing.JFileChooser;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
 /**
@@ -55,14 +87,25 @@ public class WorldClassMapPanel extends JPanel {
     private double minLat, maxLat, minLon, maxLon;
     private boolean boundsCalculated = false;
     
-    private static final Color PATH_COLOR = new Color(33, 150, 243);
-    private static final Color WIDE_PATH_COLOR = new Color(255, 152, 0);
-    private static final Color SOURCE_COLOR = new Color(76, 175, 80);
-    private static final Color DEST_COLOR = new Color(244, 67, 54);
+    private static final Color PATH_COLOR = new Color(236, 72, 153);     // Hot Pink
+    private static final Color WIDE_PATH_COLOR = new Color(16, 185, 129); // Neon Green  
+    private static final Color SOURCE_COLOR = new Color(59, 130, 246);    // Electric Blue
+    private static final Color DEST_COLOR = new Color(251, 146, 60);      // Sunset Orange
+    private static final Color TEXT_PRIMARY = new Color(30, 41, 59);      // Dark Slate
+    private static final Color TEXT_SECONDARY = new Color(100, 116, 139); // Cool Gray
+    private static final Color BORDER = new Color(226, 232, 240);         // Light Border
+    private static final Color BG_SURFACE = new Color(248, 250, 252);     // Off White
+    
+    // Extra vibrant colors for UI
+    private static final Color VIVID_PURPLE = new Color(168, 85, 247);
+    private static final Color CORAL_PINK = new Color(255, 107, 107);
+    private static final Color OCEAN_TEAL = new Color(20, 184, 166);
+    private static final Color CYBER_YELLOW = new Color(250, 204, 21);
+    private static final Color ROYAL_INDIGO = new Color(99, 102, 241);
     
     public WorldClassMapPanel() {
-        setBackground(new Color(250, 250, 250));
-        setPreferredSize(new Dimension(800, 600));
+        setBackground(BG_SURFACE);
+        setPreferredSize(new Dimension(900, 650));
         setupInteraction();
         setupAnimation();
         setupControls();
@@ -116,74 +159,159 @@ public class WorldClassMapPanel extends JPanel {
     }
     
     private JPanel createToolbar() {
-        JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
-        toolbar.setBackground(new Color(245, 245, 245));
-        toolbar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(220, 220, 220)));
+        JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 14, 10)) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                // Gradient toolbar background
+                java.awt.GradientPaint gp = new java.awt.GradientPaint(
+                    0, 0, new Color(255, 255, 255),
+                    0, getHeight(), new Color(248, 250, 255)
+                );
+                g2d.setPaint(gp);
+                g2d.fillRect(0, 0, getWidth(), getHeight());
+                g2d.dispose();
+            }
+        };
+        toolbar.setOpaque(false);
+        toolbar.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, VIVID_PURPLE));
         
         JComboBox<RenderMode> modeCombo = new JComboBox<>(RenderMode.values());
+        modeCombo.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        modeCombo.setBackground(new Color(248, 250, 255));
+        modeCombo.setBorder(BorderFactory.createLineBorder(VIVID_PURPLE, 2, true));
         modeCombo.setRenderer(new DefaultListCellRenderer() {
             public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean sel, boolean focus) {
                 super.getListCellRendererComponent(list, value, index, sel, focus);
+                setFont(new Font("Segoe UI", Font.BOLD, 14));
                 if (value instanceof RenderMode) setText(((RenderMode) value).getName());
                 return this;
             }
         });
         modeCombo.addActionListener(e -> { currentMode = (RenderMode) modeCombo.getSelectedItem(); repaint(); });
         
-        toolbar.add(new JLabel("View: "));
+        JLabel viewLabel = new JLabel("🎬 View: ");
+        viewLabel.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        viewLabel.setForeground(VIVID_PURPLE);
+        toolbar.add(viewLabel);
         toolbar.add(modeCombo);
-        toolbar.add(Box.createHorizontalStrut(15));
+        toolbar.add(Box.createHorizontalStrut(25));
         
-        JButton zoomIn = new JButton("🔍+");
+        JButton zoomIn = createToolbarButton("🔍+", "Zoom In");
         zoomIn.addActionListener(e -> { zoomLevel = Math.min(10, zoomLevel * 1.2); repaint(); });
         toolbar.add(zoomIn);
         
-        JButton zoomOut = new JButton("🔍-");
+        JButton zoomOut = createToolbarButton("🔍-", "Zoom Out");
         zoomOut.addActionListener(e -> { zoomLevel = Math.max(0.1, zoomLevel / 1.2); repaint(); });
         toolbar.add(zoomOut);
         
-        JButton reset = new JButton("🔄");
+        JButton reset = createToolbarButton("🔄", "Reset View");
         reset.addActionListener(e -> { zoomLevel = 1.0; panX = 0; panY = 0; repaint(); });
         toolbar.add(reset);
         
-        toolbar.add(Box.createHorizontalStrut(15));
+        toolbar.add(Box.createHorizontalStrut(20));
         
         JCheckBox labels = new JCheckBox("Labels", showLabels);
+        labels.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        labels.setOpaque(false);
         labels.addActionListener(e -> { showLabels = labels.isSelected(); repaint(); });
         toolbar.add(labels);
         
         JCheckBox grid = new JCheckBox("Grid", showGrid);
+        grid.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        grid.setOpaque(false);
         grid.addActionListener(e -> { showGrid = grid.isSelected(); repaint(); });
         toolbar.add(grid);
         
         JCheckBox anim = new JCheckBox("Animate", animatePath);
+        anim.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        anim.setOpaque(false);
         anim.addActionListener(e -> animatePath = anim.isSelected());
         toolbar.add(anim);
         
-        toolbar.add(Box.createHorizontalStrut(15));
+        toolbar.add(Box.createHorizontalStrut(20));
         
-        JButton export = new JButton("💾 Export");
+        JButton export = createToolbarButton("💾 Export", "Export Map Image");
         export.addActionListener(e -> exportImage());
         toolbar.add(export);
         
         return toolbar;
     }
     
-    private JPanel createLegend() {
-        JPanel legend = new JPanel();
-        legend.setLayout(new BoxLayout(legend, BoxLayout.Y_AXIS));
-        legend.setBackground(new Color(250, 250, 250));
-        legend.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createMatteBorder(0, 1, 0, 0, new Color(220, 220, 220)),
-            BorderFactory.createEmptyBorder(10, 10, 10, 10)));
-        legend.setPreferredSize(new Dimension(140, 0));
+    private JButton createToolbarButton(String text, String tooltip) {
+        Color buttonColor = text.contains("+") ? new Color(16, 185, 129) :
+                           text.contains("-") ? new Color(251, 146, 60) :
+                           text.contains("🔄") ? new Color(59, 130, 246) :
+                           new Color(168, 85, 247);
         
-        legend.add(new JLabel("<html><b>Legend</b></html>"));
-        legend.add(Box.createVerticalStrut(10));
-        legend.add(createLegendItem("● Source", SOURCE_COLOR));
-        legend.add(createLegendItem("● Dest", DEST_COLOR));
-        legend.add(createLegendItem("─ Path", PATH_COLOR));
-        legend.add(createLegendItem("─ Wide", WIDE_PATH_COLOR));
+        JButton btn = new JButton(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                
+                Color bg = getModel().isRollover() ? buttonColor : 
+                    new Color(buttonColor.getRed(), buttonColor.getGreen(), buttonColor.getBlue(), 40);
+                g2d.setColor(bg);
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
+                
+                g2d.setColor(buttonColor);
+                g2d.setStroke(new BasicStroke(2));
+                g2d.drawRoundRect(1, 1, getWidth()-2, getHeight()-2, 10, 10);
+                
+                g2d.dispose();
+                
+                g.setColor(getModel().isRollover() ? Color.WHITE : buttonColor);
+                g.setFont(getFont());
+                FontMetrics fm = g.getFontMetrics();
+                int x = (getWidth() - fm.stringWidth(getText())) / 2;
+                int y = (getHeight() + fm.getAscent() - fm.getDescent()) / 2;
+                g.drawString(getText(), x, y);
+            }
+        };
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btn.setToolTipText(tooltip);
+        btn.setFocusPainted(false);
+        btn.setBorderPainted(false);
+        btn.setContentAreaFilled(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.setPreferredSize(new Dimension(text.length() > 3 ? 100 : 50, 36));
+        return btn;
+    }
+    
+    private JPanel createLegend() {
+        JPanel legend = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                java.awt.GradientPaint gp = new java.awt.GradientPaint(
+                    0, 0, new Color(255, 255, 255),
+                    0, getHeight(), new Color(248, 245, 255)
+                );
+                g2d.setPaint(gp);
+                g2d.fillRect(0, 0, getWidth(), getHeight());
+                g2d.dispose();
+            }
+        };
+        legend.setLayout(new BoxLayout(legend, BoxLayout.Y_AXIS));
+        legend.setOpaque(false);
+        legend.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(0, 3, 0, 0, VIVID_PURPLE),
+            BorderFactory.createEmptyBorder(16, 16, 16, 16)));
+        legend.setPreferredSize(new Dimension(175, 0));
+        
+        JLabel titleLabel = new JLabel("🎯 Legend");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 17));
+        titleLabel.setForeground(VIVID_PURPLE);
+        legend.add(titleLabel);
+        legend.add(Box.createVerticalStrut(16));
+        legend.add(createLegendItem("🔵 Source", SOURCE_COLOR));
+        legend.add(Box.createVerticalStrut(8));
+        legend.add(createLegendItem("🟠 Dest", DEST_COLOR));
+        legend.add(Box.createVerticalStrut(8));
+        legend.add(createLegendItem("━ Path", PATH_COLOR));
+        legend.add(Box.createVerticalStrut(8));
+        legend.add(createLegendItem("━ Wide", WIDE_PATH_COLOR));
         legend.add(Box.createVerticalGlue());
         
         return legend;
@@ -192,7 +320,7 @@ public class WorldClassMapPanel extends JPanel {
     private JLabel createLegendItem(String text, Color color) {
         JLabel label = new JLabel(text);
         label.setForeground(color);
-        label.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        label.setFont(new Font("Segoe UI", Font.BOLD, 15));
         return label;
     }
     
@@ -230,19 +358,19 @@ public class WorldClassMapPanel extends JPanel {
         
         g2d.setColor(new Color(200, 200, 200));
         g2d.setStroke(new BasicStroke(2));
-        g2d.drawOval(cx - 60, cy - 60, 120, 120);
+        g2d.drawOval(cx - 70, cy - 70, 140, 140);
         
-        g2d.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 28));
         g2d.setColor(PATH_COLOR);
         String title = "Wide-Path Navigator";
         FontMetrics fm = g2d.getFontMetrics();
-        g2d.drawString(title, cx - fm.stringWidth(title) / 2, cy - 100);
+        g2d.drawString(title, cx - fm.stringWidth(title) / 2, cy - 110);
         
-        g2d.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        g2d.setColor(new Color(120, 120, 120));
+        g2d.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+        g2d.setColor(TEXT_SECONDARY);
         String hint = "Run a query to visualize the path";
         fm = g2d.getFontMetrics();
-        g2d.drawString(hint, cx - fm.stringWidth(hint) / 2, cy + 100);
+        g2d.drawString(hint, cx - fm.stringWidth(hint) / 2, cy + 110);
     }
     
     private void calculateBounds() {
@@ -456,20 +584,20 @@ public class WorldClassMapPanel extends JPanel {
     
     private void renderProgressOverlay(Graphics2D g2d) {
         int w = getWidth(), h = getHeight();
-        g2d.setColor(new Color(255, 255, 255, 220));
-        g2d.fillRoundRect(w/2 - 150, h/2 - 50, 300, 100, 10, 10);
+        g2d.setColor(new Color(255, 255, 255, 230));
+        g2d.fillRoundRect(w/2 - 170, h/2 - 55, 340, 110, 14, 14);
         g2d.setColor(PATH_COLOR);
         g2d.setStroke(new BasicStroke(2));
-        g2d.drawRoundRect(w/2 - 150, h/2 - 50, 300, 100, 10, 10);
-        g2d.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        g2d.drawString("Searching...", w/2 - 40, h/2 - 20);
-        g2d.setColor(new Color(220, 220, 220));
-        g2d.fillRoundRect(w/2 - 120, h/2, 240, 20, 10, 10);
+        g2d.drawRoundRect(w/2 - 170, h/2 - 55, 340, 110, 14, 14);
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        g2d.drawString("Searching...", w/2 - 45, h/2 - 20);
+        g2d.setColor(new Color(229, 231, 235));
+        g2d.fillRoundRect(w/2 - 140, h/2, 280, 24, 12, 12);
         g2d.setColor(PATH_COLOR);
-        g2d.fillRoundRect(w/2 - 120, h/2, (int)(240 * searchProgress / 100.0), 20, 10, 10);
-        g2d.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        g2d.setColor(new Color(100, 100, 100));
-        g2d.drawString(progressMessage, w/2 - 100, h/2 + 40);
+        g2d.fillRoundRect(w/2 - 140, h/2, (int)(280 * searchProgress / 100.0), 24, 12, 12);
+        g2d.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        g2d.setColor(TEXT_SECONDARY);
+        g2d.drawString(progressMessage, w/2 - 120, h/2 + 48);
     }
     
     private void drawGrid(Graphics2D g2d, int w, int h, int pad) {
@@ -479,14 +607,18 @@ public class WorldClassMapPanel extends JPanel {
     }
     
     private void drawInfoOverlay(Graphics2D g2d) {
-        g2d.setColor(new Color(255, 255, 255, 220));
-        g2d.fillRoundRect(10, 10, 180, 70, 10, 10);
-        g2d.setColor(new Color(60, 60, 60));
-        g2d.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        g2d.drawString("Path Info", 20, 30);
-        g2d.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        g2d.drawString("Nodes: " + pathCoordinates.size(), 20, 48);
-        g2d.drawString("Zoom: " + String.format("%.0f%%", zoomLevel * 100), 20, 64);
+        g2d.setColor(new Color(255, 255, 255, 230));
+        g2d.fillRoundRect(12, 12, 200, 80, 12, 12);
+        g2d.setColor(BORDER);
+        g2d.setStroke(new BasicStroke(1));
+        g2d.drawRoundRect(12, 12, 200, 80, 12, 12);
+        g2d.setColor(TEXT_PRIMARY);
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        g2d.drawString("Path Info", 24, 35);
+        g2d.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        g2d.setColor(TEXT_SECONDARY);
+        g2d.drawString("Nodes: " + pathCoordinates.size(), 24, 55);
+        g2d.drawString("Zoom: " + String.format("%.0f%%", zoomLevel * 100), 24, 75);
     }
     
     private void exportImage() {

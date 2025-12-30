@@ -3,19 +3,31 @@ title Wide-Path Navigator - World Class Edition
 echo.
 echo ====================================================
 echo        Wide-Path Navigator v3.0
-echo        World Class Edition
+echo        Rainbow Edition
 echo ====================================================
 echo.
 
-REM Check if compiled
+REM Create target directory if needed
+if not exist "target\classes" mkdir target\classes
+
+echo [*] Compiling application...
+
+REM Compile in correct order - core classes first, then UI panels, then launcher
+javac -d target/classes src/Node.java src/Edge.java src/Properties.java src/Cluster.java src/Graph.java src/Label.java src/Function.java src/BreakPoint.java src/Query.java src/Result.java src/BidirectionalLabeling.java src/BidirectionalAstar.java src/BidirectionalDriver.java src/DatasetDownloader.java src/GoogleDriveConfigHelper.java src/GoogleDriveDatasetLoader.java 2>nul
+
+REM Compile UI panels
+javac -d target/classes -cp target/classes src/ui/panels/WorldClassQueryPanel.java src/ui/panels/WorldClassMapPanel.java src/ui/panels/WorldClassResultsPanel.java src/ui/panels/ResultData.java 2>nul
+
+REM Compile UI components
+javac -d target/classes -cp target/classes src/ui/components/WorldClassSplashScreen.java 2>nul
+
+REM Compile the launcher
+javac -d target/classes -cp target/classes src/WorldClassGuiLauncher.java 2>nul
+
 if not exist "target\classes\WorldClassGuiLauncher.class" (
-    echo [*] Compiling application...
-    call mvn compile -q
-    if errorlevel 1 (
-        echo [!] Compilation failed. Please check your Java installation.
-        pause
-        exit /b 1
-    )
+    echo [!] Compilation failed. Please check Java installation.
+    pause
+    exit /b 1
 )
 
 echo [*] Starting Wide-Path Navigator...

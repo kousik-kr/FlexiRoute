@@ -24,11 +24,11 @@ public class ModernButton extends JButton {
     public ModernButton(String text, Color color) {
         super(text);
         this.baseColor = color;
-        this.hoverColor = brighten(color, 0.1f);
-        this.pressedColor = darken(color, 0.1f);
+        this.hoverColor = brighten(color, 0.15f);
+        this.pressedColor = darken(color, 0.15f);
         
         setForeground(Color.WHITE);
-        setFont(new Font("Segoe UI", Font.BOLD, 13));
+        setFont(new Font("Segoe UI", Font.BOLD, 15));
         setFocusPainted(false);
         setBorderPainted(false);
         setContentAreaFilled(false);
@@ -73,8 +73,17 @@ public class ModernButton extends JButton {
             bgColor = new Color(200, 200, 200);
         }
 
-        g2.setColor(bgColor);
-        g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
+        // Gradient fill for vibrant effect
+        java.awt.GradientPaint gp = new java.awt.GradientPaint(
+            0, 0, bgColor,
+            0, getHeight(), darken(bgColor, 0.15f)
+        );
+        g2.setPaint(gp);
+        g2.fillRoundRect(0, 0, getWidth(), getHeight(), 16, 16);
+        
+        // Shine effect at top
+        g2.setColor(new Color(255, 255, 255, 50));
+        g2.fillRoundRect(2, 2, getWidth()-4, getHeight()/2 - 2, 14, 14);
 
         g2.dispose();
         super.paintComponent(g);
