@@ -159,7 +159,7 @@ public class WorldClassMapPanel extends JPanel {
     }
     
     private JPanel createToolbar() {
-        JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 14, 10)) {
+        JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 8)) {
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2d = (Graphics2D) g.create();
@@ -190,58 +190,59 @@ public class WorldClassMapPanel extends JPanel {
         });
         modeCombo.addActionListener(e -> { currentMode = (RenderMode) modeCombo.getSelectedItem(); repaint(); });
         
-        JLabel viewLabel = new JLabel("🎬 View: ");
-        viewLabel.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        viewLabel.setForeground(VIVID_PURPLE);
-        toolbar.add(viewLabel);
         toolbar.add(modeCombo);
-        toolbar.add(Box.createHorizontalStrut(25));
+        toolbar.add(Box.createHorizontalStrut(8));
         
-        JButton zoomIn = createToolbarButton("🔍+", "Zoom In");
+        JButton zoomIn = createToolbarButton("➕ In", "Zoom In");
         zoomIn.addActionListener(e -> { zoomLevel = Math.min(10, zoomLevel * 1.2); repaint(); });
         toolbar.add(zoomIn);
         
-        JButton zoomOut = createToolbarButton("🔍-", "Zoom Out");
+        JButton zoomOut = createToolbarButton("➖ Out", "Zoom Out");
         zoomOut.addActionListener(e -> { zoomLevel = Math.max(0.1, zoomLevel / 1.2); repaint(); });
         toolbar.add(zoomOut);
         
-        JButton reset = createToolbarButton("🔄", "Reset View");
+        JButton reset = createToolbarButton("🔄 Reset", "Reset View");
         reset.addActionListener(e -> { zoomLevel = 1.0; panX = 0; panY = 0; repaint(); });
         toolbar.add(reset);
         
-        toolbar.add(Box.createHorizontalStrut(20));
+        toolbar.add(Box.createHorizontalStrut(8));
         
         JCheckBox labels = new JCheckBox("Labels", showLabels);
-        labels.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        labels.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         labels.setOpaque(false);
         labels.addActionListener(e -> { showLabels = labels.isSelected(); repaint(); });
         toolbar.add(labels);
         
         JCheckBox grid = new JCheckBox("Grid", showGrid);
-        grid.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        grid.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         grid.setOpaque(false);
         grid.addActionListener(e -> { showGrid = grid.isSelected(); repaint(); });
         toolbar.add(grid);
         
         JCheckBox anim = new JCheckBox("Animate", animatePath);
-        anim.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        anim.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         anim.setOpaque(false);
         anim.addActionListener(e -> animatePath = anim.isSelected());
         toolbar.add(anim);
         
-        toolbar.add(Box.createHorizontalStrut(20));
+        toolbar.add(Box.createHorizontalStrut(8));
         
         JButton export = createToolbarButton("💾 Export", "Export Map Image");
         export.addActionListener(e -> exportImage());
         toolbar.add(export);
         
+        JButton clear = createToolbarButton("🗑️ Clear", "Clear Map");
+        clear.addActionListener(e -> clearMap());
+        toolbar.add(clear);
+        
         return toolbar;
     }
     
     private JButton createToolbarButton(String text, String tooltip) {
-        Color buttonColor = text.contains("+") ? new Color(16, 185, 129) :
-                           text.contains("-") ? new Color(251, 146, 60) :
-                           text.contains("🔄") ? new Color(59, 130, 246) :
+        Color buttonColor = text.contains("In") ? new Color(16, 185, 129) :
+                           text.contains("Out") ? new Color(251, 146, 60) :
+                           text.contains("Reset") ? new Color(59, 130, 246) :
+                           text.contains("Clear") ? new Color(239, 68, 68) :
                            new Color(168, 85, 247);
         
         JButton btn = new JButton(text) {
@@ -269,13 +270,13 @@ public class WorldClassMapPanel extends JPanel {
                 g.drawString(getText(), x, y);
             }
         };
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 18));
         btn.setToolTipText(tooltip);
         btn.setFocusPainted(false);
         btn.setBorderPainted(false);
         btn.setContentAreaFilled(false);
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.setPreferredSize(new Dimension(text.length() > 3 ? 100 : 50, 36));
+        btn.setPreferredSize(new Dimension(70, 32));
         return btn;
     }
     
@@ -301,7 +302,7 @@ public class WorldClassMapPanel extends JPanel {
         legend.setPreferredSize(new Dimension(175, 0));
         
         JLabel titleLabel = new JLabel("🎯 Legend");
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 17));
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 21));
         titleLabel.setForeground(VIVID_PURPLE);
         legend.add(titleLabel);
         legend.add(Box.createVerticalStrut(16));
@@ -320,7 +321,7 @@ public class WorldClassMapPanel extends JPanel {
     private JLabel createLegendItem(String text, Color color) {
         JLabel label = new JLabel(text);
         label.setForeground(color);
-        label.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        label.setFont(new Font("Segoe UI", Font.BOLD, 19));
         return label;
     }
     
@@ -360,13 +361,13 @@ public class WorldClassMapPanel extends JPanel {
         g2d.setStroke(new BasicStroke(2));
         g2d.drawOval(cx - 70, cy - 70, 140, 140);
         
-        g2d.setFont(new Font("Segoe UI", Font.BOLD, 28));
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 34));
         g2d.setColor(PATH_COLOR);
         String title = "Wide-Path Navigator";
         FontMetrics fm = g2d.getFontMetrics();
         g2d.drawString(title, cx - fm.stringWidth(title) / 2, cy - 110);
         
-        g2d.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+        g2d.setFont(new Font("Segoe UI", Font.PLAIN, 20));
         g2d.setColor(TEXT_SECONDARY);
         String hint = "Run a query to visualize the path";
         fm = g2d.getFontMetrics();
@@ -438,7 +439,7 @@ public class WorldClassMapPanel extends JPanel {
                 g2d.setColor(Color.WHITE);
                 g2d.setStroke(new BasicStroke(2));
                 g2d.draw(new Ellipse2D.Double(p.x - 12, p.y - 12, 24, 24));
-                g2d.setFont(new Font("Segoe UI", Font.BOLD, 14));
+                g2d.setFont(new Font("Segoe UI", Font.BOLD, 18));
                 g2d.drawString(i == 0 ? "S" : "D", (int) p.x - 5, (int) p.y + 5);
             } else {
                 g2d.setColor(PATH_COLOR);
@@ -569,7 +570,7 @@ public class WorldClassMapPanel extends JPanel {
         g2d.setColor(SOURCE_COLOR);
         g2d.fill(new Ellipse2D.Double(pSrc.x - 15, pSrc.y - 15, 30, 30));
         g2d.setColor(Color.WHITE);
-        g2d.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 20));
         g2d.drawString("S", (int) pSrc.x - 5, (int) pSrc.y + 5);
         
         g2d.setColor(DEST_COLOR);
@@ -578,7 +579,7 @@ public class WorldClassMapPanel extends JPanel {
         g2d.drawString("D", (int) pDst.x - 5, (int) pDst.y + 5);
         
         g2d.setColor(PATH_COLOR);
-        g2d.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 22));
         g2d.drawString("Query Preview", 30, 40);
     }
     
@@ -589,13 +590,13 @@ public class WorldClassMapPanel extends JPanel {
         g2d.setColor(PATH_COLOR);
         g2d.setStroke(new BasicStroke(2));
         g2d.drawRoundRect(w/2 - 170, h/2 - 55, 340, 110, 14, 14);
-        g2d.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        g2d.drawString("Searching...", w/2 - 45, h/2 - 20);
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        g2d.drawString("Searching...", w/2 - 55, h/2 - 20);
         g2d.setColor(new Color(229, 231, 235));
         g2d.fillRoundRect(w/2 - 140, h/2, 280, 24, 12, 12);
         g2d.setColor(PATH_COLOR);
         g2d.fillRoundRect(w/2 - 140, h/2, (int)(280 * searchProgress / 100.0), 24, 12, 12);
-        g2d.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        g2d.setFont(new Font("Segoe UI", Font.PLAIN, 17));
         g2d.setColor(TEXT_SECONDARY);
         g2d.drawString(progressMessage, w/2 - 120, h/2 + 48);
     }
@@ -613,9 +614,9 @@ public class WorldClassMapPanel extends JPanel {
         g2d.setStroke(new BasicStroke(1));
         g2d.drawRoundRect(12, 12, 200, 80, 12, 12);
         g2d.setColor(TEXT_PRIMARY);
-        g2d.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 18));
         g2d.drawString("Path Info", 24, 35);
-        g2d.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        g2d.setFont(new Font("Segoe UI", Font.PLAIN, 17));
         g2d.setColor(TEXT_SECONDARY);
         g2d.drawString("Nodes: " + pathCoordinates.size(), 24, 55);
         g2d.drawString("Zoom: " + String.format("%.0f%%", zoomLevel * 100), 24, 75);
@@ -637,6 +638,19 @@ public class WorldClassMapPanel extends JPanel {
     }
     
     // === PUBLIC API ===
+    
+    public void clearMap() {
+        this.pathNodes = Collections.emptyList();
+        this.wideEdges = Collections.emptyList();
+        this.pathCoordinates = new ArrayList<>();
+        this.boundsCalculated = false;
+        clearQueryPreview();
+        showSearchProgress = false;
+        zoomLevel = 1.0;
+        panX = 0;
+        panY = 0;
+        repaint();
+    }
     
     public void setPath(List<Integer> nodes, List<Integer> wideEdgeIndices, List<double[]> coordinates) {
         this.pathNodes = nodes != null ? new ArrayList<>(nodes) : Collections.emptyList();

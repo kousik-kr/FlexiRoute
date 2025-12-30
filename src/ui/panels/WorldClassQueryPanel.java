@@ -15,7 +15,6 @@ import java.awt.RenderingHints;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.geom.RoundRectangle2D;
-import java.util.Random;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -61,7 +60,6 @@ public class WorldClassQueryPanel extends JPanel {
     
     // Callbacks
     private Runnable onRunQuery;
-    private Runnable onRandomQuery;
     private java.util.function.BiConsumer<Integer, Integer> onPreviewChange;
     
     private int maxNodeId = 21048;
@@ -104,10 +102,6 @@ public class WorldClassQueryPanel extends JPanel {
         
         // === SLIDERS ===
         mainPanel.add(createSlidersPanel());
-        mainPanel.add(Box.createVerticalStrut(14));
-        
-        // === PRESETS (2x2 grid) ===
-        mainPanel.add(createPresetsPanel());
         mainPanel.add(Box.createVerticalStrut(16));
         
         // === RUN BUTTON ===
@@ -116,7 +110,7 @@ public class WorldClassQueryPanel extends JPanel {
         
         // === STATUS ===
         statusLabel = new JLabel("Enter source and destination");
-        statusLabel.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+        statusLabel.setFont(new Font("Segoe UI", Font.PLAIN, 20));
         statusLabel.setForeground(TEXT_SECONDARY);
         statusLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         mainPanel.add(statusLabel);
@@ -138,7 +132,7 @@ public class WorldClassQueryPanel extends JPanel {
         header.setAlignmentX(Component.LEFT_ALIGNMENT);
         
         JLabel title = new JLabel("Query Builder");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        title.setFont(new Font("Segoe UI", Font.BOLD, 26));
         title.setForeground(ROYAL_INDIGO);
         header.add(title, BorderLayout.WEST);
         
@@ -152,12 +146,12 @@ public class WorldClassQueryPanel extends JPanel {
         panel.setAlignmentX(Component.LEFT_ALIGNMENT);
         
         JLabel label = new JLabel(labelText);
-        label.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        label.setFont(new Font("Segoe UI", Font.BOLD, 20));
         label.setForeground(color);
         panel.add(label, BorderLayout.NORTH);
         
         JComboBox<String> combo = new JComboBox<>(items);
-        combo.setFont(new Font("Segoe UI", Font.PLAIN, 18));
+        combo.setFont(new Font("Segoe UI", Font.PLAIN, 22));
         combo.setBackground(Color.WHITE);
         combo.setBorder(BorderFactory.createLineBorder(color, 2, true));
         
@@ -178,12 +172,12 @@ public class WorldClassQueryPanel extends JPanel {
         panel.setAlignmentX(Component.LEFT_ALIGNMENT);
         
         JLabel label = new JLabel(labelText);
-        label.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        label.setFont(new Font("Segoe UI", Font.BOLD, 20));
         label.setForeground(color);
         panel.add(label, BorderLayout.NORTH);
         
         JTextField field = new JTextField();
-        field.setFont(new Font("Segoe UI", Font.PLAIN, 20));
+        field.setFont(new Font("Segoe UI", Font.PLAIN, 24));
         field.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(color, 2, true),
             BorderFactory.createEmptyBorder(8, 10, 8, 10)
@@ -224,17 +218,6 @@ public class WorldClassQueryPanel extends JPanel {
             destField.setText(temp);
         }));
         
-        panel.add(createSmallButton("Random", VIVID_PURPLE, () -> {
-            if (onRandomQuery != null) {
-                onRandomQuery.run();
-            } else {
-                Random rand = new Random();
-                sourceField.setText(String.valueOf(rand.nextInt(maxNodeId) + 1));
-                destField.setText(String.valueOf(rand.nextInt(maxNodeId) + 1));
-            }
-            updateStatus();
-        }));
-        
         panel.add(createSmallButton("Clear", SUNSET_ORANGE, () -> {
             sourceField.setText("");
             destField.setText("");
@@ -270,7 +253,7 @@ public class WorldClassQueryPanel extends JPanel {
                     (getHeight() + fm.getAscent() - fm.getDescent()) / 2);
             }
         };
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 20));
         btn.setFocusPainted(false);
         btn.setBorderPainted(false);
         btn.setContentAreaFilled(false);
@@ -286,7 +269,7 @@ public class WorldClassQueryPanel extends JPanel {
         panel.setAlignmentX(Component.LEFT_ALIGNMENT);
         
         JLabel title = new JLabel("Parameters");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        title.setFont(new Font("Segoe UI", Font.BOLD, 22));
         title.setForeground(HOT_PINK);
         title.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(title);
@@ -301,14 +284,14 @@ public class WorldClassQueryPanel extends JPanel {
         panel.add(Box.createVerticalStrut(8));
         
         // Interval slider
-        JPanel intPanel = createSliderRow("Interval", 1, 60, 10, SUNSET_ORANGE, val -> val + "m");
+        JPanel intPanel = createSliderRow("Interval", 1, 720, 10, SUNSET_ORANGE, val -> val + "m");
         intervalSlider = (JSlider) intPanel.getClientProperty("slider");
         intervalValue = (JLabel) intPanel.getClientProperty("value");
         panel.add(intPanel);
         panel.add(Box.createVerticalStrut(8));
         
         // Budget slider
-        JPanel budPanel = createSliderRow("Budget", 10, 500, 60, LIME_GREEN, val -> String.valueOf(val));
+        JPanel budPanel = createSliderRow("Budget", 5, 60, 30, LIME_GREEN, val -> String.valueOf(val));
         budgetSlider = (JSlider) budPanel.getClientProperty("slider");
         budgetValue = (JLabel) budPanel.getClientProperty("value");
         panel.add(budPanel);
@@ -324,9 +307,9 @@ public class WorldClassQueryPanel extends JPanel {
         row.setAlignmentX(Component.LEFT_ALIGNMENT);
         
         JLabel label = new JLabel(labelText);
-        label.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        label.setFont(new Font("Segoe UI", Font.BOLD, 20));
         label.setForeground(color);
-        label.setPreferredSize(new Dimension(80, 30));
+        label.setPreferredSize(new Dimension(90, 30));
         row.add(label, BorderLayout.WEST);
         
         JSlider slider = new JSlider(min, max, value);
@@ -335,7 +318,7 @@ public class WorldClassQueryPanel extends JPanel {
         row.add(slider, BorderLayout.CENTER);
         
         JLabel valLabel = new JLabel(formatter.apply(value));
-        valLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        valLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
         valLabel.setForeground(color);
         valLabel.setPreferredSize(new Dimension(60, 30));
         valLabel.setHorizontalAlignment(SwingConstants.RIGHT);
@@ -347,71 +330,6 @@ public class WorldClassQueryPanel extends JPanel {
         row.putClientProperty("value", valLabel);
         
         return row;
-    }
-    
-    private JPanel createPresetsPanel() {
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setOpaque(false);
-        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        
-        JLabel title = new JLabel("Quick Presets");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        title.setForeground(CYBER_YELLOW.darker());
-        title.setAlignmentX(Component.LEFT_ALIGNMENT);
-        panel.add(title);
-        panel.add(Box.createVerticalStrut(10));
-        
-        JPanel grid = new JPanel(new GridLayout(2, 2, 10, 10));
-        grid.setOpaque(false);
-        grid.setMaximumSize(new Dimension(Integer.MAX_VALUE, 90));
-        grid.setAlignmentX(Component.LEFT_ALIGNMENT);
-        
-        grid.add(createPresetButton("Short", 1, 100, 30, NEON_GREEN));
-        grid.add(createPresetButton("Medium", 1, 5000, 60, ELECTRIC_BLUE));
-        grid.add(createPresetButton("Long", 1, 15000, 120, VIVID_PURPLE));
-        grid.add(createPresetButton("City", 100, 20000, 200, SUNSET_ORANGE));
-        
-        panel.add(grid);
-        return panel;
-    }
-    
-    private JButton createPresetButton(String text, int src, int dst, int budget, Color color) {
-        JButton btn = new JButton(text) {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2d = (Graphics2D) g.create();
-                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                
-                Color bg = getModel().isRollover() ? color : new Color(color.getRed(), color.getGreen(), color.getBlue(), 50);
-                g2d.setColor(bg);
-                g2d.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 10, 10));
-                
-                g2d.setColor(color);
-                g2d.setStroke(new BasicStroke(2f));
-                g2d.draw(new RoundRectangle2D.Float(1, 1, getWidth()-2, getHeight()-2, 8, 8));
-                g2d.dispose();
-                
-                g.setColor(getModel().isRollover() ? Color.WHITE : color.darker());
-                g.setFont(getFont());
-                FontMetrics fm = g.getFontMetrics();
-                g.drawString(getText(), (getWidth() - fm.stringWidth(getText())) / 2,
-                    (getHeight() + fm.getAscent() - fm.getDescent()) / 2);
-            }
-        };
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        btn.setFocusPainted(false);
-        btn.setBorderPainted(false);
-        btn.setContentAreaFilled(false);
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.addActionListener(e -> {
-            sourceField.setText(String.valueOf(src));
-            destField.setText(String.valueOf(dst));
-            budgetSlider.setValue(budget);
-            updateStatus();
-            triggerPreview();
-        });
-        return btn;
     }
     
     private JPanel createRunPanel() {
@@ -443,13 +361,13 @@ public class WorldClassQueryPanel extends JPanel {
                 g2d.dispose();
                 
                 g.setColor(Color.WHITE);
-                g.setFont(new Font("Segoe UI", Font.BOLD, 20));
+                g.setFont(new Font("Segoe UI", Font.BOLD, 24));
                 FontMetrics fm = g.getFontMetrics();
                 g.drawString(getText(), (getWidth() - fm.stringWidth(getText())) / 2,
                     (getHeight() + fm.getAscent() - fm.getDescent()) / 2);
             }
         };
-        runButton.setPreferredSize(new Dimension(0, 50));
+        runButton.setPreferredSize(new Dimension(0, 55));
         runButton.setFocusPainted(false);
         runButton.setBorderPainted(false);
         runButton.setContentAreaFilled(false);
@@ -518,7 +436,6 @@ public class WorldClassQueryPanel extends JPanel {
     // === PUBLIC API ===
     
     public void setOnRunQuery(Runnable callback) { this.onRunQuery = callback; }
-    public void setOnRandomQuery(Runnable callback) { this.onRandomQuery = callback; }
     public void setOnPreviewChange(java.util.function.BiConsumer<Integer, Integer> callback) { this.onPreviewChange = callback; }
     
     public int getSource() { return Integer.parseInt(sourceField.getText().trim()); }

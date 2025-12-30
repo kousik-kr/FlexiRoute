@@ -36,7 +36,7 @@ public class WorldClassSplashScreen extends JWindow {
     }
     
     private void initUI() {
-        setSize(600, 450);
+        setSize(750, 500);
         setLocationRelativeTo(null);
         
         contentPanel = new JPanel() {
@@ -95,24 +95,24 @@ public class WorldClassSplashScreen extends JWindow {
         
         // Logo/Icon - Rainbow emoji
         JLabel iconLabel = new JLabel("🌈🗺️🌟");
-        iconLabel.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 70));
+        iconLabel.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 80));
         iconLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         
         // Title with sparkle
         JLabel titleLabel = new JLabel("✨ Wide-Path Navigator ✨");
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 42));
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 52));
         titleLabel.setForeground(Color.WHITE);
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         
         // Version with rainbow styling
-        JLabel versionLabel = new JLabel("🌟 v3.0 — Rainbow Edition 🌟");
-        versionLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        JLabel versionLabel = new JLabel("🌟 Wide-Path Navigator 🌟");
+        versionLabel.setFont(new Font("Segoe UI", Font.BOLD, 24));
         versionLabel.setForeground(new Color(250, 204, 21));
         versionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         
         // Subtitle
         JLabel subtitleLabel = new JLabel("🚀 Advanced Pathfinding with Wide Road Optimization 🚀");
-        subtitleLabel.setFont(new Font("Segoe UI", Font.ITALIC, 15));
+        subtitleLabel.setFont(new Font("Segoe UI", Font.ITALIC, 20));
         subtitleLabel.setForeground(new Color(255, 220, 255));
         subtitleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         
@@ -162,7 +162,7 @@ public class WorldClassSplashScreen extends JWindow {
         progressBar.setAlignmentX(Component.CENTER_ALIGNMENT);
         
         statusLabel = new JLabel("✨ Initializing magic...");
-        statusLabel.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        statusLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
         statusLabel.setForeground(new Color(255, 240, 255));
         statusLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         

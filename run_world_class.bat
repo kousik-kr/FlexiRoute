@@ -2,8 +2,8 @@
 title Wide-Path Navigator - World Class Edition
 echo.
 echo ====================================================
-echo        Wide-Path Navigator v3.0
-echo        Rainbow Edition
+echo        Wide-Path Navigator
+echo        World Class Edition
 echo ====================================================
 echo.
 

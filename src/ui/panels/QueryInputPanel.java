@@ -69,8 +69,8 @@ public class QueryInputPanel extends JPanel {
         sourceSpinner = createStyledSpinner(0, 0, maxNodeId, 1);
         destSpinner = createStyledSpinner(0, 0, maxNodeId, 1);
         departureSpinner = createStyledSpinner(450, 0, 1440, 15);
-        intervalSpinner = createStyledSpinner(360, 1, 1440, 30);
-        budgetSpinner = createStyledSpinner(45, 1, 500, 5);
+        intervalSpinner = createStyledSpinner(360, 1, 720, 30);
+        budgetSpinner = createStyledSpinner(30, 5, 60, 5);
 
         // Heuristic mode combo box
         String[] heuristicModes = {"🎯 Aggressive (10 frontiers)", "⚖️ Balanced (50 frontiers)"};

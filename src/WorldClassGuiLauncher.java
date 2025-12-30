@@ -59,7 +59,7 @@ public class WorldClassGuiLauncher extends JFrame {
     
     // === CONSTANTS ===
     private static final String APP_TITLE = "🌟 Wide-Path Navigator🌟";
-    private static final String VERSION = "v3.0 Rainbow Edition";
+    private static final String VERSION = "";
     private static final int DEFAULT_WIDTH = 1550;
     private static final int DEFAULT_HEIGHT = 980;
     
@@ -110,13 +110,13 @@ public class WorldClassGuiLauncher extends JFrame {
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
             // Enhanced font defaults for better readability
-            UIManager.put("Label.font", new Font("Segoe UI", Font.PLAIN, 14));
-            UIManager.put("Button.font", new Font("Segoe UI", Font.PLAIN, 14));
-            UIManager.put("TextField.font", new Font("Segoe UI", Font.PLAIN, 14));
-            UIManager.put("ComboBox.font", new Font("Segoe UI", Font.PLAIN, 14));
-            UIManager.put("Menu.font", new Font("Segoe UI", Font.PLAIN, 14));
-            UIManager.put("MenuItem.font", new Font("Segoe UI", Font.PLAIN, 14));
-            UIManager.put("TabbedPane.font", new Font("Segoe UI", Font.BOLD, 14));
+            UIManager.put("Label.font", new Font("Segoe UI", Font.PLAIN, 18));
+            UIManager.put("Button.font", new Font("Segoe UI", Font.PLAIN, 18));
+            UIManager.put("TextField.font", new Font("Segoe UI", Font.PLAIN, 18));
+            UIManager.put("ComboBox.font", new Font("Segoe UI", Font.PLAIN, 18));
+            UIManager.put("Menu.font", new Font("Segoe UI", Font.PLAIN, 18));
+            UIManager.put("MenuItem.font", new Font("Segoe UI", Font.PLAIN, 18));
+            UIManager.put("TabbedPane.font", new Font("Segoe UI", Font.BOLD, 18));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -162,11 +162,11 @@ public class WorldClassGuiLauncher extends JFrame {
             BorderFactory.createMatteBorder(0, 0, 2, 0, VIVID_PURPLE),
             BorderFactory.createEmptyBorder(6, 10, 6, 10)
         ));
-        menuBar.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        menuBar.setFont(new Font("Segoe UI", Font.BOLD, 19));
         
         // File Menu - Blue themed
         JMenu fileMenu = new JMenu("📁 File");
-        fileMenu.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        fileMenu.setFont(new Font("Segoe UI", Font.BOLD, 19));
         fileMenu.setForeground(ELECTRIC_BLUE);
         fileMenu.setMnemonic(KeyEvent.VK_F);
         
@@ -192,7 +192,7 @@ public class WorldClassGuiLauncher extends JFrame {
         
         // View Menu - Purple themed
         JMenu viewMenu = new JMenu("🎨 View");
-        viewMenu.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        viewMenu.setFont(new Font("Segoe UI", Font.BOLD, 19));
         viewMenu.setForeground(VIVID_PURPLE);
         viewMenu.setMnemonic(KeyEvent.VK_V);
         
@@ -217,7 +217,7 @@ public class WorldClassGuiLauncher extends JFrame {
         
         // Query Menu - Green themed
         JMenu queryMenu = new JMenu("🔍 Query");
-        queryMenu.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        queryMenu.setFont(new Font("Segoe UI", Font.BOLD, 19));
         queryMenu.setForeground(NEON_GREEN);
         queryMenu.setMnemonic(KeyEvent.VK_Q);
         
@@ -225,20 +225,15 @@ public class WorldClassGuiLauncher extends JFrame {
         runQuery.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, InputEvent.CTRL_DOWN_MASK));
         runQuery.addActionListener(e -> executeQuery());
         
-        JMenuItem randomQuery = new JMenuItem("Random Query", KeyEvent.VK_A);
-        randomQuery.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, InputEvent.CTRL_DOWN_MASK));
-        randomQuery.addActionListener(e -> executeRandomQuery());
-        
         JMenuItem clearResults = new JMenuItem("Clear Results", KeyEvent.VK_C);
         
         queryMenu.add(runQuery);
-        queryMenu.add(randomQuery);
         queryMenu.addSeparator();
         queryMenu.add(clearResults);
         
         // Help Menu - Orange themed
         JMenu helpMenu = new JMenu("❓ Help");
-        helpMenu.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        helpMenu.setFont(new Font("Segoe UI", Font.BOLD, 19));
         helpMenu.setForeground(SUNSET_ORANGE);
         helpMenu.setMnemonic(KeyEvent.VK_H);
         
@@ -269,12 +264,11 @@ public class WorldClassGuiLauncher extends JFrame {
         
         // Set callbacks
         queryPanel.setOnRunQuery(this::executeQuery);
-        queryPanel.setOnRandomQuery(this::executeRandomQuery);
         queryPanel.setOnPreviewChange(this::updateQueryPreview);
         
         // Right side: Tabbed pane with map and results
         rightTabs = new JTabbedPane(JTabbedPane.TOP);
-        rightTabs.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        rightTabs.setFont(new Font("Segoe UI", Font.BOLD, 19));
         rightTabs.setBackground(BG_COLOR);
         
         // Map Panel
@@ -305,7 +299,7 @@ public class WorldClassGuiLauncher extends JFrame {
         panel.setBorder(new EmptyBorder(30, 30, 30, 30));
         
         JLabel placeholder = new JLabel("📈 Detailed metrics and statistics will appear here after running queries.", SwingConstants.CENTER);
-        placeholder.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+        placeholder.setFont(new Font("Segoe UI", Font.PLAIN, 20));
         placeholder.setForeground(TEXT_SECONDARY);
         
         panel.add(placeholder, BorderLayout.CENTER);
@@ -334,7 +328,7 @@ public class WorldClassGuiLauncher extends JFrame {
         ));
         
         statusLabel = new JLabel("🚀 Ready — Load a dataset to begin your adventure!");
-        statusLabel.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        statusLabel.setFont(new Font("Segoe UI", Font.BOLD, 19));
         statusLabel.setForeground(NEON_GREEN);
         
         globalProgress = new JProgressBar() {
@@ -366,11 +360,11 @@ public class WorldClassGuiLauncher extends JFrame {
         globalProgress.setVisible(false);
         globalProgress.setPreferredSize(new Dimension(280, 22));
         globalProgress.setStringPainted(true);
-        globalProgress.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        globalProgress.setFont(new Font("Segoe UI", Font.BOLD, 17));
         globalProgress.setBorder(null);
         
         JLabel versionLabel = new JLabel("🌟 " + VERSION + " 🌟");
-        versionLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        versionLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
         versionLabel.setForeground(HOT_PINK);
         
         statusBar.add(statusLabel, BorderLayout.WEST);
@@ -555,14 +549,7 @@ public class WorldClassGuiLauncher extends JFrame {
         });
     }
     
-    private void executeRandomQuery() {
-        Random rand = new Random();
-        int maxNode = Graph.get_nodes().size();
-        
-        queryPanel.setSource(rand.nextInt(maxNode) + 1);
-        queryPanel.setDestination(rand.nextInt(maxNode) + 1);
-    }
-    
+
     private void collectPathCoordinates(Result result) {
         List<Integer> pathNodes = result.getPathNodes();
         if (pathNodes == null || pathNodes.isEmpty()) return;
@@ -586,6 +573,7 @@ public class WorldClassGuiLauncher extends JFrame {
             .source(result.getSource())
             .destination(result.getDestination())
             .budget(result.getBudget())
+            .departureTime(queryPanel.getDeparture())
             .executionTime(result.getExecutionTime())
             .pathFound(result.isPathFound())
             .totalCost(result.getTotalCost())
@@ -690,7 +678,6 @@ public class WorldClassGuiLauncher extends JFrame {
             <h3>Keyboard Shortcuts</h3>
             <ul>
                 <li><b>Ctrl+Enter:</b> Run query</li>
-                <li><b>Ctrl+R:</b> Random query</li>
                 <li><b>Ctrl+O:</b> Load dataset</li>
                 <li><b>F5:</b> Refresh/Run</li>
             </ul>

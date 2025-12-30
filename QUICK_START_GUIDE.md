@@ -24,7 +24,7 @@ java -cp target/classes GuiLauncher
 
 ### 2. First Launch
 
-When you first launch Wide-Path Pro v3.0, you'll see:
+When you first launch Wide-Path Pro, you'll see:
 
 1. **Animated Splash Screen** 🎨
    - Modern gradient background
@@ -68,16 +68,11 @@ The main window is divided into 4 sections:
    💰 Budget:            45 minutes
    ```
 
-2. **Quick Start with Presets**:
-   - Click the **Presets** dropdown
-   - Select "Quick Test"
-   - Parameters auto-fill!
-
-3. **Run the Query**:
+2. **Run the Query**:
    - Click **▶ Run Query** button
    - OR press `Ctrl+Enter`
 
-4. **View Results**:
+3. **View Results**:
    - Results appear in the **📊 Results** tab
    - Path visualization in **🗺️ Visualization** tab
    - Metrics update in **📈 Metrics** tab
@@ -110,13 +105,6 @@ The main window is divided into 4 sections:
 - High-resolution output
 
 ### 6. Using Smart Features
-
-#### Random Query Generator 🎲
-```
-1. Click "🎲 Random" button
-2. All parameters auto-generate
-3. Click "Run Query"
-```
 
 #### Recent Queries 📋
 ```
@@ -186,7 +174,6 @@ The dashboard shows:
 |--------|----------|
 | Run Query | `Ctrl+Enter` |
 | New Query | `Ctrl+N` |
-| Random Query | `Ctrl+R` |
 | Clear Fields | `Ctrl+L` |
 | Toggle Theme | `Ctrl+T` |
 | Zoom In | `Ctrl++` |
@@ -201,15 +188,12 @@ The dashboard shows:
 
 #### 💡 Pro Tips:
 
-1. **Use Presets for Quick Testing**
-   - Select preset → Run → Done!
-
-2. **Validate Before Running**
+1. **Validate Before Running**
    - Watch for validation messages
    - Green ✓ = Good to go
    - Yellow ⚠ = Warning but allowed
 
-3. **Compare Results**
+2. **Compare Results**
    - Use History tab
    - Run similar queries
    - Analyze patterns
@@ -228,7 +212,7 @@ The dashboard shows:
 
 1. **Keyboard-Only Workflow**:
    ```
-   Ctrl+R → Ctrl+Enter → Tab through results
+   Enter values → Ctrl+Enter → Tab through results
    ```
 
 2. **Quick Comparison**:
@@ -301,4 +285,4 @@ Now that you're familiar with the basics:
 
 ---
 
-*Wide-Path Pro v3.0 - Making pathfinding visualization extraordinary.*
+*Wide-Path Pro - Making pathfinding visualization extraordinary.*

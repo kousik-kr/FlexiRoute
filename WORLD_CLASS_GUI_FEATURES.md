@@ -1,8 +1,8 @@
-# Wide-Path Pro v3.0 - World-Class GUI Design System
+# Wide-Path Pro - World-Class GUI Design System
 
 ## 🎨 Overview
 
-Wide-Path Pro v3.0 features a complete redesign with world-class UI/UX, incorporating modern design principles, advanced interactions, and premium features that rival commercial pathfinding applications.
+Wide-Path Pro features a complete redesign with world-class UI/UX, incorporating modern design principles, advanced interactions, and premium features that rival commercial pathfinding applications.
 
 ## ✨ Major Enhancements
 
@@ -75,12 +75,6 @@ Wide-Path Pro v3.0 features a complete redesign with world-class UI/UX, incorpor
 ### 4. **Smart Query Input Panel** 🎯
 
 #### Intelligent Features
-- **Query Presets**
-  - Quick Test - Fast pathfinding scenario
-  - Long Distance - Extended path computation
-  - Morning Rush - Peak hour simulation
-  - Custom - User-defined parameters
-
 - **Input Validation**
   - Real-time parameter checking
   - Visual feedback with color-coded messages
@@ -89,7 +83,6 @@ Wide-Path Pro v3.0 features a complete redesign with world-class UI/UX, incorpor
   - ✗ Errors (red)
 
 - **Quick Actions**
-  - 🎲 **Random Query**: Generate random valid parameters (`Ctrl+R`)
   - 📋 **Recent Queries**: Load from history
   - ⇄ **Swap**: Exchange source and destination
 
@@ -100,7 +93,6 @@ Wide-Path Pro v3.0 features a complete redesign with world-class UI/UX, incorpor
 
 - **Keyboard Shortcuts**
   - `Ctrl+Enter` - Run query
-  - `Ctrl+R` - Generate random query
   - `Ctrl+L` - Clear all fields
 
 ### 5. **Advanced Metrics Dashboard** 📊
@@ -250,7 +242,6 @@ Wide-Path Pro v3.0 features a complete redesign with world-class UI/UX, incorpor
 - `Ctrl+S` - Export as PNG
 
 ### Query Panel
-- `Ctrl+R` - Random query
 - `Ctrl+L` - Clear fields
 - `Tab` - Next field
 - `Shift+Tab` - Previous field
@@ -335,4 +326,4 @@ The GUI adapts to different window sizes:
 
 ---
 
-**Wide-Path Pro v3.0** - Elevating pathfinding visualization to world-class standards.
+**Wide-Path Pro** - Elevating pathfinding visualization to world-class standards.

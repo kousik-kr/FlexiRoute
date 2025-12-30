@@ -1,4 +1,4 @@
-# Wide-Path Pro v3.0 - World-Class Edition
+# Wide-Path Pro - World-Class Edition
 
 Wide-Path is a **world-class pathfinding analysis platform** featuring:
 - **Java 21 LTS** backend with bidirectional A* algorithm
@@ -6,7 +6,7 @@ Wide-Path is a **world-class pathfinding analysis platform** featuring:
 - **React + Vite frontend** for web-based visualization (Optional)
 - **REST API** for programmatic access
 
-## ✨ What's New in v3.0 - WORLD-CLASS REDESIGN
+## ✨ What's New - WORLD-CLASS REDESIGN
 
 ### 🎨 **Premium Design System**
 ✨ **6 Professional Themes**: Light, Dark, Auto, Oceanic, Forest, Sunset  
@@ -21,10 +21,9 @@ Wide-Path is a **world-class pathfinding analysis platform** featuring:
 ✨ **Real-Time Tooltips**: Hover for node information  
 
 ### 🎯 **Smart Query System**
-✨ **Query Presets**: Quick Test, Long Distance, Morning Rush  
 ✨ **Input Validation**: Real-time feedback with visual indicators  
 ✨ **Recent History**: Last 10 queries with one-click reload  
-✨ **Quick Actions**: Random generator, swap source/dest  
+✨ **Quick Actions**: Swap source/dest  
 
 ### 📊 **Real-Time Analytics**
 ✨ **4 Metric Cards**: Total queries, avg time, success rate, throughput  
@@ -33,7 +32,7 @@ Wide-Path is a **world-class pathfinding analysis platform** featuring:
 ✨ **Data Export**: PDF reports, CSV data, chart screenshots  
 
 ### ⌨️ **Power User Features**
-✨ **20+ Keyboard Shortcuts**: Ctrl+Enter (run), Ctrl+T (theme), Ctrl+R (random)  
+✨ **20+ Keyboard Shortcuts**: Ctrl+Enter (run), Ctrl+T (theme), Ctrl+S (export)  
 ✨ **Splash Screen**: Professional animated startup  
 ✨ **Toast Notifications**: Success, error, warning, info messages  
 ✨ **Status Bar**: Real-time feedback and system info  

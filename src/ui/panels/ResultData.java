@@ -16,6 +16,7 @@ public class ResultData {
     private double totalCost;
     private int pathLength;
     private int wideEdgeCount;
+    private int departureTime;
     private List<Integer> pathNodes;
     private List<double[]> pathCoordinates;
     private List<Integer> wideEdgeIndices;
@@ -39,6 +40,7 @@ public class ResultData {
     public ResultData totalCost(double cost) { this.totalCost = cost; return this; }
     public ResultData pathLength(int length) { this.pathLength = length; return this; }
     public ResultData wideEdgeCount(int count) { this.wideEdgeCount = count; return this; }
+    public ResultData departureTime(int time) { this.departureTime = time; return this; }
     public ResultData pathNodes(List<Integer> nodes) { 
         this.pathNodes = nodes != null ? new ArrayList<>(nodes) : new ArrayList<>(); 
         return this; 
@@ -61,6 +63,7 @@ public class ResultData {
     public double getTotalCost() { return totalCost; }
     public int getPathLength() { return pathLength; }
     public int getWideEdgeCount() { return wideEdgeCount; }
+    public int getDepartureTime() { return departureTime; }
     public List<Integer> getPathNodes() { return pathNodes; }
     public List<double[]> getPathCoordinates() { return pathCoordinates; }
     public List<Integer> getWideEdgeIndices() { return wideEdgeIndices; }

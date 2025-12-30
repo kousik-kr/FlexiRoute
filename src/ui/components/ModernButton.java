@@ -28,7 +28,7 @@ public class ModernButton extends JButton {
         this.pressedColor = darken(color, 0.15f);
         
         setForeground(Color.WHITE);
-        setFont(new Font("Segoe UI", Font.BOLD, 15));
+        setFont(new Font("Segoe UI", Font.BOLD, 19));
         setFocusPainted(false);
         setBorderPainted(false);
         setContentAreaFilled(false);

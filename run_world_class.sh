@@ -15,7 +15,6 @@ NC='\033[0m' # No Color
 echo -e "${CYAN}"
 echo "╔════════════════════════════════════════════════════════════╗"
 echo "║       🗺️  Wide-Path Navigator - World Class Edition        ║"
-echo "║                    v3.0 Launcher                           ║"
 echo "╚════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 

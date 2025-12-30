@@ -26,9 +26,9 @@ public class QueryHistoryPanel extends JPanel {
         // Title and stats
         JPanel headerPanel = new JPanel(new BorderLayout());
         JLabel titleLabel = new JLabel("Query History", SwingConstants.LEFT);
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
         statsLabel = new JLabel();
-        statsLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        statsLabel.setFont(new Font("Segoe UI", Font.PLAIN, 16));
         statsLabel.setForeground(Color.GRAY);
         headerPanel.add(titleLabel, BorderLayout.WEST);
         headerPanel.add(statsLabel, BorderLayout.EAST);
@@ -43,8 +43,8 @@ public class QueryHistoryPanel extends JPanel {
         };
 
         historyTable = new JTable(tableModel);
-        historyTable.setFont(new Font("Consolas", Font.PLAIN, 12));
-        historyTable.setRowHeight(25);
+        historyTable.setFont(new Font("Consolas", Font.PLAIN, 16));
+        historyTable.setRowHeight(30);
         historyTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         historyTable.setAutoCreateRowSorter(true);
 

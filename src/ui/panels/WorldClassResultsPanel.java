@@ -63,7 +63,7 @@ public class WorldClassResultsPanel extends JPanel {
     private JTextArea pathDetailsArea;
     private JProgressBar widePathBar;
     private JLabel statusLabel, timeLabel, nodesLabel, costLabel;
-    private JButton exportJsonButton, exportCsvButton, copyButton;
+    private JButton exportJsonButton, exportCsvButton, copyButton, clearButton;
     
     // State
     private ResultData currentResult;
@@ -123,18 +123,18 @@ public class WorldClassResultsPanel extends JPanel {
         header.setOpaque(false);
         
         JLabel icon = new JLabel("🌟");
-        icon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 42));
+        icon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 48));
         
         JPanel titlePanel = new JPanel();
         titlePanel.setOpaque(false);
         titlePanel.setLayout(new BoxLayout(titlePanel, BoxLayout.Y_AXIS));
         
         JLabel title = new JLabel("📊 Results Dashboard");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 26));
+        title.setFont(new Font("Segoe UI", Font.BOLD, 32));
         title.setForeground(VIVID_PURPLE);
         
         statusLabel = new JLabel("🚀 Run a query to see results");
-        statusLabel.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+        statusLabel.setFont(new Font("Segoe UI", Font.PLAIN, 19));
         statusLabel.setForeground(TEXT_SECONDARY);
         
         titlePanel.add(title);
@@ -206,12 +206,12 @@ public class WorldClassResultsPanel extends JPanel {
         ));
         
         JLabel iconLabel = new JLabel(icon + " " + label);
-        iconLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        iconLabel.setFont(new Font("Segoe UI", Font.PLAIN, 18));
         iconLabel.setForeground(TEXT_SECONDARY);
         iconLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         
         JLabel valueLabel = new JLabel(value);
-        valueLabel.setFont(new Font("Segoe UI", Font.BOLD, 26));
+        valueLabel.setFont(new Font("Segoe UI", Font.BOLD, 32));
         valueLabel.setForeground(color);
         valueLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         valueLabel.setName(label);  // Use name for identification
@@ -231,7 +231,7 @@ public class WorldClassResultsPanel extends JPanel {
         section.setMaximumSize(new Dimension(Integer.MAX_VALUE, 80));
         
         JLabel label = new JLabel("🛣️ Wide Path Coverage");
-        label.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        label.setFont(new Font("Segoe UI", Font.BOLD, 20));
         label.setForeground(LIME_GREEN);
         label.setAlignmentX(Component.LEFT_ALIGNMENT);
         section.add(label);
@@ -273,7 +273,7 @@ public class WorldClassResultsPanel extends JPanel {
         widePathBar.setValue(0);
         widePathBar.setStringPainted(true);
         widePathBar.setString("0% wide roads");
-        widePathBar.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        widePathBar.setFont(new Font("Segoe UI", Font.BOLD, 18));
         widePathBar.setBorder(null);
         widePathBar.setAlignmentX(Component.LEFT_ALIGNMENT);
         widePathBar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
@@ -290,12 +290,12 @@ public class WorldClassResultsPanel extends JPanel {
         section.setAlignmentX(Component.LEFT_ALIGNMENT);
         
         JLabel label = new JLabel("📋 Path Details");
-        label.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        label.setFont(new Font("Segoe UI", Font.BOLD, 20));
         label.setForeground(ROYAL_INDIGO);
         section.add(label, BorderLayout.NORTH);
         
         pathDetailsArea = new JTextArea(10, 40);
-        pathDetailsArea.setFont(new Font("Consolas", Font.PLAIN, 14));
+        pathDetailsArea.setFont(new Font("Consolas", Font.PLAIN, 18));
         pathDetailsArea.setEditable(false);
         pathDetailsArea.setLineWrap(true);
         pathDetailsArea.setWrapStyleWord(true);
@@ -324,10 +324,13 @@ public class WorldClassResultsPanel extends JPanel {
         exportJsonButton = createColorfulExportButton("📄 Export JSON", ELECTRIC_BLUE, e -> exportAsJson());
         exportCsvButton = createColorfulExportButton("📊 Export CSV", NEON_GREEN, e -> exportAsCsv());
         copyButton = createColorfulExportButton("📋 Copy", VIVID_PURPLE, e -> copyToClipboard());
+        clearButton = createColorfulExportButton("🗑️ Clear", CORAL_PINK, e -> clearOutput());
+        clearButton.setEnabled(true);
         
         section.add(exportJsonButton);
         section.add(exportCsvButton);
         section.add(copyButton);
+        section.add(clearButton);
         
         return section;
     }
@@ -361,12 +364,12 @@ public class WorldClassResultsPanel extends JPanel {
                 g.drawString(getText(), x, y);
             }
         };
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 18));
         btn.setFocusPainted(false);
         btn.setBorderPainted(false);
         btn.setContentAreaFilled(false);
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.setPreferredSize(new Dimension(140, 42));
+        btn.setPreferredSize(new Dimension(160, 48));
         btn.addActionListener(action);
         btn.setEnabled(false);
         return btn;
@@ -387,10 +390,8 @@ public class WorldClassResultsPanel extends JPanel {
             ╚══════════════════════════════════════════════════════════╝
             
             Quick Tips:
-            • Use presets for common journey types
             • Enable 'Best Bounds' heuristic for faster results
             • Increase budget to explore more route options
-            • Use Random to discover interesting paths
             """);
     }
     
@@ -429,7 +430,9 @@ public class WorldClassResultsPanel extends JPanel {
         details.append("📍 ROUTE SUMMARY\n");
         details.append("   Source:       ").append(result.getSource()).append("\n");
         details.append("   Destination:  ").append(result.getDestination()).append("\n");
-        details.append("   Budget:       ").append(result.getBudget()).append(" units\n\n");
+        details.append("   Budget:       ").append(result.getBudget()).append(" units\n");
+        int depTime = result.getDepartureTime();
+        details.append("   Departure:    ").append(String.format("%02d:%02d", depTime/60, depTime%60)).append("\n\n");
         
         details.append("📊 STATISTICS\n");
         details.append("   Path Length:  ").append(result.getPathLength()).append(" nodes\n");
@@ -491,6 +494,30 @@ public class WorldClassResultsPanel extends JPanel {
             }
         }
         return Optional.empty();
+    }
+    
+    private void clearOutput() {
+        currentResult = null;
+        showEmptyState();
+        
+        // Reset stat cards
+        updateStatCard("Time", "--");
+        updateStatCard("Nodes", "--");
+        updateStatCard("Cost", "--");
+        updateStatCard("Wide %", "--");
+        
+        // Reset progress bar
+        widePathBar.setValue(0);
+        widePathBar.setString("0% wide roads");
+        
+        // Reset status
+        statusLabel.setText("🚀 Run a query to see results");
+        statusLabel.setForeground(TEXT_SECONDARY);
+        
+        // Disable export buttons
+        exportJsonButton.setEnabled(false);
+        exportCsvButton.setEnabled(false);
+        copyButton.setEnabled(false);
     }
     
     private void exportAsJson() {
