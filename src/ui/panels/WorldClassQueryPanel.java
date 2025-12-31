@@ -1,7 +1,5 @@
 package ui.panels;
 
-import models.RoutingMode;
-
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -30,6 +28,8 @@ import javax.swing.JSlider;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
+
+import models.RoutingMode;
 
 /**
  * Query Panel - 500px width with large readable fonts

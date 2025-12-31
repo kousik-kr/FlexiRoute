@@ -1,7 +1,7 @@
-import models.RoutingMode;
-
 import java.util.ArrayList;
 import java.util.List;
+
+import models.RoutingMode;
 
 /**
  * Enhanced Result class for World-Class FlexRoute Navigator
