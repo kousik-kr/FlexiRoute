@@ -488,10 +488,7 @@ public class AdvancedMapPanel extends JPanel {
             List<Integer> nodeIds = new ArrayList<>(allNodes.keySet());
             int totalNodes = nodeIds.size();
             
-            System.out.println("Graph visualization: Total nodes = " + totalNodes + ", MAX_GRAPH_SIZE = " + MAX_GRAPH_SIZE);
-            
             if (totalNodes > MAX_GRAPH_SIZE) {
-                System.out.println("Graph too large! Showing warning dialog.");
                 JOptionPane.showMessageDialog(this,
                     String.format("Graph is too large to visualize!\n\n" +
                         "Total nodes: %,d\n" +

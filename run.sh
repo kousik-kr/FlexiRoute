@@ -1,96 +1,109 @@
 #!/bin/bash
+# =============================================================================
+# FlexRoute Navigator
+# Launch Script for Ubuntu/Linux
+# =============================================================================
 
-# FlexRoute GUI Launcher Script for Linux/Ubuntu
-# This script compiles and runs the FlexRoute application
-
-# Colors for output
+# Colors for terminal output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 CYAN='\033[0;36m'
+YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${CYAN}========================================${NC}"
-echo -e "${CYAN}FlexRoute Pro - Launch Script${NC}"
-echo -e "${CYAN}========================================${NC}"
-echo ""
+echo -e "${CYAN}"
+echo "╔════════════════════════════════════════════════════════════╗"
+echo "║             🗺️  FlexRoute Navigator                        ║"
+echo "╚════════════════════════════════════════════════════════════╝"
+echo -e "${NC}"
 
 # Get script directory
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$SCRIPT_DIR/src"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
 
-# Check if Java is installed
+# Check for Java
+echo -e "${BLUE}[1/3]${NC} Checking Java installation..."
 if ! command -v java &> /dev/null; then
-    echo -e "${RED}✗ ERROR: Java is not installed or not in PATH${NC}"
-    echo -e "${YELLOW}Please install Java 21 or higher${NC}"
-    echo "  Ubuntu/Debian: sudo apt install openjdk-21-jdk"
-    echo "  Fedora/RHEL: sudo dnf install java-21-openjdk"
+    echo -e "${RED}ERROR: Java is not installed or not in PATH${NC}"
+    echo "Please install Java 17 or higher:"
+    echo "  sudo apt update && sudo apt install openjdk-17-jdk"
     exit 1
 fi
 
-# Check Java version
-JAVA_VERSION=$(java -version 2>&1 | head -n 1)
-echo -e "${GREEN}✓ Java found: $JAVA_VERSION${NC}"
-echo ""
+JAVA_VERSION=$(java -version 2>&1 | head -n 1 | cut -d'"' -f2 | cut -d'.' -f1)
+echo -e "${GREEN}✓${NC} Java found (version $JAVA_VERSION)"
 
-# Check if javac is installed
-if ! command -v javac &> /dev/null; then
-    echo -e "${RED}✗ ERROR: javac (Java compiler) is not installed${NC}"
-    echo -e "${YELLOW}Please install Java JDK (not just JRE)${NC}"
-    echo "  Ubuntu/Debian: sudo apt install openjdk-21-jdk"
-    echo "  Fedora/RHEL: sudo dnf install java-21-openjdk-devel"
-    exit 1
-fi
+# Check/compile sources
+echo -e "${BLUE}[2/3]${NC} Checking compiled classes..."
 
-# Check if dataset files exist
-if [ ! -f "dataset/nodes_264346.txt" ]; then
-    echo -e "${YELLOW}⚠ WARNING: Dataset files not found in src/dataset/${NC}"
-    echo -e "${YELLOW}The application will prompt you to download them from Google Drive${NC}"
-    echo ""
-fi
+mkdir -p target/classes
 
-# Compile Java files if needed
-if [ ! -f "GuiLauncher.class" ]; then
-    echo -e "${CYAN}Compiling Java files...${NC}"
+# Check if GuiLauncher.class exists
+if [ ! -f "target/classes/GuiLauncher.class" ]; then
+    echo -e "${YELLOW}Compiling source files...${NC}"
     
-    javac -d . \
-        managers/*.java \
-        models/*.java \
-        ui/components/*.java \
-        ui/panels/*.java \
-        GoogleDriveConfigHelper.java \
-        GoogleDriveDatasetLoader.java \
-        GuiLauncher.java \
-        BidirectionalAstar.java \
-        Graph.java \
-        Node.java \
-        Edge.java \
-        Label.java \
-        Result.java \
-        Query.java \
-        Properties.java \
-        Cluster.java \
-        Function.java \
-        BreakPoint.java \
-        BidirectionalLabeling.java \
-        BidirectionalDriver.java
+    # Compile models first (other classes depend on them)
+    javac -d target/classes \
+        src/models/*.java 2>&1
     
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}✗ ERROR: Compilation failed${NC}"
+    # Compile core classes
+    javac -d target/classes -cp target/classes \
+        src/Node.java src/Edge.java src/Properties.java src/Cluster.java \
+        src/Graph.java src/Label.java src/Function.java src/BreakPoint.java \
+        src/Query.java src/Result.java src/BidirectionalLabeling.java \
+        src/BidirectionalAstar.java src/BidirectionalDriver.java \
+        src/DatasetDownloader.java src/GoogleDriveConfigHelper.java \
+        src/GoogleDriveDatasetLoader.java 2>&1
+    
+    # Compile managers
+    javac -d target/classes -cp target/classes \
+        src/managers/*.java 2>&1
+    
+    # Compile UI panels
+    javac -d target/classes -cp target/classes \
+        src/ui/panels/WorldClassQueryPanel.java \
+        src/ui/panels/WorldClassMapPanel.java \
+        src/ui/panels/WorldClassResultsPanel.java \
+        src/ui/panels/ResultData.java \
+        src/ui/panels/QueryHistoryPanel.java \
+        src/ui/panels/MetricsDashboard.java 2>&1
+    
+    # Compile UI components
+    javac -d target/classes -cp target/classes \
+        src/ui/components/WorldClassSplashScreen.java 2>&1
+    
+    # Compile launcher
+    javac -d target/classes -cp target/classes \
+        src/GuiLauncher.java 2>&1
+    
+    if [ ! -f "target/classes/GuiLauncher.class" ]; then
+        echo -e "${RED}ERROR: Compilation failed${NC}"
         exit 1
     fi
-    echo -e "${GREEN}✓ Compilation successful!${NC}"
-    echo ""
+    echo -e "${GREEN}✓${NC} Compilation successful"
+else
+    echo -e "${GREEN}✓${NC} Classes already compiled"
 fi
 
-# Launch the GUI
-echo -e "${CYAN}Launching FlexRoute Pro GUI...${NC}"
+# Launch application
+echo -e "${BLUE}[3/3]${NC} Launching FlexRoute Navigator..."
 echo ""
-java GuiLauncher
+echo -e "${CYAN}╔════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${CYAN}║${NC}                                                            ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}     🗺️  FlexRoute Navigator                                ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}                                                            ${CYAN}║${NC}"
+echo -e "${CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
+echo ""
 
-# Check exit code
+java -Dsun.java2d.uiScale=1.0 \
+     -Dswing.aatext=true \
+     -Dawt.useSystemAAFontSettings=on \
+     -Xmx2g \
+     -cp "target/classes" \
+     GuiLauncher
+
 EXIT_CODE=$?
 if [ $EXIT_CODE -ne 0 ]; then
-    echo ""
-    echo -e "${RED}Application exited with error code: $EXIT_CODE${NC}"
+    echo -e "${RED}Application exited with code: $EXIT_CODE${NC}"
 fi

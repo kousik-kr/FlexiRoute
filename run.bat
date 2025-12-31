@@ -1,74 +1,53 @@
 @echo off
-REM FlexRoute GUI Launcher Script for Windows
-REM This script compiles and runs the FlexRoute application
-
-echo ========================================
-echo FlexRoute Pro - Launch Script
-echo ========================================
+title FlexRoute Navigator
+echo.
+echo ====================================================
+echo        FlexRoute Navigator
+echo ====================================================
 echo.
 
-REM Change to source directory
-cd /d "%~dp0src"
+REM Create target directory if needed
+if not exist "target\classes" mkdir target\classes
 
-REM Check if Java is installed
-java -version >nul 2>&1
-if %errorlevel% neq 0 (
-    echo ERROR: Java is not installed or not in PATH
-    echo Please install Java 21 or higher
+echo [*] Compiling application...
+
+REM Compile models first (other classes depend on them)
+javac -d target/classes src/models/*.java 2>nul
+
+REM Compile core classes
+javac -d target/classes -cp target/classes src/Node.java src/Edge.java src/Properties.java src/Cluster.java src/Graph.java src/Label.java src/Function.java src/BreakPoint.java src/Query.java src/Result.java src/BidirectionalLabeling.java src/BidirectionalAstar.java src/BidirectionalDriver.java src/DatasetDownloader.java src/GoogleDriveConfigHelper.java src/GoogleDriveDatasetLoader.java 2>nul
+
+REM Compile managers
+javac -d target/classes -cp target/classes src/managers/*.java 2>nul
+
+REM Compile UI panels
+javac -d target/classes -cp target/classes src/ui/panels/WorldClassQueryPanel.java src/ui/panels/WorldClassMapPanel.java src/ui/panels/WorldClassResultsPanel.java src/ui/panels/ResultData.java src/ui/panels/QueryHistoryPanel.java src/ui/panels/MetricsDashboard.java 2>nul
+
+REM Compile UI components
+javac -d target/classes -cp target/classes src/ui/components/WorldClassSplashScreen.java 2>nul
+
+REM Compile the launcher
+javac -d target/classes -cp target/classes src/GuiLauncher.java 2>nul
+
+if not exist "target\classes\GuiLauncher.class" (
+    echo [!] Compilation failed. Please check Java installation.
     pause
     exit /b 1
 )
 
-REM Check if dataset files exist
-if not exist "dataset\nodes_264346.txt" (
-    echo WARNING: Dataset files not found in src\dataset\
-    echo The application will prompt you to download them from Google Drive
-    echo.
-)
-
-REM Compile Java files if needed
-echo Checking for compiled classes...
-if not exist "GuiLauncher.class" (
-    echo Compiling Java files...
-    javac -d . ^
-        managers\*.java ^
-        models\*.java ^
-        ui\components\*.java ^
-        ui\panels\*.java ^
-        GoogleDriveConfigHelper.java ^
-        GoogleDriveDatasetLoader.java ^
-        GuiLauncher.java ^
-        BidirectionalAstar.java ^
-        Graph.java ^
-        Node.java ^
-        Edge.java ^
-        Label.java ^
-        Result.java ^
-        Query.java ^
-        Properties.java ^
-        Cluster.java ^
-        Function.java ^
-        BreakPoint.java ^
-        BidirectionalLabeling.java ^
-        BidirectionalDriver.java
-    
-    if %errorlevel% neq 0 (
-        echo ERROR: Compilation failed
-        pause
-        exit /b 1
-    )
-    echo Compilation successful!
-    echo.
-)
-
-REM Launch the GUI
-echo Launching FlexRoute Pro GUI...
+echo [*] Starting FlexRoute Navigator...
 echo.
-java GuiLauncher
 
-REM Check exit code
-if %errorlevel% neq 0 (
+REM Run with high-DPI support and additional memory
+java -Dsun.java2d.uiScale=1.0 ^
+     -Dswing.aatext=true ^
+     -Dawt.useSystemAAFontSettings=on ^
+     -Xmx2g ^
+     -cp "target/classes" ^
+     GuiLauncher
+
+if errorlevel 1 (
     echo.
-    echo Application exited with error code: %errorlevel%
+    echo [!] Application exited with an error.
     pause
 )

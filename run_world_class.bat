@@ -1,9 +1,9 @@
 @echo off
-title FlexRoute Navigator - World Class Edition
+title FlexRoute Navigator
 echo.
 echo ====================================================
 echo        FlexRoute Navigator
-echo        World Class Edition
+echo ====================================================
 echo ====================================================
 echo.
 

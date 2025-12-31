@@ -1,726 +1,945 @@
-import managers.*;
-import models.QueryResult;
-import ui.components.*;
-import ui.panels.*;
-
-import javax.swing.*;
-import java.awt.*;
-import java.awt.event.*;
-import java.util.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.event.ActionEvent;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+import javax.swing.AbstractAction;
+import javax.swing.BorderFactory;
+import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JComponent;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JProgressBar;
+import javax.swing.JSplitPane;
+import javax.swing.JTabbedPane;
+import javax.swing.KeyStroke;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
+import javax.swing.border.EmptyBorder;
+
+import managers.QueryHistoryManager;
+import managers.MetricsCollector;
+import managers.ThemeManager;
+import models.QueryResult;
+import models.RoutingMode;
+import ui.components.WorldClassSplashScreen;
+import ui.panels.ResultData;
+import ui.panels.WorldClassMapPanel;
+import ui.panels.WorldClassQueryPanel;
+import ui.panels.WorldClassResultsPanel;
+import ui.panels.QueryHistoryPanel;
+import ui.panels.MetricsDashboard;
 
 /**
- * World-Class FlexRoute GUI Application - Main Entry Point
+ * FlexRoute Navigator - Professional GUI Application
+ * A feature-rich GUI for pathfinding with wide road optimization
  * 
- * Architecture:
- * - Modular design with separate packages for UI, managers, and models
- * - Thread-safe concurrent operations
- * - Modern Material Design inspired interface
- * - Comprehensive metrics and history tracking
+ * Features:
+ * - Modern, clean UI design
+ * - Multiple visualization modes
+ * - Real-time progress tracking
+ * - Query history and analytics
+ * - Performance metrics dashboard
+ * - Theme support
+ * - Export capabilities
+ * - Comprehensive results dashboard
  * 
- * @author FlexRoute Team
- * @version 2.0
+ * @version 3.0
  */
-public class GuiLauncher {
-    // Core Application Components
-    private final JFrame frame;
-    private final ExecutorService executorService;
-    private final QueryHistoryManager historyManager;
-    private final MetricsCollector metricsCollector;
-    private final ThemeManager themeManager;
+public class GuiLauncher extends JFrame {
     
-    // UI Panels
-    private QueryInputPanel inputPanel;
-    private JTextPane outputPane;
-    private AdvancedMapPanel mapPanel;
-    private MetricsDashboard metricsDashboard;
+    // === CONSTANTS ===
+    private static final String APP_TITLE = "🌟 FlexRoute Navigator🌟";
+    private static final String VERSION = "";
+    private static final int DEFAULT_WIDTH = 1550;
+    private static final int DEFAULT_HEIGHT = 980;
+    
+    // === 🌈 VIBRANT RAINBOW COLOR PALETTE ===
+    private static final Color CORAL_PINK = new Color(255, 107, 107);      // Coral
+    private static final Color ELECTRIC_BLUE = new Color(59, 130, 246);    // Electric Blue
+    private static final Color VIVID_PURPLE = new Color(168, 85, 247);     // Vivid Purple
+    private static final Color NEON_GREEN = new Color(16, 185, 129);       // Neon Green
+    private static final Color SUNSET_ORANGE = new Color(251, 146, 60);    // Sunset Orange
+    private static final Color HOT_PINK = new Color(236, 72, 153);         // Hot Pink
+    private static final Color CYBER_YELLOW = new Color(250, 204, 21);     // Cyber Yellow
+    private static final Color OCEAN_TEAL = new Color(20, 184, 166);       // Ocean Teal
+    private static final Color ROYAL_INDIGO = new Color(99, 102, 241);     // Royal Indigo
+    private static final Color LIME_GREEN = new Color(132, 204, 22);       // Lime Green
+    
+    private static final Color BG_COLOR = new Color(248, 250, 252);        // Off White
+    private static final Color SIDEBAR_BG = new Color(255, 255, 255);      // White
+    private static final Color TEXT_PRIMARY = new Color(30, 41, 59);       // Dark Slate
+    private static final Color TEXT_SECONDARY = new Color(100, 116, 139);  // Cool Gray
+    
+    // === UI COMPONENTS ===
+    private WorldClassQueryPanel queryPanel;
+    private WorldClassMapPanel mapPanel;
+    private WorldClassResultsPanel resultsPanel;
+    private JTabbedPane rightTabs;
+    private JLabel statusLabel;
+    private JProgressBar globalProgress;
     private QueryHistoryPanel historyPanel;
-    private StatusBar statusBar;
-    private JProgressBar progressBar;
+    private MetricsDashboard metricsDashboard;
     
-    // State Management
-    private volatile boolean isQueryRunning = false;
-    private List<Integer> currentPath = Collections.emptyList();
-    private List<Integer> currentWideEdges = Collections.emptyList();
-
-    public static void main(String[] args) {
-        // Set system look and feel properties for better rendering
-        System.setProperty("awt.useSystemAAFontSettings", "on");
-        System.setProperty("swing.aatext", "true");
+    // === MANAGERS ===
+    private final QueryHistoryManager historyManager = new QueryHistoryManager();
+    private final MetricsCollector metricsCollector = new MetricsCollector();
+    private final ThemeManager themeManager = new ThemeManager();
+    
+    // === STATE ===
+    private Result lastResult;
+    private boolean isDarkMode = false;
+    private ExecutorService executor = Executors.newSingleThreadExecutor();
+    
+    public GuiLauncher() {
+        super(APP_TITLE + " — " + VERSION);
+        initializeUI();
+        loadDataset();
+    }
+    
+    private void initializeUI() {
+        // Frame setup
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setSize(DEFAULT_WIDTH, DEFAULT_HEIGHT);
+        setMinimumSize(new Dimension(1100, 750));
+        setLocationRelativeTo(null);
         
-        if (GraphicsEnvironment.isHeadless()) {
-            System.err.println("Headless environment detected. GUI cannot be displayed.");
-            return;
-        }
-        
-        // Set modern Look and Feel
+        // Set system look and feel with enhanced defaults
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+            // Enhanced font defaults for better readability
+            UIManager.put("Label.font", new Font("Segoe UI", Font.PLAIN, 18));
+            UIManager.put("Button.font", new Font("Segoe UI", Font.PLAIN, 18));
+            UIManager.put("TextField.font", new Font("Segoe UI", Font.PLAIN, 18));
+            UIManager.put("ComboBox.font", new Font("Segoe UI", Font.PLAIN, 18));
+            UIManager.put("Menu.font", new Font("Segoe UI", Font.PLAIN, 18));
+            UIManager.put("MenuItem.font", new Font("Segoe UI", Font.PLAIN, 18));
+            UIManager.put("TabbedPane.font", new Font("Segoe UI", Font.BOLD, 18));
         } catch (Exception e) {
-            System.err.println("Could not set look and feel: " + e.getMessage());
+            e.printStackTrace();
         }
         
-        SwingUtilities.invokeLater(() -> {
-            try {
-                GuiLauncher launcher = new GuiLauncher();
-                launcher.start();
-            } catch (Exception e) {
-                e.printStackTrace();
-                JOptionPane.showMessageDialog(null, 
-                    "Failed to launch application: " + e.getMessage(),
-                    "Startup Error", JOptionPane.ERROR_MESSAGE);
-            }
-        });
-    }
-
-    private JTabbedPane tabbedPane;
-
-    public GuiLauncher() {
-        this.frame = new JFrame("FlexRoute Pro - Advanced Pathfinding Analysis");
-        this.executorService = Executors.newFixedThreadPool(4);
-        this.historyManager = new QueryHistoryManager();
-        this.metricsCollector = new MetricsCollector();
-        this.themeManager = new ThemeManager();
-        
-        // Configure frame
-        frame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
-        frame.addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowClosing(WindowEvent e) {
-                shutdown();
-            }
-        });
-        
-        setupKeyboardShortcuts();
-    }
-
-    private void start() {
-        // Check if dataset exists, if not offer to download from Google Drive
-        if (!GoogleDriveConfigHelper.checkDatasetExists()) {
-            int choice = JOptionPane.showConfirmDialog(frame,
-                    "Dataset files not found.\n" +
-                    "Would you like to download them from Google Drive?",
-                    "Dataset Not Found",
-                    JOptionPane.YES_NO_OPTION,
-                    JOptionPane.QUESTION_MESSAGE);
-            
-            if (choice == JOptionPane.YES_OPTION) {
-                boolean downloaded = GoogleDriveDatasetLoader.downloadDataset(frame);
-                if (!downloaded) {
-                    System.out.println("[GUI] Dataset download cancelled or failed.");
-                    return;
-                }
-            } else {
-                System.out.println("[GUI] User chose not to download dataset.");
-                return;
-            }
-        }
-        
-        // Load graph
-        BidirectionalAstar.configureDefaults();
-        boolean loaded = BidirectionalAstar.loadGraphFromDisk(null, null);
-        if (!loaded) {
-            JOptionPane.showMessageDialog(null,
-                    "Failed to load graph files. Ensure the configured graph directory points to your dataset.",
-                    "Graph Load Error",
-                    JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-        
-        int nodeCount = Graph.get_nodes().size();
-        System.out.println("[GUI] Graph loaded. Nodes=" + nodeCount);
-        
-        initializeUI(nodeCount);
-        frame.setVisible(true);
-    }
-
-    private void setupKeyboardShortcuts() {
-        KeyStroke runShortcut = KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, InputEvent.CTRL_DOWN_MASK);
-        
-        Action runAction = new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (!isQueryRunning && inputPanel != null) {
-                    // Trigger run button programmatically
-                    System.out.println("[GUI] Run query triggered via Ctrl+Enter");
-                }
-            }
-        };
-        
-        frame.getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(runShortcut, "runQuery");
-        frame.getRootPane().getActionMap().put("runQuery", runAction);
-    }
-
-    private void applyThemeToAllComponents() {
-        // Apply theme to main frame and all child components
-        applyThemeToContainer(frame.getContentPane());
-        
-        // Apply to menu bar
-        if (frame.getJMenuBar() != null) {
-            applyThemeToContainer(frame.getJMenuBar());
-        }
-        
-        // Apply to panels
-        if (inputPanel != null) {
-            applyThemeToContainer(inputPanel);
-        }
-        if (mapPanel != null) {
-            applyThemeToContainer(mapPanel);
-        }
-        if (metricsDashboard != null) {
-            applyThemeToContainer(metricsDashboard);
-        }
-        if (historyPanel != null) {
-            applyThemeToContainer(historyPanel);
-        }
-        if (statusBar != null) {
-            applyThemeToContainer(statusBar);
-        }
-        if (tabbedPane != null) {
-            applyThemeToContainer(tabbedPane);
-            tabbedPane.setBackground(themeManager.getColor("panel"));
-            tabbedPane.setForeground(themeManager.getColor("foreground"));
-        }
-        
-        // Force repaint
-        frame.repaint();
-        frame.revalidate();
-    }
-    
-    private void applyThemeToContainer(Container container) {
-        if (container == null) return;
-        
-        // Apply theme colors based on component type
-        boolean isDark = themeManager.isDarkTheme();
-        
-        container.setBackground(themeManager.getColor("background"));
-        container.setForeground(themeManager.getColor("foreground"));
-        
-        // Recursively apply to all child components
-        for (Component comp : container.getComponents()) {
-            if (comp instanceof JPanel) {
-                comp.setBackground(themeManager.getColor("panel"));
-                comp.setForeground(themeManager.getColor("foreground"));
-            } else if (comp instanceof JButton) {
-                comp.setBackground(themeManager.getColor("primary"));
-                comp.setForeground(Color.WHITE);
-            } else if (comp instanceof JTextField || comp instanceof JTextArea) {
-                comp.setBackground(themeManager.getColor("backgroundElevated"));
-                comp.setForeground(themeManager.getColor("foreground"));
-                comp.setFont(comp.getFont());
-            } else if (comp instanceof JLabel) {
-                comp.setForeground(themeManager.getColor("foreground"));
-            } else if (comp instanceof JScrollPane) {
-                comp.setBackground(themeManager.getColor("panel"));
-                JScrollPane scrollPane = (JScrollPane) comp;
-                if (scrollPane.getViewport() != null) {
-                    scrollPane.getViewport().setBackground(themeManager.getColor("backgroundElevated"));
-                }
-            } else if (comp instanceof JTabbedPane) {
-                comp.setBackground(themeManager.getColor("panel"));
-                comp.setForeground(themeManager.getColor("foreground"));
-            } else if (comp instanceof JMenuBar || comp instanceof JMenu || comp instanceof JMenuItem) {
-                comp.setBackground(themeManager.getColor("panel"));
-                comp.setForeground(themeManager.getColor("foreground"));
-            }
-            
-            // Recursively apply to nested containers
-            if (comp instanceof Container) {
-                applyThemeToContainer((Container) comp);
-            }
-        }
-    }
-    
-    private void shutdown() {
-        // Use the same enhanced exit dialog as the button
-        exitApplication();
-    }
-
-    private void initializeUI(int maxNodeId) {
-        frame.setLayout(new BorderLayout(0, 0));
-        frame.setPreferredSize(new Dimension(1600, 900));
+        // Main container
+        JPanel mainContainer = new JPanel(new BorderLayout(0, 0));
+        mainContainer.setBackground(BG_COLOR);
         
         // Create menu bar
-        createMenuBar();
-        frame.setJMenuBar(createMenuBar());
+        setJMenuBar(createMenuBar());
         
-        // Main content panel
-        JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        
-        // Create input panel (left side) with reset and exit callbacks
-        inputPanel = new QueryInputPanel(maxNodeId, this::executeQuery, this::visualizeQuery, this::resetQuery, this::exitApplication);
-        
-        // Create tabbed pane for output and visualization
-        tabbedPane = new JTabbedPane(JTabbedPane.TOP);
-        tabbedPane.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        
-        // Results tab
-        JPanel resultsPanel = createResultsPanel();
-        tabbedPane.addTab("📊 Results", null, resultsPanel, "Query results and statistics");
-        
-        // Visualization tab
-        mapPanel = new AdvancedMapPanel();
-        tabbedPane.addTab("🗺️ Visualization", null, mapPanel, "Path visualization and graph explorer");
-        
-        // Metrics tab
-        metricsDashboard = new MetricsDashboard(metricsCollector);
-        tabbedPane.addTab("📈 Metrics", null, metricsDashboard, "Performance metrics and analytics");
-        
-        // History tab
-        historyPanel = new QueryHistoryPanel(historyManager);
-        tabbedPane.addTab("🕐 History", null, historyPanel, "Query history and comparison");
-        
-        // Create split pane
-        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, inputPanel, tabbedPane);
-        splitPane.setResizeWeight(0.25);
-        splitPane.setDividerSize(8);
-        splitPane.setDividerLocation(400);
-        
-        mainPanel.add(splitPane, BorderLayout.CENTER);
+        // Create main content
+        JSplitPane mainSplit = createMainSplit();
+        mainContainer.add(mainSplit, BorderLayout.CENTER);
         
         // Create status bar
-        statusBar = new StatusBar();
-        mainPanel.add(statusBar, BorderLayout.SOUTH);
+        JPanel statusBar = createStatusBar();
+        mainContainer.add(statusBar, BorderLayout.SOUTH);
         
-        frame.add(mainPanel);
-        frame.pack();
-        frame.setLocationRelativeTo(null);
+        setContentPane(mainContainer);
         
-        statusBar.setMessage("Ready. Graph loaded with " + maxNodeId + " nodes.", StatusBar.MessageType.INFO);
-        
-        // Show welcome message
-        displayWelcomeMessage();
+        // Key bindings
+        setupKeyBindings();
     }
-
+    
     private JMenuBar createMenuBar() {
-        JMenuBar menuBar = new JMenuBar();
-        
-        // File Menu
-        JMenu fileMenu = new JMenu("File");
-        JMenuItem exportItem = new JMenuItem("Export Results...");
-        exportItem.addActionListener(e -> {
-            if (historyPanel != null) {
-                // Switch to history tab and trigger export
-                tabbedPane.setSelectedComponent(historyPanel);
-                // Use a timer to ensure tab switch completes before showing export dialog
-                javax.swing.Timer timer = new javax.swing.Timer(100, evt -> {
-                    historyPanel.exportHistory();
-                    ((javax.swing.Timer)evt.getSource()).stop();
-                });
-                timer.setRepeats(false);
-                timer.start();
-            } else {
-                JOptionPane.showMessageDialog(frame,
-                    "No query history available to export.",
-                    "Export",
-                    JOptionPane.INFORMATION_MESSAGE);
+        JMenuBar menuBar = new JMenuBar() {
+            @Override
+            protected void paintComponent(java.awt.Graphics g) {
+                java.awt.Graphics2D g2d = (java.awt.Graphics2D) g.create();
+                // Rainbow gradient menu bar
+                java.awt.GradientPaint gp = new java.awt.GradientPaint(
+                    0, 0, new Color(248, 250, 255),
+                    getWidth(), 0, new Color(250, 245, 255)
+                );
+                g2d.setPaint(gp);
+                g2d.fillRect(0, 0, getWidth(), getHeight());
+                g2d.dispose();
             }
-        });
-        JMenuItem exitItem = new JMenuItem("Exit");
-        exitItem.addActionListener(e -> shutdown());
-        fileMenu.add(exportItem);
+        };
+        menuBar.setOpaque(false);
+        menuBar.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(0, 0, 2, 0, VIVID_PURPLE),
+            BorderFactory.createEmptyBorder(6, 10, 6, 10)
+        ));
+        menuBar.setFont(new Font("Segoe UI", Font.BOLD, 19));
+        
+        // File Menu - Blue themed
+        JMenu fileMenu = new JMenu("📁 File");
+        fileMenu.setFont(new Font("Segoe UI", Font.BOLD, 19));
+        fileMenu.setForeground(ELECTRIC_BLUE);
+        fileMenu.setMnemonic(KeyEvent.VK_F);
+        
+        JMenuItem loadDataset = new JMenuItem("Load Dataset...", KeyEvent.VK_L);
+        loadDataset.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, InputEvent.CTRL_DOWN_MASK));
+        loadDataset.addActionListener(e -> loadCustomDataset());
+        
+        JMenuItem exportImage = new JMenuItem("Export Map Image...", KeyEvent.VK_E);
+        exportImage.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK));
+        
+        JMenuItem exportResults = new JMenuItem("Export Results...", KeyEvent.VK_R);
+        
+        JMenuItem exit = new JMenuItem("Exit", KeyEvent.VK_X);
+        exit.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, InputEvent.CTRL_DOWN_MASK));
+        exit.addActionListener(e -> exitApplication());
+        
+        fileMenu.add(loadDataset);
         fileMenu.addSeparator();
-        fileMenu.add(exitItem);
+        fileMenu.add(exportImage);
+        fileMenu.add(exportResults);
+        fileMenu.addSeparator();
+        fileMenu.add(exit);
         
-        // View Menu
-        JMenu viewMenu = new JMenu("View");
-        JCheckBoxMenuItem darkModeItem = new JCheckBoxMenuItem("Dark Mode");
-        darkModeItem.setSelected(themeManager.getCurrentTheme() == ThemeManager.Theme.DARK);
-        darkModeItem.addActionListener(e -> {
-            themeManager.toggleTheme();
-            applyThemeToAllComponents();
-            darkModeItem.setSelected(themeManager.getCurrentTheme() == ThemeManager.Theme.DARK);
-        });
-        viewMenu.add(darkModeItem);
+        // View Menu - Purple themed
+        JMenu viewMenu = new JMenu("🎨 View");
+        viewMenu.setFont(new Font("Segoe UI", Font.BOLD, 19));
+        viewMenu.setForeground(VIVID_PURPLE);
+        viewMenu.setMnemonic(KeyEvent.VK_V);
         
-        // Add theme submenu for other themes
-        JMenu themeMenu = new JMenu("Themes");
-        for (ThemeManager.Theme theme : ThemeManager.Theme.values()) {
-            JMenuItem themeItem = new JMenuItem(theme.getDisplayName());
-            themeItem.setToolTipText(theme.getDescription());
-            themeItem.addActionListener(e -> {
-                themeManager.setTheme(theme);
-                applyThemeToAllComponents();
-                darkModeItem.setSelected(themeManager.isDarkTheme());
-            });
-            themeMenu.add(themeItem);
-        }
-        viewMenu.add(themeMenu);
+        JCheckBoxMenuItem darkMode = new JCheckBoxMenuItem("Dark Mode");
+        darkMode.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_D, InputEvent.CTRL_DOWN_MASK));
+        darkMode.addActionListener(e -> toggleDarkMode());
         
-        // Help Menu
-        JMenu helpMenu = new JMenu("Help");
-        JMenuItem aboutItem = new JMenuItem("About");
-        aboutItem.addActionListener(e -> showAboutDialog());
-        helpMenu.add(aboutItem);
+        JMenuItem zoomIn = new JMenuItem("Zoom In");
+        zoomIn.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_PLUS, InputEvent.CTRL_DOWN_MASK));
+        
+        JMenuItem zoomOut = new JMenuItem("Zoom Out");
+        zoomOut.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_MINUS, InputEvent.CTRL_DOWN_MASK));
+        
+        JMenuItem resetView = new JMenuItem("Reset View");
+        resetView.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_0, InputEvent.CTRL_DOWN_MASK));
+        
+        viewMenu.add(darkMode);
+        viewMenu.addSeparator();
+        viewMenu.add(zoomIn);
+        viewMenu.add(zoomOut);
+        viewMenu.add(resetView);
+        
+        // Query Menu - Green themed
+        JMenu queryMenu = new JMenu("🔍 Query");
+        queryMenu.setFont(new Font("Segoe UI", Font.BOLD, 19));
+        queryMenu.setForeground(NEON_GREEN);
+        queryMenu.setMnemonic(KeyEvent.VK_Q);
+        
+        JMenuItem runQuery = new JMenuItem("Run Query", KeyEvent.VK_R);
+        runQuery.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, InputEvent.CTRL_DOWN_MASK));
+        runQuery.addActionListener(e -> executeQuery());
+        
+        JMenuItem clearResults = new JMenuItem("Clear Results", KeyEvent.VK_C);
+        
+        queryMenu.add(runQuery);
+        queryMenu.addSeparator();
+        queryMenu.add(clearResults);
+        
+        // Help Menu - Orange themed
+        JMenu helpMenu = new JMenu("❓ Help");
+        helpMenu.setFont(new Font("Segoe UI", Font.BOLD, 19));
+        helpMenu.setForeground(SUNSET_ORANGE);
+        helpMenu.setMnemonic(KeyEvent.VK_H);
+        
+        JMenuItem userGuide = new JMenuItem("User Guide", KeyEvent.VK_U);
+        userGuide.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0));
+        userGuide.addActionListener(e -> showUserGuide());
+        
+        JMenuItem about = new JMenuItem("About", KeyEvent.VK_A);
+        about.addActionListener(e -> showAboutDialog());
+        
+        helpMenu.add(userGuide);
+        helpMenu.addSeparator();
+        helpMenu.add(about);
         
         menuBar.add(fileMenu);
         menuBar.add(viewMenu);
+        menuBar.add(queryMenu);
         menuBar.add(helpMenu);
         
         return menuBar;
     }
-
-    private JPanel createResultsPanel() {
-        JPanel panel = new JPanel(new BorderLayout(10, 10));
-        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+    
+    private JSplitPane createMainSplit() {
+        // Left side: Query Panel
+        queryPanel = new WorldClassQueryPanel();
+        queryPanel.setPreferredSize(new Dimension(500, 0));
+        queryPanel.setMinimumSize(new Dimension(500, 0));
         
-        // Output text pane with styled document
-        outputPane = new JTextPane();
-        outputPane.setEditable(false);
-        outputPane.setFont(new Font("Consolas", Font.PLAIN, 12));
-        JScrollPane scrollPane = new JScrollPane(outputPane);
+        // Set callbacks
+        queryPanel.setOnRunQuery(this::executeQuery);
+        queryPanel.setOnPreviewChange(this::updateQueryPreview);
         
-        // Progress bar
-        progressBar = new JProgressBar();
-        progressBar.setStringPainted(true);
-        progressBar.setVisible(false);
+        // Right side: Tabbed pane with map and results
+        rightTabs = new JTabbedPane(JTabbedPane.TOP);
+        rightTabs.setFont(new Font("Segoe UI", Font.BOLD, 19));
+        rightTabs.setBackground(BG_COLOR);
         
-        panel.add(progressBar, BorderLayout.NORTH);
-        panel.add(scrollPane, BorderLayout.CENTER);
+        // Map Panel
+        mapPanel = new WorldClassMapPanel();
+        rightTabs.addTab("🗺️ Map View", mapPanel);
         
-        return panel;
-    }
-
-    private void executeQuery(QueryInputPanel.QueryParameters params) {
-        if (isQueryRunning) {
-            statusBar.setMessage("A query is already running!", StatusBar.MessageType.WARNING);
-            return;
-        }
+        // Results Panel
+        resultsPanel = new WorldClassResultsPanel();
+        rightTabs.addTab("📊 Results", resultsPanel);
         
-        // Clear any query preview
-        mapPanel.clearQueryPreview();
+        // Metrics Dashboard
+        metricsDashboard = new MetricsDashboard(metricsCollector);
+        rightTabs.addTab("📈 Metrics", metricsDashboard);
         
-        // Set heuristic mode based on user selection
-        if ("Aggressive".equals(params.heuristicMode)) {
-            BidirectionalLabeling.setAggressiveMode();
-            System.out.println("[GUI] Heuristic Mode: Aggressive (Frontier Threshold = 10)");
-        } else {
-            BidirectionalLabeling.setBalancedMode();
-            System.out.println("[GUI] Heuristic Mode: Balanced (Frontier Threshold = 50)");
-        }
+        // History Panel
+        historyPanel = new QueryHistoryPanel(historyManager);
+        rightTabs.addTab("🕐 History", historyPanel);
         
-        isQueryRunning = true;
-        inputPanel.setRunEnabled(false);
-        progressBar.setVisible(true);
-        progressBar.setIndeterminate(true);
-        statusBar.setMessage("Executing query...", StatusBar.MessageType.INFO);
+        // Main split pane
+        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, queryPanel, rightTabs);
+        split.setDividerLocation(500);
+        split.setDividerSize(4);
+        split.setContinuousLayout(true);
+        split.setBorder(null);
         
-        // Display input parameters
-        displayInputParameters(params);
-        
-        SwingWorker<QueryResult, Void> worker = new SwingWorker<>() {
-            @Override
-            protected QueryResult doInBackground() {
-                long startTime = System.currentTimeMillis();
-                
-                try {
-                    BidirectionalAstar.setIntervalDuration(params.interval);
-                    System.out.println("[GUI] Running query " + params.source + " -> " + params.destination);
-                    
-                    Result result = BidirectionalAstar.runSingleQuery(
-                        params.source, params.destination, params.departure, params.interval, params.budget);
-                    
-                    long executionTime = System.currentTimeMillis() - startTime;
-                    
-                    if (result != null) {
-                        return new QueryResult.Builder()
-                            .setSourceNode(params.source)
-                            .setDestinationNode(params.destination)
-                            .setDepartureTime(params.departure)
-                            .setIntervalDuration(params.interval)
-                            .setBudget(params.budget)
-                            .setActualDepartureTime(result.get_departureTime())
-                            .setScore(result.get_score())
-                            .setTravelTime(result.get_travel_time())
-                            .setRightTurns(result.get_right_turns())
-                            .setSharpTurns(result.get_sharp_turns())
-                            .setPathNodes(result.get_pathNodes())
-                            .setWideEdgeIndices(result.get_wideEdgeIndices())
-                            .setExecutionTimeMs(executionTime)
-                            .setSuccess(true)
-                            .build();
-                    } else {
-                        return new QueryResult.Builder()
-                            .setSourceNode(params.source)
-                            .setDestinationNode(params.destination)
-                            .setDepartureTime(params.departure)
-                            .setIntervalDuration(params.interval)
-                            .setBudget(params.budget)
-                            .setExecutionTimeMs(executionTime)
-                            .setSuccess(false)
-                            .setErrorMessage("Query returned null result")
-                            .build();
-                    }
-                } catch (Exception e) {
-                    long executionTime = System.currentTimeMillis() - startTime;
-                    return new QueryResult.Builder()
-                        .setSourceNode(params.source)
-                        .setDestinationNode(params.destination)
-                        .setDepartureTime(params.departure)
-                        .setIntervalDuration(params.interval)
-                        .setBudget(params.budget)
-                        .setExecutionTimeMs(executionTime)
-                        .setSuccess(false)
-                        .setErrorMessage(e.getMessage())
-                        .build();
-                }
-            }
-
-            @Override
-            protected void done() {
-                try {
-                    QueryResult result = get();
-                    
-                    // Update history and metrics
-                    historyManager.addQuery(result);
-                    metricsCollector.recordQuery(result.isSuccess(), result.getExecutionTimeMs(), 
-                        result.getPathNodes() != null ? result.getPathNodes().size() : 0);
-                    
-                    // Display results
-                    displayResults(result);
-                    
-                    // Update map
-                    if (result.isSuccess() && result.getPathNodes() != null) {
-                        currentPath = result.getPathNodes();
-                        currentWideEdges = result.getWideEdgeIndices();
-                        mapPanel.setPath(currentPath, currentWideEdges);
-                    }
-                    
-                    // Update history panel
-                    historyPanel.refreshTable();
-                    
-                    if (result.isSuccess()) {
-                        statusBar.setMessage("Query completed successfully in " + result.getExecutionTimeMs() + " ms", 
-                            StatusBar.MessageType.SUCCESS);
-                        showSuccessAnimation();
-                    } else {
-                        statusBar.setMessage("Query failed: " + result.getErrorMessage(), StatusBar.MessageType.ERROR);
-                    }
-                    
-                    // Show action buttons after query completion
-                    SwingUtilities.invokeLater(() -> inputPanel.showActionButtons());
-                } catch (Exception e) {
-                    statusBar.setMessage("Error processing results: " + e.getMessage(), StatusBar.MessageType.ERROR);
-                } finally {
-                    isQueryRunning = false;
-                    inputPanel.setRunEnabled(true);
-                    progressBar.setVisible(false);
-                    progressBar.setIndeterminate(false);
-                }
-            }
-        };
-        
-        worker.execute();
-    }
-
-    private void displayInputParameters(QueryInputPanel.QueryParameters params) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("═══════════════════════════════════════\n");
-        sb.append("        QUERY INPUT PARAMETERS\n");
-        sb.append("═══════════════════════════════════════\n\n");
-        sb.append(String.format("🎯 Source Node:        %d\n", params.source));
-        sb.append(String.format("🏁 Destination Node:   %d\n", params.destination));
-        sb.append(String.format("🕐 Departure Time:     %d min (%.2f hrs)\n", params.departure, params.departure/60.0));
-        sb.append(String.format("⏱  Interval Duration:  %d min\n", params.interval));
-        sb.append(String.format("💰 Budget:             %d min\n", params.budget));
-        sb.append(String.format("🧠 Heuristic Mode:     %s (%d frontiers)\n\n", 
-            params.heuristicMode, 
-            "Aggressive".equals(params.heuristicMode) ? 10 : 50));
-        sb.append("Processing query, please wait...\n");
-        sb.append("═══════════════════════════════════════\n\n");
-        
-        outputPane.setText(sb.toString());
+        return split;
     }
     
-    private void visualizeQuery(QueryInputPanel.QueryPreview preview) {
-        mapPanel.setQueryPreview(preview.source, preview.destination);
-        tabbedPane.setSelectedIndex(1); // Switch to visualization tab
-    }
-
-    private void displayResults(QueryResult result) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(outputPane.getText());
-        
-        if (result.isSuccess()) {
-            sb.append("\n═══════════════════════════════════════\n");
-            sb.append("          QUERY RESULTS\n");
-            sb.append("═══════════════════════════════════════\n\n");
-            sb.append(String.format("✓ Route Found!\n\n"));
-            sb.append(String.format("📍 Route:              %d → %d\n", result.getSourceNode(), result.getDestinationNode()));
-            sb.append(String.format("⏰ Departure:          %.2f min\n", result.getActualDepartureTime()));
-            sb.append(String.format("🎯 Score:              %.2f\n", result.getScore()));
-            sb.append(String.format("⏱  Travel Time:        %.2f min (%.2f hrs)\n", 
-                result.getTravelTime(), result.getTravelTime()/60.0));
-            sb.append(String.format("↪  Right Turns:        %d\n", result.getRightTurns()));
-            sb.append(String.format("⤴  Sharp Turns:        %d\n", result.getSharpTurns()));
-            
-            if (result.getPathNodes() != null && !result.getPathNodes().isEmpty()) {
-                sb.append(String.format("\n📊 Path Statistics:\n"));
-                sb.append(String.format("   Nodes in path:     %d\n", result.getPathNodes().size()));
-                sb.append(String.format("   Wide edges:        %d\n", 
-                    result.getWideEdgeIndices() != null ? result.getWideEdgeIndices().size() : 0));
-
-                // Emit full path for external plotting: node IDs and lat,lon pairs
-                sb.append("\n🛣️ Path (node IDs):\n");
-                sb.append(formatPathIds(result.getPathNodes()));
-
-                sb.append("\n🗺️ Path (lat, lon):\n");
-                sb.append(formatPathCoords(result.getPathNodes()));
-
-                String pathFile = writePathToFile(result.getPathNodes());
-                if (pathFile != null) {
-                    sb.append(String.format("\n💾 Full path saved to: %s\n", pathFile));
-                }
-            }
-            
-            sb.append(String.format("\n⚡ Execution Time:     %d ms\n", result.getExecutionTimeMs()));
-            sb.append("\n═══════════════════════════════════════\n");
-        } else {
-            sb.append("\n═══════════════════════════════════════\n");
-            sb.append("          QUERY FAILED\n");
-            sb.append("═══════════════════════════════════════\n\n");
-            sb.append(String.format("✗ Error: %s\n", result.getErrorMessage()));
-            sb.append(String.format("⚡ Execution Time: %d ms\n", result.getExecutionTimeMs()));
-            sb.append("\n═══════════════════════════════════════\n");
-        }
-        
-        outputPane.setText(sb.toString());
-        outputPane.setCaretPosition(outputPane.getDocument().getLength());
-    }
-
-    private void showAboutDialog() {
-        String message = "FlexRoute Pro v2.0\n\n" +
-                        "Advanced Pathfinding Analysis System\n\n" +
-                        "Features:\n" +
-                        "• Modern Material Design UI\n" +
-                        "• Real-time performance metrics\n" +
-                        "• Query history and analytics\n" +
-                        "• Advanced path visualization\n" +
-                        "• Multiple rendering modes\n" +
-                        "• Query reset and session management\n\n" +
-                        "© 2025 FlexRoute Team";
-        
-        JOptionPane.showMessageDialog(frame, message, "About FlexRoute Pro", JOptionPane.INFORMATION_MESSAGE);
-    }
-
-    private void resetQuery() {
-        // Animate reset with visual feedback
-        statusBar.setMessage("Resetting query session...", StatusBar.MessageType.INFO);
-        
-        SwingWorker<Void, Void> resetWorker = new SwingWorker<>() {
+    private JPanel createStatusBar() {
+        JPanel statusBar = new JPanel(new BorderLayout(15, 0)) {
             @Override
-            protected Void doInBackground() {
-                try {
-                    Thread.sleep(300); // Brief pause for visual feedback
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-                return null;
-            }
-
-            @Override
-            protected void done() {
-                // Clear output pane with fade effect
-                outputPane.setText("");
-                
-                // Clear map visualization
-                currentPath = Collections.emptyList();
-                currentWideEdges = Collections.emptyList();
-                mapPanel.setPath(currentPath, currentWideEdges);
-                
-                // Switch to input tab
-                tabbedPane.setSelectedIndex(0);
-                
-                // Reset input panel
-                inputPanel.resetToInitialState();
-                
-                // Update status
-                statusBar.setMessage("Ready for new query. All fields reset.", StatusBar.MessageType.SUCCESS);
-                
-                // Show welcome message
-                displayWelcomeMessage();
+            protected void paintComponent(java.awt.Graphics g) {
+                java.awt.Graphics2D g2d = (java.awt.Graphics2D) g.create();
+                // Gradient status bar
+                java.awt.GradientPaint gp = new java.awt.GradientPaint(
+                    0, 0, new Color(248, 250, 255),
+                    getWidth(), 0, new Color(255, 248, 250)
+                );
+                g2d.setPaint(gp);
+                g2d.fillRect(0, 0, getWidth(), getHeight());
+                g2d.dispose();
             }
         };
+        statusBar.setOpaque(false);
+        statusBar.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(2, 0, 0, 0, VIVID_PURPLE),
+            BorderFactory.createEmptyBorder(14, 22, 14, 22)
+        ));
         
-        resetWorker.execute();
-    }
-
-    private void displayWelcomeMessage() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("═══════════════════════════════════════\n");
-        sb.append("    FLEXROUTE PRO - READY\n");
-        sb.append("═══════════════════════════════════════\n\n");
-        sb.append("🎯 Enter query parameters and click 'Run Query'\n");
-        sb.append("📊 View results in the tabs above\n");
-        sb.append("🗺️  Visualize paths with multiple rendering modes\n");
-        sb.append("📈 Track performance metrics\n");
-        sb.append("🕐 Review query history\n\n");
-        sb.append("Tip: Use Ctrl+Enter to run queries quickly\n");
-        sb.append("═══════════════════════════════════════\n");
+        statusLabel = new JLabel("🚀 Ready — Load a dataset to begin your adventure!");
+        statusLabel.setFont(new Font("Segoe UI", Font.BOLD, 19));
+        statusLabel.setForeground(NEON_GREEN);
         
-        outputPane.setText(sb.toString());
-    }
-
-    private String formatPathIds(List<Integer> path) {
-        if (path == null || path.isEmpty()) return "   (no path)\n";
-        StringBuilder sb = new StringBuilder();
-        sb.append("   ");
-        int perLine = 20;
-        for (int i = 0; i < path.size(); i++) {
-            sb.append(path.get(i));
-            if (i < path.size() - 1) sb.append(" -> ");
-            if ((i + 1) % perLine == 0 && i < path.size() - 1) {
-                sb.append("\n   ");
+        globalProgress = new JProgressBar() {
+            @Override
+            protected void paintComponent(java.awt.Graphics g) {
+                java.awt.Graphics2D g2d = (java.awt.Graphics2D) g.create();
+                g2d.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+                // Background
+                g2d.setColor(new Color(226, 232, 240));
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
+                // Progress gradient
+                int w = (int) ((getValue() / 100.0) * getWidth());
+                if (w > 0) {
+                    java.awt.GradientPaint gp = new java.awt.GradientPaint(0, 0, HOT_PINK, getWidth(), 0, VIVID_PURPLE);
+                    g2d.setPaint(gp);
+                    g2d.fillRoundRect(0, 0, w, getHeight(), 10, 10);
+                }
+                // Text
+                g2d.setColor(Color.WHITE);
+                g2d.setFont(getFont());
+                java.awt.FontMetrics fm = g2d.getFontMetrics();
+                String text = getString();
+                int x = (getWidth() - fm.stringWidth(text)) / 2;
+                int y = (getHeight() + fm.getAscent() - fm.getDescent()) / 2;
+                g2d.drawString(text, x, y);
+                g2d.dispose();
             }
-        }
-        sb.append("\n");
-        return sb.toString();
+        };
+        globalProgress.setVisible(false);
+        globalProgress.setPreferredSize(new Dimension(280, 22));
+        globalProgress.setStringPainted(true);
+        globalProgress.setFont(new Font("Segoe UI", Font.BOLD, 17));
+        globalProgress.setBorder(null);
+        
+        JLabel versionLabel = new JLabel("🌟 " + VERSION + " 🌟");
+        versionLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        versionLabel.setForeground(HOT_PINK);
+        
+        statusBar.add(statusLabel, BorderLayout.WEST);
+        statusBar.add(globalProgress, BorderLayout.CENTER);
+        statusBar.add(versionLabel, BorderLayout.EAST);
+        
+        return statusBar;
     }
+    
+    private void setupKeyBindings() {
+        // Ctrl+Enter to run query
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+            .put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, InputEvent.CTRL_DOWN_MASK), "runQuery");
+        getRootPane().getActionMap().put("runQuery", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                executeQuery();
+            }
+        });
+        
+        // F5 to refresh/run
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+            .put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), "refresh");
+        getRootPane().getActionMap().put("refresh", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                executeQuery();
+            }
+        });
+    }
+    
+    private void loadDataset() {
+        setStatus("Loading dataset...");
+        
+        executor.submit(() -> {
+            try {
+                // Configure and load using BidirectionalAstar
+                BidirectionalAstar.configureDefaults();
+                boolean loaded = BidirectionalAstar.loadGraphFromDisk(null, null);
+                
+                if (!loaded) {
+                    SwingUtilities.invokeLater(() -> {
+                        setStatus("Failed to load dataset files");
+                    });
+                    return;
+                }
+                
+                SwingUtilities.invokeLater(() -> {
+                    int nodeCount = Graph.get_nodes().size();
+                    setStatus(String.format("Dataset loaded: %,d nodes", nodeCount));
+                    queryPanel.setMaxNodeId(nodeCount);
+                });
+                
+            } catch (Exception e) {
+                SwingUtilities.invokeLater(() -> {
+                    setStatus("Failed to load dataset: " + e.getMessage());
+                });
+            }
+        });
+    }
+    
+    private void loadCustomDataset() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Select Dataset Directory");
+        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        
+        if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+            File datasetDir = chooser.getSelectedFile();
+            
+            executor.submit(() -> {
+                try {
+                    SwingUtilities.invokeLater(() -> setStatus("Loading custom dataset..."));
+                    
+                    BidirectionalAstar.configureDefaults();
+                    boolean loaded = BidirectionalAstar.loadGraphFromDisk(datasetDir.getAbsolutePath(), null);
+                    
+                    if (!loaded) {
+                        SwingUtilities.invokeLater(() -> {
+                            setStatus("Failed to load dataset from directory");
+                            JOptionPane.showMessageDialog(this, 
+                                "Failed to load dataset from selected directory",
+                                "Error", JOptionPane.ERROR_MESSAGE);
+                        });
+                        return;
+                    }
+                    
+                    SwingUtilities.invokeLater(() -> {
+                        int nodeCount = Graph.get_nodes().size();
+                        setStatus(String.format("Custom dataset loaded: %,d nodes", nodeCount));
+                        queryPanel.setMaxNodeId(nodeCount);
+                    });
+                    
+                } catch (Exception e) {
+                    SwingUtilities.invokeLater(() -> {
+                        setStatus("Failed to load dataset: " + e.getMessage());
+                        JOptionPane.showMessageDialog(this, 
+                            "Failed to load dataset:\n" + e.getMessage(),
+                            "Error", JOptionPane.ERROR_MESSAGE);
+                    });
+                }
+            });
+        }
+    }
+    
+    private void executeQuery() {
+        int source = queryPanel.getSource();
+        int dest = queryPanel.getDestination();
+        int departure = queryPanel.getDeparture();
+        int interval = queryPanel.getInterval();
+        int budget = queryPanel.getBudget();
+        int heuristic = queryPanel.getHeuristicMode();
+        RoutingMode routingMode = queryPanel.getRoutingMode();
+        
+        setStatus("Running query: " + source + " → " + dest + " (mode: " + routingMode.getDisplayName() + ")");
+        queryPanel.setRunning(true);
+        resultsPanel.showLoading();
+        mapPanel.clearQueryPreview();
+        mapPanel.setSearchProgress(0, "Initializing search...");
+        
+        executor.submit(() -> {
+            try {
+                long startTime = System.currentTimeMillis();
+                
+                // Update progress
+                SwingUtilities.invokeLater(() -> mapPanel.setSearchProgress(10, "Setting up bidirectional search..."));
+                
+                // Configure algorithm based on heuristic mode
+                if (heuristic == 1) {
+                    BidirectionalLabeling.setAggressiveMode();
+                } else {
+                    BidirectionalLabeling.setBalancedMode();
+                }
+                
+                SwingUtilities.invokeLater(() -> mapPanel.setSearchProgress(30, "Expanding labels..."));
+                
+                // Use the existing BidirectionalAstar.runSingleQuery with routing mode
+                BidirectionalAstar.setIntervalDuration(interval);
+                Result result = BidirectionalAstar.runSingleQuery(source, dest, departure, interval, budget, routingMode);
+                
+                SwingUtilities.invokeLater(() -> mapPanel.setSearchProgress(80, "Reconstructing path..."));
+                
+                long elapsed = System.currentTimeMillis() - startTime;
+                
+                // Create result with enhanced info if null
+                if (result == null) {
+                    result = new Result(departure, 0, 0, 0, 0, new ArrayList<>(), new ArrayList<>());
+                }
+                result.setSource(source);
+                result.setDestination(dest);
+                result.setBudget(budget);
+                result.setExecutionTime(elapsed);
+                result.setRoutingMode(routingMode);
+                
+                // Get path coordinates
+                if (result.isPathFound()) {
+                    collectPathCoordinates(result);
+                    // Also collect coordinates for Pareto paths if available
+                    if (result.hasParetoOptimalPaths()) {
+                        for (Result paretoPath : result.getParetoOptimalPaths()) {
+                            collectPathCoordinates(paretoPath);
+                        }
+                    }
+                }
+                
+                lastResult = result;
+                final Result finalResult = result;
+                final int srcNode = source;
+                final int dstNode = dest;
+                final int departTime = departure;
+                final int intervalDur = interval;
+                final int budgetVal = budget;
+                
+                SwingUtilities.invokeLater(() -> {
+                    mapPanel.setSearchProgress(100, "Complete!");
+                    mapPanel.clearSearchFrontier();
+                    displayResults(finalResult);
+                    queryPanel.setRunning(false);
+                    
+                    // Record to history and metrics
+                    QueryResult queryResult = new QueryResult.Builder()
+                        .setSourceNode(srcNode)
+                        .setDestinationNode(dstNode)
+                        .setDepartureTime(departTime)
+                        .setIntervalDuration(intervalDur)
+                        .setBudget(budgetVal)
+                        .setActualDepartureTime(finalResult.get_departureTime())
+                        .setScore(finalResult.get_score())
+                        .setTravelTime(finalResult.getTotalCost())
+                        .setRightTurns(finalResult.get_right_turns())
+                        .setSharpTurns(finalResult.get_sharp_turns())
+                        .setPathNodes(finalResult.getPathNodes())
+                        .setWideEdgeIndices(finalResult.getWideEdgeIndices())
+                        .setExecutionTimeMs((long)finalResult.getExecutionTime())
+                        .setSuccess(finalResult.isPathFound())
+                        .build();
+                    
+                    historyManager.addQuery(queryResult);
+                    metricsCollector.recordQuery(finalResult.isPathFound(), (long)finalResult.getExecutionTime(), 
+                        finalResult.getPathNodes() != null ? finalResult.getPathNodes().size() : 0);
+                    
+                    // Refresh history panel
+                    historyPanel.refreshTable();
+                    
+                    // Show appropriate status based on results
+                    if (finalResult.hasParetoOptimalPaths()) {
+                        setStatus(String.format("✅ Found %d Pareto optimal paths in %.2f ms", 
+                            finalResult.getParetoPathCount(), finalResult.getExecutionTime()));
+                    } else {
+                        setStatus(finalResult.isPathFound() 
+                            ? String.format("✅ Path found: %d nodes in %.2f ms", finalResult.getPathLength(), finalResult.getExecutionTime())
+                            : "❌ No path found within budget");
+                    }
+                    
+                    // Write path to file
+                    writePathToFile(finalResult);
+                });
+                
+            } catch (Exception e) {
+                e.printStackTrace();
+                SwingUtilities.invokeLater(() -> {
+                    resultsPanel.showError(e.getMessage());
+                    queryPanel.setRunning(false);
+                    mapPanel.clearSearchFrontier();
+                    setStatus("❌ Query failed: " + e.getMessage());
+                });
+            }
+        });
+    }
+    
 
-    private String formatPathCoords(List<Integer> path) {
-        if (path == null || path.isEmpty()) return "   (no coordinates)\n";
-        StringBuilder sb = new StringBuilder();
-        sb.append("   ");
-        int perLine = 6;
-        for (int i = 0; i < path.size(); i++) {
-            int nodeId = path.get(i);
-            Node node = Graph.get_node(nodeId);
+    private void collectPathCoordinates(Result result) {
+        List<Integer> pathNodes = result.getPathNodes();
+        if (pathNodes == null || pathNodes.isEmpty()) return;
+        
+        List<double[]> coordinates = new ArrayList<>();
+        Map<Integer, Node> allNodes = Graph.get_nodes();
+        
+        for (Integer nodeId : pathNodes) {
+            Node node = allNodes.get(nodeId);
             if (node != null) {
-                sb.append(String.format("%.6f,%.6f", node.get_latitude(), node.get_longitude()));
-            } else {
-                sb.append(nodeId).append("(missing)");
-            }
-            if (i < path.size() - 1) sb.append(" -> ");
-            if ((i + 1) % perLine == 0 && i < path.size() - 1) {
-                sb.append("\n   ");
+                coordinates.add(new double[]{node.get_latitude(), node.get_longitude()});
             }
         }
-        sb.append("\n");
-        return sb.toString();
+        
+        result.setPathCoordinates(coordinates);
     }
-
-    private String writePathToFile(List<Integer> path) {
-        if (path == null || path.isEmpty()) return null;
+    
+    /**
+     * Collect neighboring graph context around path nodes for visualization
+     * Returns: [context node coordinates, context edges, path-to-context edges]
+     * path-to-context edges: [pathNodeIndex, contextNodeIndex]
+     */
+    private Object[] collectGraphContext(List<Integer> pathNodes) {
+        List<double[]> contextCoords = new ArrayList<>();
+        List<int[]> contextEdges = new ArrayList<>();
+        List<int[]> pathToContextEdges = new ArrayList<>();  // Edges from path nodes to context nodes
+        
+        if (pathNodes == null || pathNodes.isEmpty()) {
+            return new Object[]{contextCoords, contextEdges, pathToContextEdges};
+        }
+        
+        Map<Integer, Node> allNodes = Graph.get_nodes();
+        Set<Integer> pathNodeSet = new HashSet<>(pathNodes);
+        Set<Integer> contextNodeSet = new HashSet<>();
+        Map<Integer, Integer> contextNodeToIndex = new java.util.HashMap<>();
+        Map<Integer, Integer> pathNodeToIndex = new java.util.HashMap<>();
+        
+        // Build path node index map
+        for (int i = 0; i < pathNodes.size(); i++) {
+            pathNodeToIndex.put(pathNodes.get(i), i);
+        }
+        
+        // Collect neighbors of path nodes (1-hop neighbors)
+        for (Integer pathNodeId : pathNodes) {
+            Node pathNode = allNodes.get(pathNodeId);
+            if (pathNode == null) continue;
+            
+            // Add outgoing neighbors
+            for (Integer neighborId : pathNode.get_outgoing_edges().keySet()) {
+                if (!pathNodeSet.contains(neighborId)) {
+                    contextNodeSet.add(neighborId);
+                }
+            }
+            
+            // Add incoming neighbors
+            for (Integer neighborId : pathNode.get_incoming_edges().keySet()) {
+                if (!pathNodeSet.contains(neighborId)) {
+                    contextNodeSet.add(neighborId);
+                }
+            }
+        }
+        
+        // Build coordinates list for context nodes
+        int index = 0;
+        for (Integer nodeId : contextNodeSet) {
+            Node node = allNodes.get(nodeId);
+            if (node != null) {
+                contextCoords.add(new double[]{node.get_latitude(), node.get_longitude()});
+                contextNodeToIndex.put(nodeId, index++);
+            }
+        }
+        
+        // Build edges between context nodes
+        for (Integer nodeId : contextNodeSet) {
+            Node node = allNodes.get(nodeId);
+            if (node == null) continue;
+            
+            Integer fromIdx = contextNodeToIndex.get(nodeId);
+            if (fromIdx == null) continue;
+            
+            // Add edges to other context nodes
+            for (Integer neighborId : node.get_outgoing_edges().keySet()) {
+                Integer toIdx = contextNodeToIndex.get(neighborId);
+                if (toIdx != null && fromIdx < toIdx) { // Avoid duplicates
+                    contextEdges.add(new int[]{fromIdx, toIdx});
+                }
+            }
+        }
+        
+        // Build edges from path nodes to context nodes
+        for (Integer pathNodeId : pathNodes) {
+            Node pathNode = allNodes.get(pathNodeId);
+            if (pathNode == null) continue;
+            
+            Integer pathIdx = pathNodeToIndex.get(pathNodeId);
+            if (pathIdx == null) continue;
+            
+            // Outgoing edges to context nodes
+            for (Integer neighborId : pathNode.get_outgoing_edges().keySet()) {
+                Integer contextIdx = contextNodeToIndex.get(neighborId);
+                if (contextIdx != null) {
+                    pathToContextEdges.add(new int[]{pathIdx, contextIdx});
+                }
+            }
+            
+            // Incoming edges from context nodes
+            for (Integer neighborId : pathNode.get_incoming_edges().keySet()) {
+                Integer contextIdx = contextNodeToIndex.get(neighborId);
+                if (contextIdx != null) {
+                    // Store as [pathIdx, contextIdx] for rendering
+                    pathToContextEdges.add(new int[]{pathIdx, contextIdx});
+                }
+            }
+        }
+        
+        return new Object[]{contextCoords, contextEdges, pathToContextEdges};
+    }
+    
+    private void displayResults(Result result) {
+        // Convert Result to ResultData for UI panels
+        ResultData resultData = ResultData.create()
+            .source(result.getSource())
+            .destination(result.getDestination())
+            .budget(result.getBudget())
+            .departureTime(queryPanel.getDeparture())
+            .suggestedDepartureTime(result.get_departureTime())  // Algorithm's suggested departure time
+            .executionTime(result.getExecutionTime())
+            .pathFound(result.isPathFound())
+            .totalCost(result.getTotalCost())
+            .pathLength(result.getPathLength())
+            .wideEdgeCount(result.getWideEdgeCount())
+            .rightTurns(result.get_right_turns())
+            .wideScore(result.get_score())
+            .routingModeName(result.getRoutingMode() != null ? result.getRoutingMode().getDisplayName() : "All Objectives")
+            .pathNodes(result.getPathNodes())
+            .pathCoordinates(result.getPathCoordinates())
+            .wideEdgeIndices(result.getWideEdgeIndices());
+        
+        // Convert Pareto optimal paths if available
+        if (result.hasParetoOptimalPaths()) {
+            for (Result paretoPath : result.getParetoOptimalPaths()) {
+                ResultData paretoData = ResultData.create()
+                    .source(paretoPath.getSource())
+                    .destination(paretoPath.getDestination())
+                    .budget(paretoPath.getBudget())
+                    .departureTime(queryPanel.getDeparture())
+                    .suggestedDepartureTime(paretoPath.get_departureTime())
+                    .executionTime(paretoPath.getExecutionTime())
+                    .pathFound(paretoPath.isPathFound())
+                    .totalCost(paretoPath.getTotalCost())
+                    .pathLength(paretoPath.getPathLength())
+                    .wideEdgeCount(paretoPath.getWideEdgeCount())
+                    .rightTurns(paretoPath.get_right_turns())
+                    .wideScore(paretoPath.get_score())
+                    .pathNodes(paretoPath.getPathNodes())
+                    .pathCoordinates(paretoPath.getPathCoordinates())
+                    .wideEdgeIndices(paretoPath.getWideEdgeIndices());
+                resultData.addParetoPath(paretoData);
+            }
+        }
+        
+        // Update results panel
+        resultsPanel.displayResult(resultData);
+        
+        // Update map with path and graph context
+        if (result.isPathFound()) {
+            // Collect graph context (neighboring nodes in lighter color)
+            Object[] context = collectGraphContext(result.getPathNodes());
+            @SuppressWarnings("unchecked")
+            List<double[]> contextCoords = (List<double[]>) context[0];
+            @SuppressWarnings("unchecked")
+            List<int[]> contextEdges = (List<int[]>) context[1];
+            @SuppressWarnings("unchecked")
+            List<int[]> pathToContextEdges = (List<int[]>) context[2];
+            
+            // Set path with context
+            mapPanel.setPathWithContext(
+                result.getPathNodes(), 
+                result.getWideEdgeIndices(), 
+                result.getPathCoordinates(),
+                contextCoords,
+                contextEdges,
+                pathToContextEdges
+            );
+            rightTabs.setSelectedIndex(0); // Switch to map view
+        }
+    }
+    
+    private void updateQueryPreview(int source, int dest) {
+        Map<Integer, Node> allNodes = Graph.get_nodes();
+        Node srcNode = allNodes.get(source);
+        Node dstNode = allNodes.get(dest);
+        
+        if (srcNode != null && dstNode != null) {
+            double[] srcCoord = new double[]{srcNode.get_latitude(), srcNode.get_longitude()};
+            double[] dstCoord = new double[]{dstNode.get_latitude(), dstNode.get_longitude()};
+            mapPanel.setQueryPreview(source, dest, srcCoord, dstCoord);
+        }
+    }
+    
+    private void writePathToFile(Result result) {
+        if (result == null || !result.isPathFound()) return;
+        
         try {
-            java.nio.file.Path dir = java.nio.file.Paths.get("output");
-            java.nio.file.Files.createDirectories(dir);
-            java.nio.file.Path file = dir.resolve("last_path.txt");
-
-            try (java.io.BufferedWriter w = java.nio.file.Files.newBufferedWriter(file)) {
-                w.write("Path node IDs:\n");
-                w.write(formatPathIds(path));
-                w.write("\nPath lat,lon:\n");
-                w.write(formatPathCoords(path));
+            Files.createDirectories(Paths.get("output"));
+            
+            StringBuilder sb = new StringBuilder();
+            sb.append("FlexRoute Query Result\n");
+            sb.append("======================\n\n");
+            sb.append("Source: ").append(result.getSource()).append("\n");
+            sb.append("Destination: ").append(result.getDestination()).append("\n");
+            sb.append("Path Length: ").append(result.getPathLength()).append(" nodes\n");
+            sb.append("Total Cost: ").append(String.format("%.2f", result.getTotalCost())).append("\n");
+            sb.append("Wide Edges: ").append(result.getWideEdgeCount()).append("\n");
+            sb.append("Execution Time: ").append(String.format("%.2f", result.getExecutionTime())).append(" ms\n");
+            
+            // Add suggested departure time
+            double suggestedDep = result.get_departureTime();
+            if (suggestedDep > 0) {
+                int hours = (int)(suggestedDep / 60);
+                int mins = (int)(suggestedDep % 60);
+                sb.append(String.format("\n*** OPTIMAL DEPARTURE TIME: %02d:%02d (%.1f minutes) ***\n", 
+                    hours, mins, suggestedDep));
             }
-            return file.toAbsolutePath().toString();
+            sb.append("\n");
+            
+            sb.append("Path Node IDs with Coordinates:\n");
+            sb.append("================================\n");
+            sb.append("[Step] NodeID -> (Latitude, Longitude)\n");
+            List<Integer> path = result.getPathNodes();
+            List<double[]> coords = result.getPathCoordinates();
+            for (int i = 0; i < path.size(); i++) {
+                int nodeId = path.get(i);
+                String coordStr = "";
+                if (coords != null && i < coords.size()) {
+                    double[] coord = coords.get(i);
+                    coordStr = String.format(" -> (%.6f, %.6f)", coord[0], coord[1]);
+                }
+                String marker = "";
+                if (i == 0) marker = " [START]";
+                else if (i == path.size() - 1) marker = " [END]";
+                
+                sb.append(String.format("[%3d] %d%s%s\n", i, nodeId, coordStr, marker));
+            }
+            
+            sb.append("\n\nPath Coordinates Only (lat, lon):\n");
+            sb.append("==================================\n");
+            
+            if (result.getPathCoordinates() != null) {
+                for (int i = 0; i < result.getPathCoordinates().size(); i++) {
+                    double[] coord = result.getPathCoordinates().get(i);
+                    sb.append(String.format("[%d] %.6f, %.6f\n", i, coord[0], coord[1]));
+                }
+            }
+            
+            Files.writeString(Paths.get("output/last_path.txt"), sb.toString());
+            
         } catch (Exception e) {
-            System.out.println("[GUI] Failed to write path file: " + e.getMessage());
-            return null;
+            e.printStackTrace();
         }
     }
-
+    
+    private void setStatus(String message) {
+        statusLabel.setText(message);
+    }
+    
+    private void toggleDarkMode() {
+        isDarkMode = !isDarkMode;
+        // TODO: Implement dark mode theme switching
+        JOptionPane.showMessageDialog(this, "Dark mode coming soon!", "Info", JOptionPane.INFORMATION_MESSAGE);
+    }
+    
+    private void showUserGuide() {
+        String guide = """
+            <html>
+            <body style="font-family: Segoe UI; padding: 10px; width: 400px;">
+            <h2>🗺️ FlexRoute Navigator User Guide</h2>
+            
+            <h3>Quick Start</h3>
+            <ol>
+                <li>Enter source and destination node IDs</li>
+                <li>Adjust travel budget using the slider</li>
+                <li>Click "Find FlexRoute" or press Ctrl+Enter</li>
+            </ol>
+            
+            <h3>Parameters</h3>
+            <ul>
+                <li><b>Source/Destination:</b> Node IDs from the loaded dataset</li>
+                <li><b>Departure Time:</b> Start time (for time-dependent routing)</li>
+                <li><b>Time Interval:</b> Time window for edge costs</li>
+                <li><b>Budget:</b> Maximum travel cost allowed</li>
+            </ul>
+            
+            <h3>Keyboard Shortcuts</h3>
+            <ul>
+                <li><b>Ctrl+Enter:</b> Run query</li>
+                <li><b>Ctrl+O:</b> Load dataset</li>
+                <li><b>F5:</b> Refresh/Run</li>
+            </ul>
+            
+            <h3>Visualization</h3>
+            <p>Use the toolbar in the Map View to:</p>
+            <ul>
+                <li>Change visualization mode</li>
+                <li>Zoom in/out</li>
+                <li>Toggle labels and grid</li>
+                <li>Enable path animation</li>
+                <li>Export map as PNG</li>
+            </ul>
+            </body>
+            </html>
+            """;
+        
+        JOptionPane.showMessageDialog(this, guide, "User Guide", JOptionPane.INFORMATION_MESSAGE);
+    }
+    
+    private void showAboutDialog() {
+        String about = """
+            <html>
+            <body style="font-family: Segoe UI; text-align: center; padding: 20px;">
+            <h1>🗺️ FlexRoute Navigator</h1>
+            <h3>Version 3.0</h3>
+            <p>Advanced pathfinding with wide road optimization</p>
+            <br>
+            <p>Using Bi-TDCPO algorithm for optimal<br>
+            constrained path queries on road networks.</p>
+            <br>
+            <p><small>© 2024 FlexRoute Project</small></p>
+            </body>
+            </html>
+            """;
+        
+        JOptionPane.showMessageDialog(this, about, "About", JOptionPane.PLAIN_MESSAGE);
+    }
+    
     private void exitApplication() {
         // Create custom confirmation dialog with styling
         JPanel panel = new JPanel(new BorderLayout(10, 10));
@@ -731,7 +950,7 @@ public class GuiLauncher {
         icon.setHorizontalAlignment(SwingConstants.CENTER);
         
         JLabel message = new JLabel("<html><div style='text-align: center;'>" +
-            "<b>Exit FlexRoute Pro?</b><br><br>" +
+            "<b>Exit FlexRoute Navigator?</b><br><br>" +
             "Are you sure you want to exit?<br>" +
             "All unsaved data will be lost." +
             "</div></html>");
@@ -743,7 +962,7 @@ public class GuiLauncher {
         
         String[] options = {"Exit", "Cancel"};
         int choice = JOptionPane.showOptionDialog(
-            frame,
+            this,
             panel,
             "Confirm Exit",
             JOptionPane.YES_NO_OPTION,
@@ -757,83 +976,67 @@ public class GuiLauncher {
             performGracefulShutdown();
         }
     }
-
+    
     private void performGracefulShutdown() {
-        statusBar.setMessage("Shutting down FlexRoute Pro...", StatusBar.MessageType.INFO);
+        setStatus("👋 Shutting down FlexRoute Navigator...");
         
-        SwingWorker<Void, Void> shutdownWorker = new SwingWorker<>() {
-            @Override
-            protected Void doInBackground() {
-                try {
-                    // Cleanup resources
-                    statusBar.dispose();
-                    metricsDashboard.dispose();
-                    executorService.shutdown();
-                    
-                    if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
-                        executorService.shutdownNow();
-                    }
-                } catch (InterruptedException e) {
-                    executorService.shutdownNow();
-                    Thread.currentThread().interrupt();
-                }
-                return null;
+        // Cleanup resources
+        try {
+            if (metricsDashboard != null) {
+                metricsDashboard.dispose();
             }
-
-            @Override
-            protected void done() {
-                // Fade out animation (with platform compatibility check)
-                try {
-                    if (frame.isUndecorated() || !GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().isWindowTranslucencySupported(GraphicsDevice.WindowTranslucency.TRANSLUCENT)) {
-                        // Platform doesn't support opacity, just dispose immediately
-                        frame.dispose();
-                        System.exit(0);
-                        return;
-                    }
-                    
-                    javax.swing.Timer fadeTimer = new javax.swing.Timer(30, null);
-                    final float[] opacity = {1.0f};
-                    fadeTimer.addActionListener(e -> {
-                        opacity[0] -= 0.1f;
-                        if (opacity[0] <= 0.0f) {
-                            ((javax.swing.Timer) e.getSource()).stop();
-                            frame.dispose();
-                            System.exit(0);
-                        } else {
-                            try {
-                                frame.setOpacity(opacity[0]);
-                            } catch (Exception ex) {
-                                // Opacity not supported, just dispose
-                                ((javax.swing.Timer) e.getSource()).stop();
-                                frame.dispose();
-                                System.exit(0);
-                            }
-                        }
-                    });
-                    fadeTimer.start();
-                } catch (Exception ex) {
-                    // Fallback: just dispose and exit
-                    frame.dispose();
-                    System.exit(0);
-                }
+            executor.shutdown();
+            if (!executor.awaitTermination(3, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
             }
-        };
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
         
-        shutdownWorker.execute();
+        dispose();
+        System.exit(0);
     }
-
-    private void showSuccessAnimation() {
-        // Visual success feedback with color flash on status bar
-        javax.swing.Timer flashTimer = new javax.swing.Timer(100, null);
-        final int[] flashCount = {0};
-        flashTimer.addActionListener(e -> {
-            if (flashCount[0]++ >= 6) {
-                ((javax.swing.Timer) e.getSource()).stop();
-            } else {
-                // Toggle between success color and normal
-                statusBar.repaint();
-            }
+    
+    // === MAIN ENTRY POINT ===
+    
+    public static void main(String[] args) {
+        // Show splash screen
+        SwingUtilities.invokeLater(() -> {
+            WorldClassSplashScreen splash = new WorldClassSplashScreen();
+            splash.showSplash();
+            
+            // Simulate loading
+            javax.swing.Timer loadTimer = new javax.swing.Timer(100, null);
+            final int[] progress = {0};
+            String[] messages = {
+                "Loading application...",
+                "Initializing UI components...",
+                "Preparing visualization engine...",
+                "Loading map renderer...",
+                "Setting up algorithms...",
+                "Configuring themes...",
+                "Almost ready...",
+                "Starting application..."
+            };
+            
+            loadTimer.addActionListener(e -> {
+                progress[0] += 5;
+                int msgIndex = Math.min(progress[0] / 15, messages.length - 1);
+                splash.setProgress(progress[0], messages[msgIndex]);
+                
+                if (progress[0] >= 100) {
+                    loadTimer.stop();
+                    
+                    // Create and show main window
+                    GuiLauncher app = new GuiLauncher();
+                    app.setVisible(true);
+                    
+                    splash.closeSplash();
+                }
+            });
+            
+            loadTimer.start();
         });
-        flashTimer.start();
     }
 }

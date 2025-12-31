@@ -82,8 +82,8 @@ public class Edge {
 	public double get_arrival_time(double departure_time){
 		double x1, x2, y1, y2;
 		Entry<Integer, Properties> element = get_itr(departure_time);
-		if(element ==null) {
-			System.out.println("Hi");
+		if(element == null) {
+			return departure_time; // Return input time if no time property found
 		}
 		x1 = element.getKey();
 		y1 = element.getKey() + element.getValue().get_value();

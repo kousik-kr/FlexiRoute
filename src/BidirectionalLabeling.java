@@ -58,72 +58,21 @@ public class BidirectionalLabeling implements Runnable{
 
 	@Override
 	public void run(){
-
-		System.out.println("[Labeling-" + (isForward ? "FWD" : "BWD") + "] Starting from node " + topLabel.get_nodeID());
-		
-		// Time limit check removed - queries can run without time constraints
-		/*
-		long current = System.currentTimeMillis();
-		float elapsed = (current-BidirectionalAstar.start)/1000F;
-		System.out.println("[Labeling-" + (isForward ? "FWD" : "BWD") + "] Elapsed time: " + elapsed + "s, TIME_LIMIT: " + BidirectionalAstar.TIME_LIMIT + "s");
-		if(elapsed > BidirectionalAstar.TIME_LIMIT) {
-			System.out.println("[Labeling-" + (isForward ? "FWD" : "BWD") + "] Time limit exceeded");
-			if(!BidirectionalAstar.isMemoryUpdated()) 
-				BidirectionalAstar.updateMemory();
-			BidirectionalAstar.forceStop=true;
-			return;
-		}
-		*/
-		
-		// Enhanced termination condition 2: Budget exhaustion check (DISABLED - A* preprocessing handles this)
-		// The A* preprocessing phase already filters nodes by budget via feasibility marking.
-		// This check was overly conservative and preventing valid exploration.
-		/*
-		double consumedBudget = topLabel.getDistance();
-		double estimatedRemaining = isForward ? 
-			Graph.get_node(topLabel.get_nodeID()).get_backward_hDistance() : 
-			Graph.get_node(topLabel.get_nodeID()).get_forward_hDistance();
-		
-		if(estimatedRemaining != Double.MAX_VALUE && 
-		   (consumedBudget + estimatedRemaining) > budget * 1.15) {
-			// Path cannot satisfy budget constraint even optimistically
-			System.out.println("[Labeling-" + (isForward ? "FWD" : "BWD") + "] Early termination: consumed=" + consumedBudget + 
-				", remaining=" + estimatedRemaining + ", total=" + (consumedBudget+estimatedRemaining) + ", budget*1.15=" + (budget*1.15));
-			return;
-		}
-		*/
 	
 		List<ForkJoinTask<?>> labelQueue = new ArrayList<ForkJoinTask<?>>();
-		
-		//double current_time = topLabel.get_arrivalTime();
-		//int current_score = topLabel.get_score();
 		int current_vertex = topLabel.get_nodeID();
-		
 		Node node = Graph.get_node(current_vertex);
 		
-		// System.out.println("[Labeling-" + (isForward ? "FWD" : "BWD") + "] At node " + current_vertex + ", exploring neighbors");
-		
 		if(isForward) {
-			
 			Map<Integer, Edge> temp_outgoing_edge = node.get_outgoing_edges();
-			// System.out.println("[Labeling-FWD] Node " + current_vertex + " has " + temp_outgoing_edge.size() + " outgoing edges");
 			
 			for(Entry<Integer, Edge> entry : temp_outgoing_edge.entrySet()) {
 				Edge edge = entry.getValue();
 				int j = edge.get_destination();
 				double distance = edge.get_distance();
-				
-	//			if(j==destination) {
-	//				System.out.println("hi");
-	//			}
-                                // Only check feasibility - A* preprocessing already filtered by budget
+
                                 if(Graph.get_node(j).isFeasible() && !topLabel.getVisited(j)) {
                                         Node nextNode = Graph.get_node(j);
-                                        if(isForward && topLabel.get_nodeID() == 72594) {
-                                            System.out.println("[DEBUG] Checking neighbor " + j + ": feasible=" + nextNode.isFeasible() + 
-                                                ", forward_hTime=" + nextNode.get_forward_hTime() + 
-                                                ", visited=" + topLabel.getVisited(j));
-                                        }
                                         if(shouldPrune(nextNode, edge, j)) {
                                                 continue;
                                         }
@@ -166,9 +115,6 @@ public class BidirectionalLabeling implements Runnable{
 							double min_required_budget = Graph.get_node(j).get_backward_hTime();
 							//new breakpoints at node j
 							BreakPoint new_arrival_breakpoint = new BreakPoint(arrival_time_breakpoint.getX(), new_arrival_time);
-							if(new_arrival_time<0) {
-								System.out.println("Hi");
-							}
 							if((new_arrival_time - arrival_time_breakpoint.getX())<=budget && (new_arrival_time + min_required_budget - arrival_time_breakpoint.getX())<=2*budget)	{
 								BreakPoint new_width_breakpoint = null;
 								if(width_breakpoint!=null) {
@@ -327,10 +273,7 @@ public class BidirectionalLabeling implements Runnable{
 				Edge edge = entry.getValue();
 				int j = edge.get_source();
 				double distance = edge.get_distance();
-	//			if(j==destination) {
-	//				System.out.println("hi");
-	//			}
-                                // Only check feasibility - A* preprocessing already filtered by budget
+
                                 if(Graph.get_node(j).isFeasible() && !topLabel.getVisited(j)) {
                                         Node nextNode = Graph.get_node(j);
                                         if(shouldPrune(nextNode, edge, j)) {
@@ -376,9 +319,6 @@ public class BidirectionalLabeling implements Runnable{
 							double min_required_budget = Graph.get_node(j).get_forward_hTime();
 							//new breakpoints at node j
 							BreakPoint new_arrival_breakpoint = new BreakPoint(new_departure_time, arrival_time_breakpoint.getY());
-							if(new_departure_time<0) {
-								System.out.println("Hi");
-							}
 							if((arrival_time_breakpoint.getY() - new_departure_time)<=budget && (arrival_time_breakpoint.getY() + min_required_budget - new_departure_time)<=2*budget)	{
 								
 								BreakPoint new_width_breakpoint = null;
@@ -563,12 +503,6 @@ public class BidirectionalLabeling implements Runnable{
                         return false;
                 }
                 
-                // Log when pruning activates (only once per direction)
-                if(currentFrontierSize == FRONTIER_THRESHOLD + 1) {
-                        System.out.println("[DynamicPruning-" + (isForward ? "FWD" : "BWD") + "] Activated at frontier size: " + currentFrontierSize + 
-                                " - Now keeping only top " + FRONTIER_THRESHOLD + " candidates");
-                }
-                
                 // Frontier exceeded threshold - apply aggressive pruning to keep top candidates
                 double heuristicScore = computeHeuristicScore(nextNode, edge);
                 ConcurrentHashMap<Integer, Double> scoreCache = isForward ? forwardBestScore : backwardBestScore;
@@ -695,9 +629,6 @@ public class BidirectionalLabeling implements Runnable{
 	private BreakPoint computeBoundaryBreakpoint(double x1, double y1, double x2, double y2, double allotted_budget) {
 		double x = (allotted_budget+x1*((y2-y1)/(x2-x1))-y1)/(-1+(y2-y1)/(x2-x1));
 		double y = -x1*(y2-y1)/(x2-x1) + y1 + ((y2-y1)/(x2-x1))*x;
-		if(x<0) {
-			System.out.println("Hi");
-		}
 		return new BreakPoint(x, y);
 	}
 
@@ -787,9 +718,6 @@ public class BidirectionalLabeling implements Runnable{
 	            	}
 	            	else {
 	            		BreakPoint new_arrival_time_breakpoint = new BreakPoint(dep_time, arrival_time_series.get(j));
-	            		if(dep_time<0) {
-	            			System.out.println("Hi");
-	            		}
 	            		tmp_arrival_time_breakpoints.add(new_arrival_time_breakpoint);
 	            		
 	            		if(is_width) {
@@ -897,9 +825,6 @@ public class BidirectionalLabeling implements Runnable{
 	            	}
 	            	else {
 	            		BreakPoint new_arrival_time_breakpoint = new BreakPoint(arrival_time_series.get(j), arr_time);
-	            		if(arr_time<0) {
-	            			System.out.println("Hi");
-	            		}
 	            		tmp_arrival_time_breakpoints.add(new_arrival_time_breakpoint);
 	            		
 	            		if(is_width) {

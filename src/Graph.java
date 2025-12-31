@@ -187,14 +187,11 @@ public final class Graph {
      * is accompanied by descriptive variable names and comments.
      */
     public static void forwardAstar(int source, int destination, double budget) {
-        System.out.println("[ForwardA*] source=" + source + " dest=" + destination + " budget=" + budget);
-
         Map<Integer, Double> gTime = new HashMap<>();
         Map<Integer, Double> gWideDistance = new HashMap<>();
         Map<Integer, Double> gDistance = new HashMap<>();
         Map<Integer, Integer> gRightTurn = new HashMap<>();
         int prevoious_node = source;
-        int debugEdgeCount = 0;
 
         PriorityQueue<Integer> pQueue = new PriorityQueue<>(get_vertex_count(), new Comparator<Integer>() {
             @Override
@@ -203,7 +200,6 @@ public final class Graph {
                     Double iTime = gTime.get(i);
                     Double jTime = gTime.get(j);
                     if(iTime == null || jTime == null) {
-                        System.out.println("[COMPARATOR ERROR] null time - i=" + i + " iTime=" + iTime + " j=" + j + " jTime=" + jTime);
                         return 0;
                     }
                     if (iTime > jTime) {
@@ -213,8 +209,6 @@ public final class Graph {
                     }
                     return 0;
                 } catch(Exception e) {
-                    System.out.println("[COMPARATOR EXCEPTION] " + e.getMessage());
-                    e.printStackTrace();
                     return 0;
                 }
             }
@@ -263,12 +257,6 @@ public final class Graph {
                 double cost_j = edge.getLowestCost();
                 double g_time = current_cost + cost_j;
                 
-                // Debug: Print first 5 edges from source
-                if(current_vertex == source && debugEdgeCount < 5) {
-                    System.out.println("[DEBUG] Edge " + current_vertex + "->" + j + " cost=" + cost_j + " g_time=" + g_time + " budget=" + budget + " passes=" + (g_time <= budget));
-                    debugEdgeCount++;
-                }
-                
                 double distance = edge.get_distance();
                 double g_wide_distance = current_wide_distance;
 
@@ -291,13 +279,6 @@ public final class Graph {
                         gRightTurn.put(j, g_right_turn);
                         if (j != destination) {
                             pQueue.add(j);
-                            if(current_vertex == source && debugEdgeCount <= 5) {
-                                System.out.println("[DEBUG] Added node " + j + " to queue");
-                            }
-                        } else {
-                            if(current_vertex == source && debugEdgeCount <= 5) {
-                                System.out.println("[DEBUG] Node " + j + " is destination, not adding to queue");
-                            }
                         }
                     }
 
@@ -306,18 +287,8 @@ public final class Graph {
                         gWideDistance.replace(j, g_wide_distance);
                         gDistance.replace(j, g_distance);
                         gRightTurn.replace(j, g_right_turn);
-
-                    }
-                } else {
-                    if(current_vertex == source && debugEdgeCount <= 5) {
-                        System.out.println("[DEBUG] Node " + j + " failed budget check");
                     }
                 }
-            }
-
-            //pQueue.poll();
-            if(current_vertex == source) {
-                System.out.println("[DEBUG] End of iteration for source. Queue size now: " + pQueue.size());
             }
         }
 
@@ -329,22 +300,9 @@ public final class Graph {
             node.setForwardHDistance(gDistance.get(node_id));
             node.setForwardHRightTurn(gRightTurn.get(node_id));
         }
-        System.out.println("[ForwardA*] Reached " + gTime.size() + " nodes with budget=" + budget);
-        System.out.println("[ForwardA*] Destination " + destination + " reached: " + gTime.containsKey(destination));
-        
-        // Count feasible nodes after forward pass
-        int feasibleCount = 0;
-        for(Node node : adjacency_list.values()) {
-            if(node.isFeasible()) feasibleCount++;
-        }
-        System.out.println("[ForwardA*] Feasible nodes so far: " + feasibleCount);
-
     }
 
     public static void backwardAstar(int source, int destination, double budget) {
-        System.out.println("[BackwardA*] source=" + source + " dest=" + destination + " budget=" + budget);
-        System.out.println("[BackwardA*] destination forward-reachable=" + get_node(destination).isForwardReacheble());
-
         Map<Integer, Double> gTime = new HashMap<>();
         Map<Integer, Double> hTime = new HashMap<>();
         Map<Integer, Double> gWideDistance = new HashMap<>();
@@ -359,7 +317,6 @@ public final class Graph {
                     Double iTime = hTime.get(i);
                     Double jTime = hTime.get(j);
                     if(iTime == null || jTime == null) {
-                        System.out.println("[BACKWARD COMPARATOR ERROR] null time - i=" + i + " iTime=" + iTime + " j=" + j + " jTime=" + jTime);
                         return 0;
                     }
                     if (iTime > jTime) {
@@ -369,8 +326,6 @@ public final class Graph {
                     }
                     return 0;
                 } catch(Exception e) {
-                    System.out.println("[BACKWARD COMPARATOR EXCEPTION] " + e.getMessage());
-                    e.printStackTrace();
                     return 0;
                 }
             }
@@ -389,9 +344,6 @@ public final class Graph {
         while (!pQueue.isEmpty()) {
 
             int current_vertex = pQueue.poll();
-            if (pQueue.size() % 5000 == 0) {
-                System.out.println("[BackwardA*] queue size=" + pQueue.size());
-            }
             Node node = get_node(current_vertex);
             double current_cost = gTime.get(current_vertex);
             double current_wide_distance = gWideDistance.get(current_vertex);
@@ -454,16 +406,6 @@ public final class Graph {
             node.setBackwardHDistance(gDistance.get(node_id));
             node.setBackwardHRightTurn(gRightTurn.get(node_id));
         }
-        System.out.println("[BackwardA*] Reached " + gTime.size() + " nodes with budget=" + budget);
-        System.out.println("[BackwardA*] Source " + source + " reached: " + gTime.containsKey(source));
-        
-        // Count feasible nodes after backward pass
-        int feasibleCount = 0;
-        for(Node node : adjacency_list.values()) {
-            if(node.isFeasible()) feasibleCount++;
-        }
-        System.out.println("[BackwardA*] Feasible nodes after both passes: " + feasibleCount);
-
     }
 
     // Add a cluster to the graph

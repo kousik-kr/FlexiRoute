@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
@@ -37,27 +38,36 @@ import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
 
+import managers.QueryHistoryManager;
+import managers.MetricsCollector;
+import managers.ThemeManager;
+import models.QueryResult;
 import models.RoutingMode;
 import ui.components.WorldClassSplashScreen;
 import ui.panels.ResultData;
 import ui.panels.WorldClassMapPanel;
 import ui.panels.WorldClassQueryPanel;
 import ui.panels.WorldClassResultsPanel;
+import ui.panels.QueryHistoryPanel;
+import ui.panels.MetricsDashboard;
 
 /**
- * World-Class FlexRoute Navigator
- * A professional, feature-rich GUI for pathfinding with wide road optimization
+ * FlexRoute Navigator - Professional GUI Application
+ * A feature-rich GUI for pathfinding with wide road optimization
  * 
  * Features:
  * - Modern, clean UI design
  * - Multiple visualization modes
  * - Real-time progress tracking
+ * - Query history and analytics
+ * - Performance metrics dashboard
+ * - Theme support
  * - Export capabilities
  * - Comprehensive results dashboard
  * 
- * @version 3.0 - World Class Edition
+ * @version 3.0
  */
-public class WorldClassGuiLauncher extends JFrame {
+public class GuiLauncher extends JFrame {
     
     // === CONSTANTS ===
     private static final String APP_TITLE = "🌟 FlexRoute Navigator🌟";
@@ -89,13 +99,20 @@ public class WorldClassGuiLauncher extends JFrame {
     private JTabbedPane rightTabs;
     private JLabel statusLabel;
     private JProgressBar globalProgress;
+    private QueryHistoryPanel historyPanel;
+    private MetricsDashboard metricsDashboard;
+    
+    // === MANAGERS ===
+    private final QueryHistoryManager historyManager = new QueryHistoryManager();
+    private final MetricsCollector metricsCollector = new MetricsCollector();
+    private final ThemeManager themeManager = new ThemeManager();
     
     // === STATE ===
     private Result lastResult;
     private boolean isDarkMode = false;
     private ExecutorService executor = Executors.newSingleThreadExecutor();
     
-    public WorldClassGuiLauncher() {
+    public GuiLauncher() {
         super(APP_TITLE + " — " + VERSION);
         initializeUI();
         loadDataset();
@@ -281,9 +298,13 @@ public class WorldClassGuiLauncher extends JFrame {
         resultsPanel = new WorldClassResultsPanel();
         rightTabs.addTab("📊 Results", resultsPanel);
         
-        // Metrics Panel (placeholder)
-        JPanel metricsPanel = createMetricsPanel();
-        rightTabs.addTab("📈 Metrics", metricsPanel);
+        // Metrics Dashboard
+        metricsDashboard = new MetricsDashboard(metricsCollector);
+        rightTabs.addTab("📈 Metrics", metricsDashboard);
+        
+        // History Panel
+        historyPanel = new QueryHistoryPanel(historyManager);
+        rightTabs.addTab("🕐 History", historyPanel);
         
         // Main split pane
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, queryPanel, rightTabs);
@@ -293,19 +314,6 @@ public class WorldClassGuiLauncher extends JFrame {
         split.setBorder(null);
         
         return split;
-    }
-    
-    private JPanel createMetricsPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(BG_COLOR);
-        panel.setBorder(new EmptyBorder(30, 30, 30, 30));
-        
-        JLabel placeholder = new JLabel("📈 Detailed metrics and statistics will appear here after running queries.", SwingConstants.CENTER);
-        placeholder.setFont(new Font("Segoe UI", Font.PLAIN, 20));
-        placeholder.setForeground(TEXT_SECONDARY);
-        
-        panel.add(placeholder, BorderLayout.CENTER);
-        return panel;
     }
     
     private JPanel createStatusBar() {
@@ -533,12 +541,42 @@ public class WorldClassGuiLauncher extends JFrame {
                 
                 lastResult = result;
                 final Result finalResult = result;
+                final int srcNode = source;
+                final int dstNode = dest;
+                final int departTime = departure;
+                final int intervalDur = interval;
+                final int budgetVal = budget;
                 
                 SwingUtilities.invokeLater(() -> {
                     mapPanel.setSearchProgress(100, "Complete!");
                     mapPanel.clearSearchFrontier();
                     displayResults(finalResult);
                     queryPanel.setRunning(false);
+                    
+                    // Record to history and metrics
+                    QueryResult queryResult = new QueryResult.Builder()
+                        .setSourceNode(srcNode)
+                        .setDestinationNode(dstNode)
+                        .setDepartureTime(departTime)
+                        .setIntervalDuration(intervalDur)
+                        .setBudget(budgetVal)
+                        .setActualDepartureTime(finalResult.get_departureTime())
+                        .setScore(finalResult.get_score())
+                        .setTravelTime(finalResult.getTotalCost())
+                        .setRightTurns(finalResult.get_right_turns())
+                        .setSharpTurns(finalResult.get_sharp_turns())
+                        .setPathNodes(finalResult.getPathNodes())
+                        .setWideEdgeIndices(finalResult.getWideEdgeIndices())
+                        .setExecutionTimeMs((long)finalResult.getExecutionTime())
+                        .setSuccess(finalResult.isPathFound())
+                        .build();
+                    
+                    historyManager.addQuery(queryResult);
+                    metricsCollector.recordQuery(finalResult.isPathFound(), (long)finalResult.getExecutionTime(), 
+                        finalResult.getPathNodes() != null ? finalResult.getPathNodes().size() : 0);
+                    
+                    // Refresh history panel
+                    historyPanel.refreshTable();
                     
                     // Show appropriate status based on results
                     if (finalResult.hasParetoOptimalPaths()) {
@@ -888,7 +926,7 @@ public class WorldClassGuiLauncher extends JFrame {
             <html>
             <body style="font-family: Segoe UI; text-align: center; padding: 20px;">
             <h1>🗺️ FlexRoute Navigator</h1>
-            <h3>Version 3.0 — World Class Edition</h3>
+            <h3>Version 3.0</h3>
             <p>Advanced pathfinding with wide road optimization</p>
             <br>
             <p>Using Bi-TDCPO algorithm for optimal<br>
@@ -903,7 +941,60 @@ public class WorldClassGuiLauncher extends JFrame {
     }
     
     private void exitApplication() {
-        executor.shutdown();
+        // Create custom confirmation dialog with styling
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        
+        JLabel icon = new JLabel("🚪");
+        icon.setFont(new Font("Segoe UI", Font.PLAIN, 48));
+        icon.setHorizontalAlignment(SwingConstants.CENTER);
+        
+        JLabel message = new JLabel("<html><div style='text-align: center;'>" +
+            "<b>Exit FlexRoute Navigator?</b><br><br>" +
+            "Are you sure you want to exit?<br>" +
+            "All unsaved data will be lost." +
+            "</div></html>");
+        message.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        message.setHorizontalAlignment(SwingConstants.CENTER);
+        
+        panel.add(icon, BorderLayout.NORTH);
+        panel.add(message, BorderLayout.CENTER);
+        
+        String[] options = {"Exit", "Cancel"};
+        int choice = JOptionPane.showOptionDialog(
+            this,
+            panel,
+            "Confirm Exit",
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.QUESTION_MESSAGE,
+            null,
+            options,
+            options[1]
+        );
+        
+        if (choice == 0) { // Exit chosen
+            performGracefulShutdown();
+        }
+    }
+    
+    private void performGracefulShutdown() {
+        setStatus("👋 Shutting down FlexRoute Navigator...");
+        
+        // Cleanup resources
+        try {
+            if (metricsDashboard != null) {
+                metricsDashboard.dispose();
+            }
+            executor.shutdown();
+            if (!executor.awaitTermination(3, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+        
+        dispose();
         System.exit(0);
     }
     
@@ -938,7 +1029,7 @@ public class WorldClassGuiLauncher extends JFrame {
                     loadTimer.stop();
                     
                     // Create and show main window
-                    WorldClassGuiLauncher app = new WorldClassGuiLauncher();
+                    GuiLauncher app = new GuiLauncher();
                     app.setVisible(true);
                     
                     splash.closeSplash();

@@ -1,77 +1,93 @@
-# FlexRoute GUI Launcher Script for PowerShell
-# This script compiles and runs the FlexRoute application
+# FlexRoute Navigator - PowerShell Launch Script
 
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "FlexRoute Pro - Launch Script" -ForegroundColor Cyan
-Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "====================================================" -ForegroundColor Cyan
+Write-Host "         FlexRoute Navigator" -ForegroundColor Cyan
+Write-Host "====================================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Change to source directory
+# Get script directory
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-Set-Location "$scriptDir\src"
+Set-Location $scriptDir
 
 # Check if Java is installed
 try {
     $javaVersion = java -version 2>&1 | Select-Object -First 1
-    Write-Host "✓ Java found: $javaVersion" -ForegroundColor Green
-    Write-Host ""
+    Write-Host "[OK] Java found: $javaVersion" -ForegroundColor Green
 } catch {
-    Write-Host "✗ ERROR: Java is not installed or not in PATH" -ForegroundColor Red
-    Write-Host "Please install Java 21 or higher" -ForegroundColor Yellow
+    Write-Host "[ERROR] Java is not installed or not in PATH" -ForegroundColor Red
+    Write-Host "Please install Java 17 or higher" -ForegroundColor Yellow
     Read-Host "Press Enter to exit"
     exit 1
 }
 
-# Check if dataset files exist
-if (-not (Test-Path "dataset\nodes_264346.txt")) {
-    Write-Host "⚠ WARNING: Dataset files not found in src\dataset\" -ForegroundColor Yellow
-    Write-Host "The application will prompt you to download them from Google Drive" -ForegroundColor Yellow
-    Write-Host ""
+# Create target directory if needed
+if (-not (Test-Path "target\classes")) {
+    New-Item -ItemType Directory -Path "target\classes" -Force | Out-Null
 }
 
-# Compile Java files if needed
-if (-not (Test-Path "GuiLauncher.class")) {
-    Write-Host "Compiling Java files..." -ForegroundColor Cyan
+Write-Host "[*] Checking compiled classes..." -ForegroundColor Cyan
+
+# Compile if needed
+if (-not (Test-Path "target\classes\GuiLauncher.class")) {
+    Write-Host "[*] Compiling source files..." -ForegroundColor Yellow
     
-    javac -d . `
-        managers\*.java `
-        models\*.java `
-        ui\components\*.java `
-        ui\panels\*.java `
-        GoogleDriveConfigHelper.java `
-        GoogleDriveDatasetLoader.java `
-        GuiLauncher.java `
-        BidirectionalAstar.java `
-        Graph.java `
-        Node.java `
-        Edge.java `
-        Label.java `
-        Result.java `
-        Query.java `
-        Properties.java `
-        Cluster.java `
-        Function.java `
-        BreakPoint.java `
-        BidirectionalLabeling.java `
-        BidirectionalDriver.java
+    # Compile models first (other classes depend on them)
+    javac -d target/classes `
+        src/models/*.java 2>&1
     
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "✗ ERROR: Compilation failed" -ForegroundColor Red
+    # Compile core classes
+    javac -d target/classes -cp target/classes `
+        src/Node.java src/Edge.java src/Properties.java src/Cluster.java `
+        src/Graph.java src/Label.java src/Function.java src/BreakPoint.java `
+        src/Query.java src/Result.java src/BidirectionalLabeling.java `
+        src/BidirectionalAstar.java src/BidirectionalDriver.java `
+        src/DatasetDownloader.java src/GoogleDriveConfigHelper.java `
+        src/GoogleDriveDatasetLoader.java 2>&1
+    
+    # Compile managers
+    javac -d target/classes -cp target/classes `
+        src/managers/*.java 2>&1
+    
+    # Compile UI panels
+    javac -d target/classes -cp target/classes `
+        src/ui/panels/WorldClassQueryPanel.java `
+        src/ui/panels/WorldClassMapPanel.java `
+        src/ui/panels/WorldClassResultsPanel.java `
+        src/ui/panels/ResultData.java `
+        src/ui/panels/QueryHistoryPanel.java `
+        src/ui/panels/MetricsDashboard.java 2>&1
+    
+    # Compile UI components
+    javac -d target/classes -cp target/classes `
+        src/ui/components/WorldClassSplashScreen.java 2>&1
+    
+    # Compile launcher
+    javac -d target/classes -cp target/classes `
+        src/GuiLauncher.java 2>&1
+    
+    if (-not (Test-Path "target\classes\GuiLauncher.class")) {
+        Write-Host "[ERROR] Compilation failed" -ForegroundColor Red
         Read-Host "Press Enter to exit"
         exit 1
     }
-    Write-Host "✓ Compilation successful!" -ForegroundColor Green
-    Write-Host ""
+    Write-Host "[OK] Compilation successful" -ForegroundColor Green
+} else {
+    Write-Host "[OK] Classes already compiled" -ForegroundColor Green
 }
 
-# Launch the GUI
-Write-Host "Launching FlexRoute Pro GUI..." -ForegroundColor Cyan
 Write-Host ""
-java GuiLauncher
+Write-Host "[*] Starting FlexRoute Navigator..." -ForegroundColor Cyan
+Write-Host ""
 
-# Check exit code
+java -Dsun.java2d.uiScale=1.0 `
+     -Dswing.aatext=true `
+     -Dawt.useSystemAAFontSettings=on `
+     -Xmx2g `
+     -cp "target/classes" `
+     GuiLauncher
+
 if ($LASTEXITCODE -ne 0) {
     Write-Host ""
-    Write-Host "Application exited with error code: $LASTEXITCODE" -ForegroundColor Red
+    Write-Host "[!] Application exited with code: $LASTEXITCODE" -ForegroundColor Red
     Read-Host "Press Enter to exit"
 }
