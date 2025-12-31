@@ -56,7 +56,7 @@ public class WorldClassQueryPanel extends JPanel {
     private JTextField sourceField, destField;
     private JSlider departureSlider, intervalSlider, budgetSlider;
     private JLabel departureValue, intervalValue, budgetValue;
-    private JComboBox<String> heuristicCombo, datasetCombo;
+    private JComboBox<String> heuristicCombo;
     private JButton runButton;
     private JLabel statusLabel;
     
@@ -86,27 +86,19 @@ public class WorldClassQueryPanel extends JPanel {
         mainPanel.add(createHeader());
         mainPanel.add(Box.createVerticalStrut(14));
         
-        // === DATASET (full width) ===
-        mainPanel.add(createLabeledCombo("Dataset", OCEAN_TEAL, new String[]{"21048", "California"}, true));
+        // === SOURCE & DESTINATION (single row) ===
+        mainPanel.add(createSourceDestRow());
         mainPanel.add(Box.createVerticalStrut(12));
         
         // === ALGORITHM (full width) ===
         mainPanel.add(createLabeledCombo("Algorithm", VIVID_PURPLE, new String[]{"Best", "Euclidean", "Manhattan"}, false));
         mainPanel.add(Box.createVerticalStrut(14));
         
-        // === ROUTING MODE (new) ===
+        // === ROUTING MODE ===
         mainPanel.add(createRoutingModePanel());
         mainPanel.add(Box.createVerticalStrut(14));
         
-        // === SOURCE (full width) ===
-        mainPanel.add(createInputField("Source", NEON_GREEN, true));
-        mainPanel.add(Box.createVerticalStrut(12));
-        
-        // === DESTINATION (full width) ===
-        mainPanel.add(createInputField("Destination", CORAL_PINK, false));
-        mainPanel.add(Box.createVerticalStrut(12));
-        
-        // === QUICK ACTIONS (3 buttons) ===
+        // === QUICK ACTIONS (2 buttons) ===
         mainPanel.add(createActionsPanel());
         mainPanel.add(Box.createVerticalStrut(14));
         
@@ -223,6 +215,80 @@ public class WorldClassQueryPanel extends JPanel {
         return header;
     }
     
+    /**
+     * Creates a single row with Source and Destination fields side by side
+     */
+    private JPanel createSourceDestRow() {
+        JPanel rowPanel = new JPanel();
+        rowPanel.setLayout(new BoxLayout(rowPanel, BoxLayout.Y_AXIS));
+        rowPanel.setOpaque(false);
+        rowPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 85));
+        rowPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        // Label row
+        JPanel labelRow = new JPanel(new GridLayout(1, 2, 10, 0));
+        labelRow.setOpaque(false);
+        labelRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 25));
+        labelRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        JLabel srcLabel = new JLabel("📍 Source");
+        srcLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        srcLabel.setForeground(NEON_GREEN);
+        labelRow.add(srcLabel);
+        
+        JLabel destLabel = new JLabel("🎯 Destination");
+        destLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        destLabel.setForeground(CORAL_PINK);
+        labelRow.add(destLabel);
+        
+        rowPanel.add(labelRow);
+        rowPanel.add(Box.createVerticalStrut(4));
+        
+        // Field row
+        JPanel fieldRow = new JPanel(new GridLayout(1, 2, 10, 0));
+        fieldRow.setOpaque(false);
+        fieldRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
+        fieldRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        // Source field
+        sourceField = new JTextField();
+        sourceField.setFont(new Font("Segoe UI", Font.PLAIN, 22));
+        sourceField.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(NEON_GREEN, 2, true),
+            BorderFactory.createEmptyBorder(6, 8, 6, 8)
+        ));
+        sourceField.setBackground(new Color(220, 252, 231)); // Light green
+        sourceField.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyReleased(KeyEvent e) {
+                updateStatus();
+                triggerPreview();
+            }
+        });
+        fieldRow.add(sourceField);
+        
+        // Destination field
+        destField = new JTextField();
+        destField.setFont(new Font("Segoe UI", Font.PLAIN, 22));
+        destField.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(CORAL_PINK, 2, true),
+            BorderFactory.createEmptyBorder(6, 8, 6, 8)
+        ));
+        destField.setBackground(new Color(255, 228, 230)); // Light pink
+        destField.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyReleased(KeyEvent e) {
+                updateStatus();
+                triggerPreview();
+            }
+        });
+        fieldRow.add(destField);
+        
+        rowPanel.add(fieldRow);
+        
+        return rowPanel;
+    }
+    
     private JPanel createLabeledCombo(String labelText, Color color, String[] items, boolean isDataset) {
         JPanel panel = new JPanel(new BorderLayout(6, 4));
         panel.setOpaque(false);
@@ -239,11 +305,8 @@ public class WorldClassQueryPanel extends JPanel {
         combo.setBackground(Color.WHITE);
         combo.setBorder(BorderFactory.createLineBorder(color, 2, true));
         
-        if (isDataset) {
-            datasetCombo = combo;
-        } else {
-            heuristicCombo = combo;
-        }
+        // Only heuristic combo is used now (dataset removed)
+        heuristicCombo = combo;
         
         panel.add(combo, BorderLayout.CENTER);
         return panel;
