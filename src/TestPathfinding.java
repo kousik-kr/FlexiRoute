@@ -12,7 +12,7 @@ public class TestPathfinding {
         double interval = 360;
         double budget = 5.0;  // Budget constraint
         
-        System.out.println("Java Wide-Path Test");
+        System.out.println("Java FlexRoute Test");
         System.out.println("============================================================");
         System.out.println("Input:");
         System.out.println("  Source: " + source);
@@ -23,7 +23,7 @@ public class TestPathfinding {
         System.out.println("============================================================");
         
         // Configure and load graph
-        BidirectionalAstar.setConfiguredGraphDataDir("C:\\Users\\kousi\\eclipse-workspace\\Wide-Path\\");
+        BidirectionalAstar.setConfiguredGraphDataDir("C:\\Users\\kousi\\eclipse-workspace\\FlexRoute\\");
         BidirectionalAstar.configureDefaults();
         System.out.println("Loading graph...");
         boolean loaded = BidirectionalAstar.loadGraphFromDisk(null, null);

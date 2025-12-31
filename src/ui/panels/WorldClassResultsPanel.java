@@ -379,10 +379,10 @@ public class WorldClassResultsPanel extends JPanel {
         pathDetailsArea.setText("""
             ╔══════════════════════════════════════════════════════════╗
             ║                                                          ║
-            ║     🗺️  Welcome to Wide-Path Navigator!                   ║
+            ║     🗺️  Welcome to FlexRoute Navigator!                   ║
             ║                                                          ║
             ║     Configure your query in the left panel and click     ║
-            ║     "Find Wide Path" to discover the optimal route.      ║
+            ║     "Find FlexRoute" to discover the optimal route.      ║
             ║                                                          ║
             ║     The algorithm will find a path that maximizes        ║
             ║     wide road usage within your travel budget.           ║
@@ -405,9 +405,14 @@ public class WorldClassResultsPanel extends JPanel {
             return;
         }
         
-        // Update status
-        statusLabel.setText(result.isPathFound() ? "✅ Path found successfully!" : "❌ No path found");
-        statusLabel.setForeground(result.isPathFound() ? NEON_GREEN : new Color(244, 67, 54));
+        // Update status based on routing mode
+        if (result.hasParetoOptimalPaths()) {
+            statusLabel.setText("✅ Found " + result.getParetoPathCount() + " Pareto optimal paths!");
+            statusLabel.setForeground(VIVID_PURPLE);
+        } else {
+            statusLabel.setText(result.isPathFound() ? "✅ Path found successfully!" : "❌ No path found");
+            statusLabel.setForeground(result.isPathFound() ? NEON_GREEN : new Color(244, 67, 54));
+        }
         
         // Update stat cards
         updateStatCard("Time", String.format("%.2f ms", result.getExecutionTime()));
@@ -427,34 +432,103 @@ public class WorldClassResultsPanel extends JPanel {
         StringBuilder details = new StringBuilder();
         details.append("═══════════════════ QUERY RESULT ═══════════════════\n\n");
         
+        // Show routing mode
+        if (result.getRoutingModeName() != null) {
+            details.append("🎯 ROUTING MODE: ").append(result.getRoutingModeName()).append("\n\n");
+        }
+        
         details.append("📍 ROUTE SUMMARY\n");
         details.append("   Source:       ").append(result.getSource()).append("\n");
         details.append("   Destination:  ").append(result.getDestination()).append("\n");
         details.append("   Budget:       ").append(result.getBudget()).append(" units\n");
         int depTime = result.getDepartureTime();
-        details.append("   Departure:    ").append(String.format("%02d:%02d", depTime/60, depTime%60)).append("\n\n");
+        details.append("   Departure:    ").append(String.format("%02d:%02d", depTime/60, depTime%60)).append("\n");
+        
+        // Display suggested departure time from algorithm
+        double suggestedDep = result.getSuggestedDepartureTime();
+        if (suggestedDep > 0) {
+            int sugHours = (int)(suggestedDep / 60);
+            int sugMins = (int)(suggestedDep % 60);
+            details.append("   ⭐ Optimal Departure: ").append(String.format("%02d:%02d", sugHours, sugMins))
+                   .append(" (").append(String.format("%.1f", suggestedDep)).append(" mins)\n");
+        }
+        details.append("\n");
         
         details.append("📊 STATISTICS\n");
         details.append("   Path Length:  ").append(result.getPathLength()).append(" nodes\n");
         details.append("   Total Cost:   ").append(String.format("%.2f", result.getTotalCost())).append(" units\n");
         details.append("   Wide Edges:   ").append(result.getWideEdgeCount()).append("\n");
+        details.append("   Wide Score:   ").append(String.format("%.4f", result.getWideScore())).append("\n");
+        details.append("   Right Turns:  ").append(result.getRightTurns()).append("\n");
         details.append("   Exec Time:    ").append(String.format("%.2f", result.getExecutionTime())).append(" ms\n\n");
         
-        details.append("🛤️ PATH NODES (").append(result.getPathLength()).append(" total)\n");
-        details.append("   ");
-        List<Integer> path = result.getPathNodes();
-        if (path != null) {
-            for (int i = 0; i < path.size(); i++) {
-                details.append(path.get(i));
-                if (i < path.size() - 1) {
-                    details.append(" → ");
-                    if ((i + 1) % 8 == 0) {
-                        details.append("\n   ");
+        // Display Pareto optimal paths if available
+        if (result.hasParetoOptimalPaths()) {
+            details.append("═══════════════════════════════════════════════════════\n");
+            details.append("🎯 ALL PARETO OPTIMAL PATHS (").append(result.getParetoPathCount()).append(" paths)\n");
+            details.append("═══════════════════════════════════════════════════════\n\n");
+            details.append("These paths represent the trade-off between maximizing\n");
+            details.append("wideness and minimizing right turns. No path is strictly\n");
+            details.append("better than another in both objectives.\n\n");
+            
+            int pathNum = 1;
+            for (ResultData paretoPath : result.getParetoOptimalPaths()) {
+                int paretoWidePercent = paretoPath.getPathLength() > 0 
+                    ? (int) (100.0 * paretoPath.getWideEdgeCount() / Math.max(1, paretoPath.getPathLength() - 1))
+                    : 0;
+                
+                details.append("┌─────────────────────────────────────────────────┐\n");
+                details.append("│ PATH #").append(pathNum++).append("\n");
+                details.append("├─────────────────────────────────────────────────┤\n");
+                details.append("│  Wide Score:   ").append(String.format("%.4f", paretoPath.getWideScore()));
+                details.append(" (").append(paretoWidePercent).append("% wide roads)\n");
+                details.append("│  Right Turns:  ").append(paretoPath.getRightTurns()).append("\n");
+                details.append("│  Path Length:  ").append(paretoPath.getPathLength()).append(" nodes\n");
+                details.append("│  Total Cost:   ").append(String.format("%.2f", paretoPath.getTotalCost())).append("\n");
+                
+                // Show path nodes (abbreviated)
+                List<Integer> pathNodes = paretoPath.getPathNodes();
+                if (pathNodes != null && !pathNodes.isEmpty()) {
+                    details.append("│  Path:        ");
+                    if (pathNodes.size() <= 5) {
+                        for (int i = 0; i < pathNodes.size(); i++) {
+                            details.append(pathNodes.get(i));
+                            if (i < pathNodes.size() - 1) details.append(" → ");
+                        }
+                    } else {
+                        details.append(pathNodes.get(0)).append(" → ")
+                               .append(pathNodes.get(1)).append(" → ... → ")
+                               .append(pathNodes.get(pathNodes.size() - 2)).append(" → ")
+                               .append(pathNodes.get(pathNodes.size() - 1));
                     }
+                    details.append("\n");
                 }
+                details.append("└─────────────────────────────────────────────────┘\n\n");
             }
         }
-        details.append("\n\n");
+        
+        details.append("🛤️ PRIMARY PATH NODES (").append(result.getPathLength()).append(" total)\n");
+        List<Integer> path = result.getPathNodes();
+        List<double[]> coords = result.getPathCoordinates();
+        if (path != null && !path.isEmpty()) {
+            // Show node IDs with coordinates
+            details.append("   [Step] NodeID → (Latitude, Longitude)\n");
+            details.append("   ────────────────────────────────────\n");
+            for (int i = 0; i < path.size(); i++) {
+                int nodeId = path.get(i);
+                String coordStr = "";
+                if (coords != null && i < coords.size()) {
+                    double[] coord = coords.get(i);
+                    coordStr = String.format(" → (%.6f, %.6f)", coord[0], coord[1]);
+                }
+                String marker = "";
+                if (i == 0) marker = " [START]";
+                else if (i == path.size() - 1) marker = " [END]";
+                
+                details.append(String.format("   [%3d] %d%s%s\n", i, nodeId, coordStr, marker));
+            }
+        }
+        details.append("\n");
         
         if (result.getPathCoordinates() != null && !result.getPathCoordinates().isEmpty()) {
             details.append("🌍 COORDINATES (lat, lon)\n");
@@ -595,7 +669,7 @@ public class WorldClassResultsPanel extends JPanel {
             
             ╔════════════════════════════════════════════════════════╗
             ║                                                        ║
-            ║     ⏳  Finding the optimal wide path...                ║
+            ║     ⏳  Finding the optimal FlexRoute path...            ║
             ║                                                        ║
             ║     The bidirectional labeling algorithm is            ║
             ║     exploring possible routes to maximize              ║

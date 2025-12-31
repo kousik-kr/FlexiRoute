@@ -1,9 +1,9 @@
 @echo off
-REM Wide-Path GUI Launcher Script for Windows
-REM This script compiles and runs the Wide-Path application
+REM FlexRoute GUI Launcher Script for Windows
+REM This script compiles and runs the FlexRoute application
 
 echo ========================================
-echo Wide-Path Pro - Launch Script
+echo FlexRoute Pro - Launch Script
 echo ========================================
 echo.
 
@@ -62,7 +62,7 @@ if not exist "GuiLauncher.class" (
 )
 
 REM Launch the GUI
-echo Launching Wide-Path Pro GUI...
+echo Launching FlexRoute Pro GUI...
 echo.
 java GuiLauncher
 

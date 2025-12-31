@@ -18,6 +18,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
+
+import models.RoutingMode;
 import java.util.Queue;
 import java.util.Random;
 import java.util.Set;
@@ -517,13 +519,32 @@ public class BidirectionalAstar {
    
     /**
      * Run a single query with an explicit interval duration for the end time window.
+     * Uses default ALL_OBJECTIVES routing mode.
      */
     public static Result runSingleQuery(int source, int destination, double departureMinutes, double intervalMinutes, double budgetMinutes)
+            throws InterruptedException, ExecutionException {
+        return runSingleQuery(source, destination, departureMinutes, intervalMinutes, budgetMinutes, RoutingMode.ALL_OBJECTIVES);
+    }
+
+    /**
+     * Run a single query with explicit routing mode selection.
+     * 
+     * @param source Source node ID
+     * @param destination Destination node ID
+     * @param departureMinutes Departure time in minutes from midnight
+     * @param intervalMinutes Time interval for flexible departure
+     * @param budgetMinutes Travel time budget constraint
+     * @param routingMode User-selected optimization mode
+     * @return Result containing optimal path(s) based on routing mode
+     */
+    public static Result runSingleQuery(int source, int destination, double departureMinutes, 
+            double intervalMinutes, double budgetMinutes, RoutingMode routingMode)
             throws InterruptedException, ExecutionException {
         start = System.currentTimeMillis();  // Initialize timer for query execution
         double interval = intervalMinutes > 0 ? intervalMinutes : budgetMinutes;
         interval_duration = interval;
-        Query query = new Query(source, destination, departureMinutes, departureMinutes + interval, budgetMinutes);
+        Query query = new Query(source, destination, departureMinutes, departureMinutes + interval, budgetMinutes, routingMode);
+        System.out.println("[Query] Running with mode: " + routingMode.getDisplayName());
         BidirectionalDriver driver = new BidirectionalDriver(query, budgetMinutes);
         try {
             return driver.driver();

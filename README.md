@@ -1,6 +1,6 @@
-# Wide-Path Pro - World-Class Edition
+# FlexRoute Pro - World-Class Edition
 
-Wide-Path is a **world-class pathfinding analysis platform** featuring:
+FlexRoute is a **world-class pathfinding analysis platform** featuring:
 - **Java 21 LTS** backend with bidirectional A* algorithm
 - **Enterprise-Grade Swing GUI** with premium design system
 - **React + Vite frontend** for web-based visualization (Optional)
@@ -185,7 +185,7 @@ The desktop GUI offers 5 creative visualization modes:
 
 ## 🏗️ Architecture
 
-Wide-Path v2.0 uses a **modular architecture** with clear separation of concerns:
+FlexRoute v2.0 uses a **modular architecture** with clear separation of concerns:
 
 ```
 models/          → Immutable data structures
@@ -330,7 +330,7 @@ See [QUICK_REFERENCE.md](QUICK_REFERENCE.md#adding-visualization-mode) for detai
 
 ##  License & Credits
 
-Wide-Path Pro v2.0 - Advanced Pathfinding Analysis System
+FlexRoute Pro v2.0 - Advanced Pathfinding Analysis System
 
 **Architecture**: Modular design with separation of concerns
 **Patterns**: Builder, Observer, Strategy
@@ -346,4 +346,4 @@ Wide-Path Pro v2.0 - Advanced Pathfinding Analysis System
 
 **Version**: 2.0 | **Status**: Production Ready  | **Java**: 21 LTS Required
 
- **Enjoy Wide-Path Pro!** 
+ **Enjoy FlexRoute Pro!** 

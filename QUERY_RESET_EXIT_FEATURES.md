@@ -40,7 +40,7 @@ Graceful shutdown with professional confirmation:
 ┌──────────────────────────────┐
 │         🚪                    │
 │                              │
-│   Exit Wide-Path Pro?        │
+│   Exit FlexRoute Pro?        │
 │                              │
 │   Are you sure you want to   │
 │   exit? All unsaved data     │
@@ -56,7 +56,7 @@ Graceful shutdown with professional confirmation:
 Displays on startup and after reset:
 ```
 ═══════════════════════════════════════
-    WIDE-PATH PRO - READY
+    FLEXROUTE PRO - READY
 ═══════════════════════════════════════
 
 🎯 Enter query parameters and click 'Run Query'
@@ -201,4 +201,4 @@ The reset and exit features follow these principles:
 
 ---
 
-*Wide-Path Pro v2.0 - Advanced Pathfinding with World-Class UX*
+*FlexRoute Pro v2.0 - Advanced Pathfinding with World-Class UX*

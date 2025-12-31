@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.concurrent.*;
 
 /**
- * World-Class Wide-Path GUI Application - Main Entry Point
+ * World-Class FlexRoute GUI Application - Main Entry Point
  * 
  * Architecture:
  * - Modular design with separate packages for UI, managers, and models
@@ -19,7 +19,7 @@ import java.util.concurrent.*;
  * - Modern Material Design inspired interface
  * - Comprehensive metrics and history tracking
  * 
- * @author Wide-Path Team
+ * @author FlexRoute Team
  * @version 2.0
  */
 public class GuiLauncher {
@@ -77,7 +77,7 @@ public class GuiLauncher {
     private JTabbedPane tabbedPane;
 
     public GuiLauncher() {
-        this.frame = new JFrame("Wide-Path Pro - Advanced Pathfinding Analysis");
+        this.frame = new JFrame("FlexRoute Pro - Advanced Pathfinding Analysis");
         this.executorService = Executors.newFixedThreadPool(4);
         this.historyManager = new QueryHistoryManager();
         this.metricsCollector = new MetricsCollector();
@@ -591,7 +591,7 @@ public class GuiLauncher {
     }
 
     private void showAboutDialog() {
-        String message = "Wide-Path Pro v2.0\n\n" +
+        String message = "FlexRoute Pro v2.0\n\n" +
                         "Advanced Pathfinding Analysis System\n\n" +
                         "Features:\n" +
                         "• Modern Material Design UI\n" +
@@ -600,9 +600,9 @@ public class GuiLauncher {
                         "• Advanced path visualization\n" +
                         "• Multiple rendering modes\n" +
                         "• Query reset and session management\n\n" +
-                        "© 2025 Wide-Path Team";
+                        "© 2025 FlexRoute Team";
         
-        JOptionPane.showMessageDialog(frame, message, "About Wide-Path Pro", JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(frame, message, "About FlexRoute Pro", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void resetQuery() {
@@ -650,7 +650,7 @@ public class GuiLauncher {
     private void displayWelcomeMessage() {
         StringBuilder sb = new StringBuilder();
         sb.append("═══════════════════════════════════════\n");
-        sb.append("    WIDE-PATH PRO - READY\n");
+        sb.append("    FLEXROUTE PRO - READY\n");
         sb.append("═══════════════════════════════════════\n\n");
         sb.append("🎯 Enter query parameters and click 'Run Query'\n");
         sb.append("📊 View results in the tabs above\n");
@@ -731,7 +731,7 @@ public class GuiLauncher {
         icon.setHorizontalAlignment(SwingConstants.CENTER);
         
         JLabel message = new JLabel("<html><div style='text-align: center;'>" +
-            "<b>Exit Wide-Path Pro?</b><br><br>" +
+            "<b>Exit FlexRoute Pro?</b><br><br>" +
             "Are you sure you want to exit?<br>" +
             "All unsaved data will be lost." +
             "</div></html>");
@@ -759,7 +759,7 @@ public class GuiLauncher {
     }
 
     private void performGracefulShutdown() {
-        statusBar.setMessage("Shutting down Wide-Path Pro...", StatusBar.MessageType.INFO);
+        statusBar.setMessage("Shutting down FlexRoute Pro...", StatusBar.MessageType.INFO);
         
         SwingWorker<Void, Void> shutdownWorker = new SwingWorker<>() {
             @Override

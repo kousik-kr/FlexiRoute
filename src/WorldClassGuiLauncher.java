@@ -9,8 +9,10 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -35,6 +37,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
 
+import models.RoutingMode;
 import ui.components.WorldClassSplashScreen;
 import ui.panels.ResultData;
 import ui.panels.WorldClassMapPanel;
@@ -42,7 +45,7 @@ import ui.panels.WorldClassQueryPanel;
 import ui.panels.WorldClassResultsPanel;
 
 /**
- * World-Class Wide Path Navigator
+ * World-Class FlexRoute Navigator
  * A professional, feature-rich GUI for pathfinding with wide road optimization
  * 
  * Features:
@@ -57,7 +60,7 @@ import ui.panels.WorldClassResultsPanel;
 public class WorldClassGuiLauncher extends JFrame {
     
     // === CONSTANTS ===
-    private static final String APP_TITLE = "🌟 Wide-Path Navigator🌟";
+    private static final String APP_TITLE = "🌟 FlexRoute Navigator🌟";
     private static final String VERSION = "";
     private static final int DEFAULT_WIDTH = 1550;
     private static final int DEFAULT_HEIGHT = 980;
@@ -475,8 +478,9 @@ public class WorldClassGuiLauncher extends JFrame {
         int interval = queryPanel.getInterval();
         int budget = queryPanel.getBudget();
         int heuristic = queryPanel.getHeuristicMode();
+        RoutingMode routingMode = queryPanel.getRoutingMode();
         
-        setStatus("Running query: " + source + " → " + dest + " (budget: " + budget + ")");
+        setStatus("Running query: " + source + " → " + dest + " (mode: " + routingMode.getDisplayName() + ")");
         queryPanel.setRunning(true);
         resultsPanel.showLoading();
         mapPanel.clearQueryPreview();
@@ -498,9 +502,9 @@ public class WorldClassGuiLauncher extends JFrame {
                 
                 SwingUtilities.invokeLater(() -> mapPanel.setSearchProgress(30, "Expanding labels..."));
                 
-                // Use the existing BidirectionalAstar.runSingleQuery
+                // Use the existing BidirectionalAstar.runSingleQuery with routing mode
                 BidirectionalAstar.setIntervalDuration(interval);
-                Result result = BidirectionalAstar.runSingleQuery(source, dest, departure, interval, budget);
+                Result result = BidirectionalAstar.runSingleQuery(source, dest, departure, interval, budget, routingMode);
                 
                 SwingUtilities.invokeLater(() -> mapPanel.setSearchProgress(80, "Reconstructing path..."));
                 
@@ -514,10 +518,17 @@ public class WorldClassGuiLauncher extends JFrame {
                 result.setDestination(dest);
                 result.setBudget(budget);
                 result.setExecutionTime(elapsed);
+                result.setRoutingMode(routingMode);
                 
                 // Get path coordinates
                 if (result.isPathFound()) {
                     collectPathCoordinates(result);
+                    // Also collect coordinates for Pareto paths if available
+                    if (result.hasParetoOptimalPaths()) {
+                        for (Result paretoPath : result.getParetoOptimalPaths()) {
+                            collectPathCoordinates(paretoPath);
+                        }
+                    }
                 }
                 
                 lastResult = result;
@@ -528,9 +539,16 @@ public class WorldClassGuiLauncher extends JFrame {
                     mapPanel.clearSearchFrontier();
                     displayResults(finalResult);
                     queryPanel.setRunning(false);
-                    setStatus(finalResult.isPathFound() 
-                        ? String.format("✅ Path found: %d nodes in %.2f ms", finalResult.getPathLength(), finalResult.getExecutionTime())
-                        : "❌ No path found within budget");
+                    
+                    // Show appropriate status based on results
+                    if (finalResult.hasParetoOptimalPaths()) {
+                        setStatus(String.format("✅ Found %d Pareto optimal paths in %.2f ms", 
+                            finalResult.getParetoPathCount(), finalResult.getExecutionTime()));
+                    } else {
+                        setStatus(finalResult.isPathFound() 
+                            ? String.format("✅ Path found: %d nodes in %.2f ms", finalResult.getPathLength(), finalResult.getExecutionTime())
+                            : "❌ No path found within budget");
+                    }
                     
                     // Write path to file
                     writePathToFile(finalResult);
@@ -566,6 +584,107 @@ public class WorldClassGuiLauncher extends JFrame {
         result.setPathCoordinates(coordinates);
     }
     
+    /**
+     * Collect neighboring graph context around path nodes for visualization
+     * Returns: [context node coordinates, context edges, path-to-context edges]
+     * path-to-context edges: [pathNodeIndex, contextNodeIndex]
+     */
+    private Object[] collectGraphContext(List<Integer> pathNodes) {
+        List<double[]> contextCoords = new ArrayList<>();
+        List<int[]> contextEdges = new ArrayList<>();
+        List<int[]> pathToContextEdges = new ArrayList<>();  // Edges from path nodes to context nodes
+        
+        if (pathNodes == null || pathNodes.isEmpty()) {
+            return new Object[]{contextCoords, contextEdges, pathToContextEdges};
+        }
+        
+        Map<Integer, Node> allNodes = Graph.get_nodes();
+        Set<Integer> pathNodeSet = new HashSet<>(pathNodes);
+        Set<Integer> contextNodeSet = new HashSet<>();
+        Map<Integer, Integer> contextNodeToIndex = new java.util.HashMap<>();
+        Map<Integer, Integer> pathNodeToIndex = new java.util.HashMap<>();
+        
+        // Build path node index map
+        for (int i = 0; i < pathNodes.size(); i++) {
+            pathNodeToIndex.put(pathNodes.get(i), i);
+        }
+        
+        // Collect neighbors of path nodes (1-hop neighbors)
+        for (Integer pathNodeId : pathNodes) {
+            Node pathNode = allNodes.get(pathNodeId);
+            if (pathNode == null) continue;
+            
+            // Add outgoing neighbors
+            for (Integer neighborId : pathNode.get_outgoing_edges().keySet()) {
+                if (!pathNodeSet.contains(neighborId)) {
+                    contextNodeSet.add(neighborId);
+                }
+            }
+            
+            // Add incoming neighbors
+            for (Integer neighborId : pathNode.get_incoming_edges().keySet()) {
+                if (!pathNodeSet.contains(neighborId)) {
+                    contextNodeSet.add(neighborId);
+                }
+            }
+        }
+        
+        // Build coordinates list for context nodes
+        int index = 0;
+        for (Integer nodeId : contextNodeSet) {
+            Node node = allNodes.get(nodeId);
+            if (node != null) {
+                contextCoords.add(new double[]{node.get_latitude(), node.get_longitude()});
+                contextNodeToIndex.put(nodeId, index++);
+            }
+        }
+        
+        // Build edges between context nodes
+        for (Integer nodeId : contextNodeSet) {
+            Node node = allNodes.get(nodeId);
+            if (node == null) continue;
+            
+            Integer fromIdx = contextNodeToIndex.get(nodeId);
+            if (fromIdx == null) continue;
+            
+            // Add edges to other context nodes
+            for (Integer neighborId : node.get_outgoing_edges().keySet()) {
+                Integer toIdx = contextNodeToIndex.get(neighborId);
+                if (toIdx != null && fromIdx < toIdx) { // Avoid duplicates
+                    contextEdges.add(new int[]{fromIdx, toIdx});
+                }
+            }
+        }
+        
+        // Build edges from path nodes to context nodes
+        for (Integer pathNodeId : pathNodes) {
+            Node pathNode = allNodes.get(pathNodeId);
+            if (pathNode == null) continue;
+            
+            Integer pathIdx = pathNodeToIndex.get(pathNodeId);
+            if (pathIdx == null) continue;
+            
+            // Outgoing edges to context nodes
+            for (Integer neighborId : pathNode.get_outgoing_edges().keySet()) {
+                Integer contextIdx = contextNodeToIndex.get(neighborId);
+                if (contextIdx != null) {
+                    pathToContextEdges.add(new int[]{pathIdx, contextIdx});
+                }
+            }
+            
+            // Incoming edges from context nodes
+            for (Integer neighborId : pathNode.get_incoming_edges().keySet()) {
+                Integer contextIdx = contextNodeToIndex.get(neighborId);
+                if (contextIdx != null) {
+                    // Store as [pathIdx, contextIdx] for rendering
+                    pathToContextEdges.add(new int[]{pathIdx, contextIdx});
+                }
+            }
+        }
+        
+        return new Object[]{contextCoords, contextEdges, pathToContextEdges};
+    }
+    
     private void displayResults(Result result) {
         // Convert Result to ResultData for UI panels
         ResultData resultData = ResultData.create()
@@ -573,21 +692,65 @@ public class WorldClassGuiLauncher extends JFrame {
             .destination(result.getDestination())
             .budget(result.getBudget())
             .departureTime(queryPanel.getDeparture())
+            .suggestedDepartureTime(result.get_departureTime())  // Algorithm's suggested departure time
             .executionTime(result.getExecutionTime())
             .pathFound(result.isPathFound())
             .totalCost(result.getTotalCost())
             .pathLength(result.getPathLength())
             .wideEdgeCount(result.getWideEdgeCount())
+            .rightTurns(result.get_right_turns())
+            .wideScore(result.get_score())
+            .routingModeName(result.getRoutingMode() != null ? result.getRoutingMode().getDisplayName() : "All Objectives")
             .pathNodes(result.getPathNodes())
             .pathCoordinates(result.getPathCoordinates())
             .wideEdgeIndices(result.getWideEdgeIndices());
         
+        // Convert Pareto optimal paths if available
+        if (result.hasParetoOptimalPaths()) {
+            for (Result paretoPath : result.getParetoOptimalPaths()) {
+                ResultData paretoData = ResultData.create()
+                    .source(paretoPath.getSource())
+                    .destination(paretoPath.getDestination())
+                    .budget(paretoPath.getBudget())
+                    .departureTime(queryPanel.getDeparture())
+                    .suggestedDepartureTime(paretoPath.get_departureTime())
+                    .executionTime(paretoPath.getExecutionTime())
+                    .pathFound(paretoPath.isPathFound())
+                    .totalCost(paretoPath.getTotalCost())
+                    .pathLength(paretoPath.getPathLength())
+                    .wideEdgeCount(paretoPath.getWideEdgeCount())
+                    .rightTurns(paretoPath.get_right_turns())
+                    .wideScore(paretoPath.get_score())
+                    .pathNodes(paretoPath.getPathNodes())
+                    .pathCoordinates(paretoPath.getPathCoordinates())
+                    .wideEdgeIndices(paretoPath.getWideEdgeIndices());
+                resultData.addParetoPath(paretoData);
+            }
+        }
+        
         // Update results panel
         resultsPanel.displayResult(resultData);
         
-        // Update map
+        // Update map with path and graph context
         if (result.isPathFound()) {
-            mapPanel.setPath(result.getPathNodes(), result.getWideEdgeIndices(), result.getPathCoordinates());
+            // Collect graph context (neighboring nodes in lighter color)
+            Object[] context = collectGraphContext(result.getPathNodes());
+            @SuppressWarnings("unchecked")
+            List<double[]> contextCoords = (List<double[]>) context[0];
+            @SuppressWarnings("unchecked")
+            List<int[]> contextEdges = (List<int[]>) context[1];
+            @SuppressWarnings("unchecked")
+            List<int[]> pathToContextEdges = (List<int[]>) context[2];
+            
+            // Set path with context
+            mapPanel.setPathWithContext(
+                result.getPathNodes(), 
+                result.getWideEdgeIndices(), 
+                result.getPathCoordinates(),
+                contextCoords,
+                contextEdges,
+                pathToContextEdges
+            );
             rightTabs.setSelectedIndex(0); // Switch to map view
         }
     }
@@ -611,23 +774,46 @@ public class WorldClassGuiLauncher extends JFrame {
             Files.createDirectories(Paths.get("output"));
             
             StringBuilder sb = new StringBuilder();
-            sb.append("Wide-Path Query Result\n");
+            sb.append("FlexRoute Query Result\n");
             sb.append("======================\n\n");
             sb.append("Source: ").append(result.getSource()).append("\n");
             sb.append("Destination: ").append(result.getDestination()).append("\n");
             sb.append("Path Length: ").append(result.getPathLength()).append(" nodes\n");
             sb.append("Total Cost: ").append(String.format("%.2f", result.getTotalCost())).append("\n");
             sb.append("Wide Edges: ").append(result.getWideEdgeCount()).append("\n");
-            sb.append("Execution Time: ").append(String.format("%.2f", result.getExecutionTime())).append(" ms\n\n");
+            sb.append("Execution Time: ").append(String.format("%.2f", result.getExecutionTime())).append(" ms\n");
             
-            sb.append("Path Node IDs:\n");
-            List<Integer> path = result.getPathNodes();
-            for (int i = 0; i < path.size(); i++) {
-                sb.append(path.get(i));
-                if (i < path.size() - 1) sb.append(" -> ");
-                if ((i + 1) % 10 == 0) sb.append("\n");
+            // Add suggested departure time
+            double suggestedDep = result.get_departureTime();
+            if (suggestedDep > 0) {
+                int hours = (int)(suggestedDep / 60);
+                int mins = (int)(suggestedDep % 60);
+                sb.append(String.format("\n*** OPTIMAL DEPARTURE TIME: %02d:%02d (%.1f minutes) ***\n", 
+                    hours, mins, suggestedDep));
             }
-            sb.append("\n\nPath Coordinates (lat, lon):\n");
+            sb.append("\n");
+            
+            sb.append("Path Node IDs with Coordinates:\n");
+            sb.append("================================\n");
+            sb.append("[Step] NodeID -> (Latitude, Longitude)\n");
+            List<Integer> path = result.getPathNodes();
+            List<double[]> coords = result.getPathCoordinates();
+            for (int i = 0; i < path.size(); i++) {
+                int nodeId = path.get(i);
+                String coordStr = "";
+                if (coords != null && i < coords.size()) {
+                    double[] coord = coords.get(i);
+                    coordStr = String.format(" -> (%.6f, %.6f)", coord[0], coord[1]);
+                }
+                String marker = "";
+                if (i == 0) marker = " [START]";
+                else if (i == path.size() - 1) marker = " [END]";
+                
+                sb.append(String.format("[%3d] %d%s%s\n", i, nodeId, coordStr, marker));
+            }
+            
+            sb.append("\n\nPath Coordinates Only (lat, lon):\n");
+            sb.append("==================================\n");
             
             if (result.getPathCoordinates() != null) {
                 for (int i = 0; i < result.getPathCoordinates().size(); i++) {
@@ -657,13 +843,13 @@ public class WorldClassGuiLauncher extends JFrame {
         String guide = """
             <html>
             <body style="font-family: Segoe UI; padding: 10px; width: 400px;">
-            <h2>🗺️ Wide-Path Navigator User Guide</h2>
+            <h2>🗺️ FlexRoute Navigator User Guide</h2>
             
             <h3>Quick Start</h3>
             <ol>
                 <li>Enter source and destination node IDs</li>
                 <li>Adjust travel budget using the slider</li>
-                <li>Click "Find Wide Path" or press Ctrl+Enter</li>
+                <li>Click "Find FlexRoute" or press Ctrl+Enter</li>
             </ol>
             
             <h3>Parameters</h3>
@@ -701,14 +887,14 @@ public class WorldClassGuiLauncher extends JFrame {
         String about = """
             <html>
             <body style="font-family: Segoe UI; text-align: center; padding: 20px;">
-            <h1>🗺️ Wide-Path Navigator</h1>
+            <h1>🗺️ FlexRoute Navigator</h1>
             <h3>Version 3.0 — World Class Edition</h3>
             <p>Advanced pathfinding with wide road optimization</p>
             <br>
             <p>Using Bi-TDCPO algorithm for optimal<br>
             constrained path queries on road networks.</p>
             <br>
-            <p><small>© 2024 Wide-Path Project</small></p>
+            <p><small>© 2024 FlexRoute Project</small></p>
             </body>
             </html>
             """;

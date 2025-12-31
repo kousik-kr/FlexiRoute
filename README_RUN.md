@@ -1,4 +1,4 @@
-# Wide-Path Pro - Quick Start Guide
+# FlexRoute Pro - Quick Start Guide
 
 ## Running the Application
 
@@ -29,7 +29,7 @@ bash run.sh
 1. ✓ Checks if Java is installed
 2. ✓ Checks if dataset files are present
 3. ✓ Compiles Java files (if not already compiled)
-4. ✓ Launches the Wide-Path Pro GUI
+4. ✓ Launches the FlexRoute Pro GUI
 
 ### First-Time Setup
 
@@ -121,7 +121,7 @@ java TestPathfinding
 ### Project Structure
 
 ```
-Wide-Path/
+FlexRoute/
 ├── run.bat              # Windows Batch launcher
 ├── run.ps1              # PowerShell launcher
 ├── run.sh               # Linux/Ubuntu Bash launcher

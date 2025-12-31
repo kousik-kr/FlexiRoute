@@ -1,8 +1,8 @@
 @echo off
-title Wide-Path Navigator - World Class Edition
+title FlexRoute Navigator - World Class Edition
 echo.
 echo ====================================================
-echo        Wide-Path Navigator
+echo        FlexRoute Navigator
 echo        World Class Edition
 echo ====================================================
 echo.
@@ -30,7 +30,7 @@ if not exist "target\classes\WorldClassGuiLauncher.class" (
     exit /b 1
 )
 
-echo [*] Starting Wide-Path Navigator...
+echo [*] Starting FlexRoute Navigator...
 echo.
 
 REM Run with high-DPI support and additional memory

@@ -1,4 +1,4 @@
-# Wide-Path Pro - Quick Reference Guide
+# FlexRoute Pro - Quick Reference Guide
 
 ## 🚀 Quick Start
 

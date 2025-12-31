@@ -1,7 +1,7 @@
 # Google Drive Dataset Auto-Download Setup
 
 ## Overview
-The Wide-Path GUI now includes automatic dataset download from Google Drive. If the dataset files (`nodes`, `edges`, `clusters`, and `width_dist`) are not found when launching the application, you'll be prompted to download them.
+The FlexRoute GUI now includes automatic dataset download from Google Drive. If the dataset files (`nodes`, `edges`, `clusters`, and `width_dist`) are not found when launching the application, you'll be prompted to download them.
 
 ## Configuration
 

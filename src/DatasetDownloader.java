@@ -6,7 +6,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 /**
- * Automatic dataset downloader for Wide-Path
+ * Automatic dataset downloader for FlexRoute
  * Downloads graph data from Google Drive if not present locally
  */
 public class DatasetDownloader {
@@ -241,7 +241,7 @@ public class DatasetDownloader {
      * Main method for testing
      */
     public static void main(String[] args) {
-        System.out.println("=== Wide-Path Dataset Manager ===");
+        System.out.println("=== FlexRoute Dataset Manager ===");
         System.out.println();
         
         String datasetDir = ensureDatasetExists();

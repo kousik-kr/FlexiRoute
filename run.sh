@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Wide-Path GUI Launcher Script for Linux/Ubuntu
-# This script compiles and runs the Wide-Path application
+# FlexRoute GUI Launcher Script for Linux/Ubuntu
+# This script compiles and runs the FlexRoute application
 
 # Colors for output
 RED='\033[0;31m'
@@ -11,7 +11,7 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 echo -e "${CYAN}========================================${NC}"
-echo -e "${CYAN}Wide-Path Pro - Launch Script${NC}"
+echo -e "${CYAN}FlexRoute Pro - Launch Script${NC}"
 echo -e "${CYAN}========================================${NC}"
 echo ""
 
@@ -84,7 +84,7 @@ if [ ! -f "GuiLauncher.class" ]; then
 fi
 
 # Launch the GUI
-echo -e "${CYAN}Launching Wide-Path Pro GUI...${NC}"
+echo -e "${CYAN}Launching FlexRoute Pro GUI...${NC}"
 echo ""
 java GuiLauncher
 

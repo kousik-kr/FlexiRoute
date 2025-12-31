@@ -4,7 +4,7 @@
 
 ### ✅ Test 1: Basic Query → Reset Workflow
 **Steps:**
-1. Launch Wide-Path Pro
+1. Launch FlexRoute Pro
 2. Verify welcome message appears
 3. Enter query parameters:
    - Source: 100
@@ -35,7 +35,7 @@
 2. After results appear, click "🚪 Exit System"
 3. Verify confirmation dialog appears with:
    - 🚪 Icon
-   - "Exit Wide-Path Pro?" title
+   - "Exit FlexRoute Pro?" title
    - Warning message
    - [Exit] and [Cancel] buttons
 4. Click [Cancel]
@@ -172,7 +172,7 @@
   - "Query completed successfully in X ms"
   - "Resetting query session..."
   - "Ready for new query. All fields reset."
-  - "Shutting down Wide-Path Pro..."
+  - "Shutting down FlexRoute Pro..."
 
 ---
 
@@ -256,7 +256,7 @@ class ResetExitTest {
         
         // Verify state
         assertTrue(app.getInputPanel().areInputsEnabled());
-        assertTrue(app.getOutputPane().getText().contains("WIDE-PATH PRO - READY"));
+        assertTrue(app.getOutputPane().getText().contains("FLEXROUTE PRO - READY"));
     }
     
     @Test
@@ -310,7 +310,7 @@ If you encounter issues, report using this format:
 **Environment:**
 - OS: Windows/Mac/Linux
 - Java Version: 21
-- Wide-Path Version: 2.0
+- FlexRoute Version: 2.0
 
 **Severity:** Critical / High / Medium / Low
 

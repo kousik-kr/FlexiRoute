@@ -1,5 +1,5 @@
 /**
- * Test program to verify the California dataset works with Wide-Path algorithm
+ * Test program to verify the California dataset works with FlexRoute algorithm
  */
 public class TestCaliforniaDataset {
     public static void main(String[] args) {

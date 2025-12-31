@@ -79,7 +79,7 @@ def main():
     interval = 360
     budget = 5
     
-    print(f"Python Wide-Path Test")
+    print(f"Python FlexRoute Test")
     print(f"=" * 60)
     print(f"Input:")
     print(f"  Source: {source}")
@@ -90,8 +90,8 @@ def main():
     print(f"=" * 60)
     
     # Load graph
-    nodes_file = r'C:\Users\kousi\eclipse-workspace\Wide-Path\nodes_264346.txt'
-    edges_file = r'C:\Users\kousi\eclipse-workspace\Wide-Path\edges_264346.txt'
+    nodes_file = r'C:\Users\kousi\eclipse-workspace\FlexRoute\nodes_264346.txt'
+    edges_file = r'C:\Users\kousi\eclipse-workspace\FlexRoute\edges_264346.txt'
     
     if not (os.path.exists(nodes_file) and os.path.exists(edges_file)):
         print("Error: Dataset files not found!")

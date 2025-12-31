@@ -1,8 +1,8 @@
-# Wide-Path Pro - World-Class GUI Design System
+# FlexRoute Pro - World-Class GUI Design System
 
 ## 🎨 Overview
 
-Wide-Path Pro features a complete redesign with world-class UI/UX, incorporating modern design principles, advanced interactions, and premium features that rival commercial pathfinding applications.
+FlexRoute Pro features a complete redesign with world-class UI/UX, incorporating modern design principles, advanced interactions, and premium features that rival commercial pathfinding applications.
 
 ## ✨ Major Enhancements
 
@@ -326,4 +326,4 @@ The GUI adapts to different window sizes:
 
 ---
 
-**Wide-Path Pro** - Elevating pathfinding visualization to world-class standards.
+**FlexRoute Pro** - Elevating pathfinding visualization to world-class standards.

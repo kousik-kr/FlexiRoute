@@ -99,13 +99,13 @@ public class WorldClassSplashScreen extends JWindow {
         iconLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         
         // Title with sparkle
-        JLabel titleLabel = new JLabel("✨ Wide-Path Navigator ✨");
+        JLabel titleLabel = new JLabel("✨ FlexRoute Navigator ✨");
         titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 52));
         titleLabel.setForeground(Color.WHITE);
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         
         // Version with rainbow styling
-        JLabel versionLabel = new JLabel("🌟 Wide-Path Navigator 🌟");
+        JLabel versionLabel = new JLabel("🌟 FlexRoute Navigator 🌟");
         versionLabel.setFont(new Font("Segoe UI", Font.BOLD, 24));
         versionLabel.setForeground(new Color(250, 204, 21));
         versionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);

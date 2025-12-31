@@ -1,4 +1,4 @@
-# Wide-Path Pro - Design System
+# FlexRoute Pro - Design System
 
 ## Color Palette
 

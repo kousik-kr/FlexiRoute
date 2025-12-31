@@ -50,11 +50,11 @@ public class SplashScreen extends JWindow {
                 // Logo/Title with shadow
                 g2d.setColor(new Color(0, 0, 0, 50));
                 g2d.setFont(new Font("Segoe UI", Font.BOLD, 48));
-                g2d.drawString("Wide-Path Pro", 153, 153);
+                g2d.drawString("FlexRoute Pro", 153, 153);
                 
                 g2d.setColor(Color.WHITE);
                 g2d.setFont(new Font("Segoe UI", Font.BOLD, 48));
-                g2d.drawString("Wide-Path Pro", 150, 150);
+                g2d.drawString("FlexRoute Pro", 150, 150);
                 
                 // Version
                 g2d.setFont(new Font("Segoe UI", Font.PLAIN, 16));

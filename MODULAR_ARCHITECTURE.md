@@ -1,7 +1,7 @@
-# Wide-Path Pro - Modular Architecture Documentation
+# FlexRoute Pro - Modular Architecture Documentation
 
 ## Overview
-This document describes the comprehensive modular architecture redesign of the Wide-Path GUI application, transforming it from a monolithic single-file design into a professional, maintainable, world-class application.
+This document describes the comprehensive modular architecture redesign of the FlexRoute GUI application, transforming it from a monolithic single-file design into a professional, maintainable, world-class application.
 
 ## Architecture Principles
 
@@ -329,7 +329,7 @@ mapPanel.setPath(pathNodes, wideEdges);
 #### UI Structure
 
 ```
-JFrame "Wide-Path Pro"
+JFrame "FlexRoute Pro"
 ├── MenuBar
 │   ├── File (Export, Exit)
 │   ├── View (Dark Mode)

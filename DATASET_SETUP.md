@@ -106,7 +106,7 @@ When you launch the application:
 [Dataset] Please download the dataset manually from:
 [Dataset] https://drive.google.com/drive/folders/1l3NG641rHeshkYW7aDxpb7RhUy0kRuiP
 [Dataset] 
-[Dataset] Extract the files to: /home/gunturi/Wide-Path/dataset
+[Dataset] Extract the files to: /home/gunturi/FlexRoute/dataset
 [Dataset] 
 [Dataset] Required files:
 [Dataset]   ✗ Missing - edges_264346.txt
@@ -132,7 +132,7 @@ When you launch the application:
 ### BidirectionalAstar.java Changes
 ```java
 // Before:
-private static final String currentDirectory = "C:\\Users\\kousi\\Wide-Path\\";
+private static final String currentDirectory = "C:\\Users\\kousi\\FlexRoute\\";
 
 // After:
 private static final String currentDirectory = System.getProperty("user.dir") + "/dataset/";
@@ -155,7 +155,7 @@ try {
 ## 📁 File Structure
 
 ```
-Wide-Path/
+FlexRoute/
 ├── dataset/                    # Dataset folder (git ignored)
 │   ├── .gitkeep               # Tracks empty folder
 │   ├── README.md              # Dataset setup guide
@@ -187,7 +187,7 @@ chmod +x download_dataset.sh
 ### Files downloaded to wrong location
 Ensure you're in the project root when running download commands:
 ```bash
-cd /path/to/Wide-Path
+cd /path/to/FlexRoute
 ./download_dataset.sh
 ```
 

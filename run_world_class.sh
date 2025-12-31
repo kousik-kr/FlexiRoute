@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# Wide-Path Navigator - World Class Edition
+# FlexRoute Navigator - World Class Edition
 # Launch Script for Ubuntu/Linux
 # =============================================================================
 
@@ -14,7 +14,7 @@ NC='\033[0m' # No Color
 
 echo -e "${CYAN}"
 echo "╔════════════════════════════════════════════════════════════╗"
-echo "║       🗺️  Wide-Path Navigator - World Class Edition        ║"
+echo "║       🗺️  FlexRoute Navigator - World Class Edition        ║"
 echo "╚════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 
@@ -74,7 +74,7 @@ fi
 
 echo ""
 echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
-echo -e "${GREEN}Launching Wide-Path Navigator...${NC}"
+echo -e "${GREEN}Launching FlexRoute Navigator...${NC}"
 echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
 echo ""
 
@@ -94,4 +94,4 @@ if [ $EXIT_CODE -ne 0 ]; then
 fi
 
 echo ""
-echo -e "${CYAN}Thank you for using Wide-Path Navigator!${NC}"
+echo -e "${CYAN}Thank you for using FlexRoute Navigator!${NC}"

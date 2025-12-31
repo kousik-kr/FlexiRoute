@@ -1,5 +1,7 @@
 package ui.panels;
 
+import models.RoutingMode;
+
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -64,6 +66,10 @@ public class WorldClassQueryPanel extends JPanel {
     
     private int maxNodeId = 21048;
     
+    // Routing mode selector
+    private JComboBox<RoutingMode> routingModeCombo;
+    private JLabel routingModeDescription;
+    
     public WorldClassQueryPanel() {
         setLayout(new BorderLayout());
         setBackground(BG_SURFACE);
@@ -86,6 +92,10 @@ public class WorldClassQueryPanel extends JPanel {
         
         // === ALGORITHM (full width) ===
         mainPanel.add(createLabeledCombo("Algorithm", VIVID_PURPLE, new String[]{"Best", "Euclidean", "Manhattan"}, false));
+        mainPanel.add(Box.createVerticalStrut(14));
+        
+        // === ROUTING MODE (new) ===
+        mainPanel.add(createRoutingModePanel());
         mainPanel.add(Box.createVerticalStrut(14));
         
         // === SOURCE (full width) ===
@@ -123,6 +133,80 @@ public class WorldClassQueryPanel extends JPanel {
         scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         scroll.getVerticalScrollBar().setUnitIncrement(16);
         add(scroll, BorderLayout.CENTER);
+    }
+    
+    /**
+     * Create the routing mode selection panel with dropdown and description
+     */
+    private JPanel createRoutingModePanel() {
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setOpaque(false);
+        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 100));
+        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        // Label
+        JLabel label = new JLabel("🎯 Routing Mode");
+        label.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        label.setForeground(CYBER_YELLOW);
+        label.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(label);
+        panel.add(Box.createVerticalStrut(4));
+        
+        // Combo box with routing modes
+        routingModeCombo = new JComboBox<>(RoutingMode.values());
+        routingModeCombo.setFont(new Font("Segoe UI", Font.PLAIN, 18));
+        routingModeCombo.setBackground(Color.WHITE);
+        routingModeCombo.setBorder(BorderFactory.createLineBorder(CYBER_YELLOW, 2, true));
+        routingModeCombo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        routingModeCombo.setAlignmentX(Component.LEFT_ALIGNMENT);
+        routingModeCombo.setSelectedItem(RoutingMode.ALL_OBJECTIVES); // Default
+        
+        // Custom renderer for nice display
+        routingModeCombo.setRenderer(new javax.swing.DefaultListCellRenderer() {
+            @Override
+            public java.awt.Component getListCellRendererComponent(
+                    javax.swing.JList<?> list, Object value, int index, 
+                    boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof RoutingMode) {
+                    RoutingMode mode = (RoutingMode) value;
+                    setText(mode.getDisplayName());
+                    if (isSelected) {
+                        setBackground(CYBER_YELLOW);
+                        setForeground(Color.BLACK);
+                    }
+                }
+                return this;
+            }
+        });
+        
+        panel.add(routingModeCombo);
+        panel.add(Box.createVerticalStrut(4));
+        
+        // Description label
+        routingModeDescription = new JLabel(RoutingMode.ALL_OBJECTIVES.getDescription());
+        routingModeDescription.setFont(new Font("Segoe UI", Font.ITALIC, 14));
+        routingModeDescription.setForeground(TEXT_SECONDARY);
+        routingModeDescription.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(routingModeDescription);
+        
+        // Update description when selection changes
+        routingModeCombo.addActionListener(e -> {
+            RoutingMode selected = (RoutingMode) routingModeCombo.getSelectedItem();
+            if (selected != null) {
+                routingModeDescription.setText(selected.getDescription());
+                // Show special hint for Pareto mode
+                if (selected.isParetoMode()) {
+                    routingModeDescription.setText(selected.getDescription() + " (returns multiple paths)");
+                    routingModeDescription.setForeground(CYBER_YELLOW.darker());
+                } else {
+                    routingModeDescription.setForeground(TEXT_SECONDARY);
+                }
+            }
+        });
+        
+        return panel;
     }
     
     private JPanel createHeader() {
@@ -338,7 +422,7 @@ public class WorldClassQueryPanel extends JPanel {
         panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 55));
         panel.setAlignmentX(Component.LEFT_ALIGNMENT);
         
-        runButton = new JButton("Find Wide Path") {
+        runButton = new JButton("Find FlexRoute") {
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2d = (Graphics2D) g.create();
@@ -401,7 +485,7 @@ public class WorldClassQueryPanel extends JPanel {
                     statusLabel.setText("Source = Destination");
                     statusLabel.setForeground(SUNSET_ORANGE);
                 } else {
-                    statusLabel.setText("Ready! Click Find Wide Path");
+                    statusLabel.setText("Ready! Click Find FlexRoute");
                     statusLabel.setForeground(NEON_GREEN);
                 }
             }
@@ -449,13 +533,29 @@ public class WorldClassQueryPanel extends JPanel {
         return idx == 0 ? 3 : (idx == 1 ? 1 : 2);
     }
     
+    /**
+     * Get the user-selected routing mode
+     */
+    public RoutingMode getRoutingMode() {
+        return (RoutingMode) routingModeCombo.getSelectedItem();
+    }
+    
+    /**
+     * Set the routing mode programmatically
+     */
+    public void setRoutingMode(RoutingMode mode) {
+        if (mode != null) {
+            routingModeCombo.setSelectedItem(mode);
+        }
+    }
+    
     public void setSource(int value) { sourceField.setText(String.valueOf(value)); updateStatus(); }
     public void setDestination(int value) { destField.setText(String.valueOf(value)); updateStatus(); }
     public void setMaxNodeId(int max) { this.maxNodeId = max; updateStatus(); }
     
     public void setRunning(boolean running) {
         runButton.setEnabled(!running);
-        runButton.setText(running ? "Processing..." : "Find Wide Path");
+        runButton.setText(running ? "Processing..." : "Find FlexRoute");
         statusLabel.setText(running ? "Running query..." : "Ready!");
     }
 }

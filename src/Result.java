@@ -1,9 +1,12 @@
+import models.RoutingMode;
+
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Enhanced Result class for World-Class Wide-Path Navigator
+ * Enhanced Result class for World-Class FlexRoute Navigator
  * Stores query results with comprehensive path information
+ * Supports both single optimal path and multiple Pareto optimal paths
  */
 public class Result {
 	// Core fields
@@ -24,6 +27,11 @@ public class Result {
 	private double totalCost;
 	private List<double[]> pathCoordinates;
 	
+	// Pareto optimal paths support
+	private List<Result> paretoOptimalPaths;
+	private RoutingMode routingMode;
+	private int paretoPathIndex = -1; // -1 means this is the main result, >=0 means this is a pareto path
+	
 	public Result(double dep_time, double scr, int turns, int sharpTurns, double travelTime,
 			List<Integer> pathNodes, List<Integer> wideEdgeIndices) {
 		this.departure_time = dep_time;
@@ -35,6 +43,7 @@ public class Result {
 		this.wideEdgeIndices = wideEdgeIndices != null ? wideEdgeIndices : new ArrayList<>();
 		this.pathFound = pathNodes != null && !pathNodes.isEmpty();
 		this.totalCost = travelTime;
+		this.paretoOptimalPaths = new ArrayList<>();
 	}
 
 	// Original getters
@@ -146,9 +155,98 @@ public class Result {
 		this.pathCoordinates = coordinates;
 	}
 	
+	// === PARETO OPTIMAL PATHS API ===
+	
+	/**
+	 * Add a Pareto optimal path to this result
+	 */
+	public void addParetoPath(Result path) {
+		if (paretoOptimalPaths == null) {
+			paretoOptimalPaths = new ArrayList<>();
+		}
+		path.setParetoPathIndex(paretoOptimalPaths.size());
+		paretoOptimalPaths.add(path);
+	}
+	
+	/**
+	 * Get all Pareto optimal paths
+	 */
+	public List<Result> getParetoOptimalPaths() {
+		return paretoOptimalPaths != null ? paretoOptimalPaths : new ArrayList<>();
+	}
+	
+	/**
+	 * Check if this result contains multiple Pareto optimal paths
+	 */
+	public boolean hasParetoOptimalPaths() {
+		return paretoOptimalPaths != null && !paretoOptimalPaths.isEmpty();
+	}
+	
+	/**
+	 * Get the number of Pareto optimal paths
+	 */
+	public int getParetoPathCount() {
+		return paretoOptimalPaths != null ? paretoOptimalPaths.size() : 0;
+	}
+	
+	/**
+	 * Get a specific Pareto optimal path by index
+	 */
+	public Result getParetoPath(int index) {
+		if (paretoOptimalPaths != null && index >= 0 && index < paretoOptimalPaths.size()) {
+			return paretoOptimalPaths.get(index);
+		}
+		return null;
+	}
+	
+	public void setParetoPathIndex(int index) {
+		this.paretoPathIndex = index;
+	}
+	
+	public int getParetoPathIndex() {
+		return paretoPathIndex;
+	}
+	
+	public boolean isParetoPath() {
+		return paretoPathIndex >= 0;
+	}
+	
+	public void setRoutingMode(RoutingMode mode) {
+		this.routingMode = mode;
+	}
+	
+	public RoutingMode getRoutingMode() {
+		return routingMode;
+	}
+	
+	/**
+	 * Check if this result dominates another in Pareto sense
+	 * A dominates B if A is better or equal in all objectives and strictly better in at least one
+	 */
+	public boolean dominates(Result other) {
+		boolean betterInWideness = this.score >= other.score;
+		boolean betterInTurns = this.right_turns <= other.right_turns;
+		boolean strictlyBetterInWideness = this.score > other.score;
+		boolean strictlyBetterInTurns = this.right_turns < other.right_turns;
+		
+		return betterInWideness && betterInTurns && (strictlyBetterInWideness || strictlyBetterInTurns);
+	}
+	
+	/**
+	 * Get a summary string for Pareto path display
+	 */
+	public String getParetoSummary() {
+		return String.format("Path %d: Score=%.1f%%, Turns=%d, Time=%.1fmin", 
+			paretoPathIndex + 1, score, right_turns, travel_time);
+	}
+	
 	@Override
 	public String toString() {
-		return String.format("Result{source=%d, dest=%d, nodes=%d, cost=%.2f, wideEdges=%d}",
-			source, destination, getPathLength(), totalCost, getWideEdgeCount());
+		if (hasParetoOptimalPaths()) {
+			return String.format("Result{source=%d, dest=%d, paretoCount=%d, mode=%s}",
+				source, destination, getParetoPathCount(), routingMode);
+		}
+		return String.format("Result{source=%d, dest=%d, nodes=%d, score=%.1f%%, turns=%d, cost=%.2f}",
+			source, destination, getPathLength(), score, right_turns, totalCost);
 	}
 }

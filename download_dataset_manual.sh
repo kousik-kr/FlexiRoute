@@ -1,5 +1,5 @@
 #!/bin/bash
-# Wide-Path Dataset Direct Downloader
+# FlexRoute Dataset Direct Downloader
 # Downloads dataset files directly from accessible URLs
 
 set -e
@@ -8,7 +8,7 @@ DATASET_DIR="dataset"
 DRIVE_FOLDER_URL="https://drive.google.com/drive/folders/1l3NG641rHeshkYW7aDxpb7RhUy0kRuiP"
 
 echo "============================================================"
-echo "Wide-Path Dataset Direct Download"
+echo "FlexRoute Dataset Direct Download"
 echo "============================================================"
 echo ""
 

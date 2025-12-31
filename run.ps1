@@ -1,8 +1,8 @@
-# Wide-Path GUI Launcher Script for PowerShell
-# This script compiles and runs the Wide-Path application
+# FlexRoute GUI Launcher Script for PowerShell
+# This script compiles and runs the FlexRoute application
 
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "Wide-Path Pro - Launch Script" -ForegroundColor Cyan
+Write-Host "FlexRoute Pro - Launch Script" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -65,7 +65,7 @@ if (-not (Test-Path "GuiLauncher.class")) {
 }
 
 # Launch the GUI
-Write-Host "Launching Wide-Path Pro GUI..." -ForegroundColor Cyan
+Write-Host "Launching FlexRoute Pro GUI..." -ForegroundColor Cyan
 Write-Host ""
 java GuiLauncher
 

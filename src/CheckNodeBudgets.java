@@ -1,6 +1,6 @@
 public class CheckNodeBudgets {
     public static void main(String[] args) throws Exception {
-        String basePath = "C:\\Users\\kousi\\eclipse-workspace\\Wide-Path\\";
+        String basePath = "C:\\Users\\kousi\\eclipse-workspace\\FlexRoute\\";
         Graph.read_graph(basePath);
         
         int source = 72594;

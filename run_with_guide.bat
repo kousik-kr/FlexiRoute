@@ -1,16 +1,16 @@
 @echo off
 REM ===================================================================
-REM  Wide-Path Pro - Launch Script with Feature Highlights
+REM  FlexRoute Pro - Launch Script with Feature Highlights
 REM ===================================================================
 REM
-REM  This script launches Wide-Path Pro and displays information
+REM  This script launches FlexRoute Pro and displays information
 REM  about the new Reset & Exit features
 REM
 REM ===================================================================
 
 echo.
 echo ============================================================
-echo   WIDE-PATH PRO v2.0 - Advanced Pathfinding Analysis
+echo   FLEXROUTE PRO v2.0 - Advanced Pathfinding Analysis
 echo ============================================================
 echo.
 echo  NEW FEATURES:
@@ -63,7 +63,7 @@ echo   Ctrl+Enter  - Run current query
 echo   Alt+F4      - Exit application (with confirmation)
 echo.
 echo ============================================================
-echo   Launching Wide-Path Pro...
+echo   Launching FlexRoute Pro...
 echo ============================================================
 echo.
 
@@ -72,5 +72,5 @@ mvn exec:java -Dexec.mainClass="GuiLauncher"
 
 echo.
 echo Application closed.
-echo Thank you for using Wide-Path Pro!
+echo Thank you for using FlexRoute Pro!
 pause

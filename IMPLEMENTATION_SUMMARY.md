@@ -195,7 +195,7 @@ Complete testing documentation:
 ### Running the Application
 ```bash
 # Navigate to project directory
-cd Wide-Path
+cd FlexRoute
 
 # Compile (Java 21 required)
 mvn clean compile
@@ -372,7 +372,7 @@ The **Reset & Exit** features have been successfully implemented with:
 
 ---
 
-*Wide-Path Pro v2.0 - Setting New Standards in Pathfinding Visualization*
+*FlexRoute Pro v2.0 - Setting New Standards in Pathfinding Visualization*
 
 **Implemented:** November 28, 2025  
 **Java Version:** 21 LTS  

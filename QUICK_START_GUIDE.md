@@ -1,4 +1,4 @@
-# Wide-Path Pro - Quick Start Guide
+# FlexRoute Pro - Quick Start Guide
 
 ## 🚀 Getting Started in 5 Minutes
 
@@ -24,7 +24,7 @@ java -cp target/classes GuiLauncher
 
 ### 2. First Launch
 
-When you first launch Wide-Path Pro, you'll see:
+When you first launch FlexRoute Pro, you'll see:
 
 1. **Animated Splash Screen** 🎨
    - Modern gradient background
@@ -285,4 +285,4 @@ Now that you're familiar with the basics:
 
 ---
 
-*Wide-Path Pro - Making pathfinding visualization extraordinary.*
+*FlexRoute Pro - Making pathfinding visualization extraordinary.*

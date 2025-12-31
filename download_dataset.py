@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Wide-Path Dataset Downloader (Python)
+FlexRoute Dataset Downloader (Python)
 Alternative downloader for users who prefer Python
 """
 
@@ -95,7 +95,7 @@ def format_size(bytes):
 
 def main():
     print("=" * 60)
-    print("Wide-Path Dataset Downloader (Python)")
+    print("FlexRoute Dataset Downloader (Python)")
     print("=" * 60)
     
     print(f"\nDataset URL: {DRIVE_URL}")
@@ -123,7 +123,7 @@ def main():
     print("-" * 60)
     
     print(f"\nDataset location: {os.path.abspath(DATASET_DIR)}")
-    print("\nYou can now run the Wide-Path application!")
+    print("\nYou can now run the FlexRoute application!")
 
 if __name__ == "__main__":
     try:

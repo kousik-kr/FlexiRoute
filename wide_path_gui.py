@@ -1,5 +1,5 @@
 """
-Wide Path GUI application implemented in Python.
+FlexRoute GUI application implemented in Python.
 
 This application loads the provided dataset (nodes and edges files) from the
 `/home/oai/share` directory, constructs a directed graph using the average
@@ -8,7 +8,7 @@ between two nodes using Dijkstra's algorithm.
 
 Due to limitations in the execution environment (no Java compiler), this
 is a re‑implementation of the core functionality of the original
-"Wide‑Path" project. It does not replicate the full bidirectional A* search
+"FlexRoute" project. It does not replicate the full bidirectional A* search
 with clustering and width constraints, but it offers a functional path
 finding GUI based on average travel times.
 
@@ -137,12 +137,12 @@ def dijkstra(adj, source, dest):
 
 class WidePathApp(tk.Tk):
     """
-    Main application class for the Wide Path GUI.
+    Main application class for the FlexRoute GUI.
     """
 
     def __init__(self, adj, num_nodes):
         super().__init__()
-        self.title("Wide Path - Path Finder")
+        self.title("FlexRoute - Path Finder")
         self.geometry("600x500")
         self.adj = adj
         self.num_nodes = num_nodes
@@ -236,10 +236,10 @@ class WidePathApp(tk.Tk):
 
 
 def main():
-    nodes_file = os.path.join('C:\\Users\\kousi\\eclipse-workspace\\Wide-Path\\', 'nodes_264346.txt')
-    edges_file = os.path.join('C:\\Users\\kousi\\eclipse-workspace\\Wide-Path\\', 'edges_264346.txt')
+    nodes_file = os.path.join('C:\\Users\\kousi\\eclipse-workspace\\FlexRoute\\', 'nodes_264346.txt')
+    edges_file = os.path.join('C:\\Users\\kousi\\eclipse-workspace\\FlexRoute\\', 'edges_264346.txt')
     if not (os.path.exists(nodes_file) and os.path.exists(edges_file)):
-        print("Error: Dataset files not found in C:\\Users\\kousi\\eclipse-workspace\\Wide-Path\\.")
+        print("Error: Dataset files not found in C:\\Users\\kousi\\eclipse-workspace\\FlexRoute\\.")
         return
     print("Loading graph... this may take a minute...")
     adj, num_nodes = load_graph(nodes_file, edges_file)

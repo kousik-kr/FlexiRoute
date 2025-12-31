@@ -13,13 +13,17 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinTask;
 import java.util.concurrent.PriorityBlockingQueue;
+import java.util.stream.Collectors;
+
+import models.RoutingMode;
 
 public class BidirectionalDriver {
 	private int source;
-	private	int destination;
-	private	double start_departure_time;
-	private	double end_departure_time;
-	private	double budget;
+	private int destination;
+	private double start_departure_time;
+	private double end_departure_time;
+	private double budget;
+	private RoutingMode routingMode;
 	
 	public BidirectionalDriver(Query query, double budget) {
 		this.source = query.get_source();
@@ -27,10 +31,11 @@ public class BidirectionalDriver {
 		this.start_departure_time = query.get_start_departure_time();
 		this.end_departure_time = query.get_end_departure_time();
 		this.budget = budget;
+		this.routingMode = query.getRoutingMode();
 	}
 
 	static class SharedState {
-	    private static final int MAX_LABELS_PER_NODE = 1; // keep top 10 labels per node
+	    private static final int MAX_LABELS_PER_NODE = 10; // Increased for Pareto paths
 
 	    ConcurrentHashMap<Integer, PriorityBlockingQueue<Label>> forwardVisited = new ConcurrentHashMap<>();
 	    ConcurrentHashMap<Integer, PriorityBlockingQueue<Label>> backwardVisited = new ConcurrentHashMap<>();
@@ -209,13 +214,19 @@ public class BidirectionalDriver {
 //			BackwardLabeling backwardSolver = new BackwardLabeling(source, budget, destinationLabel);
 //			Map<Integer,List<Label>> backward_labels = backwardSolver.call();
 			//Map<Integer,Result> pruned_backward_labels = pruneDomination(backward_labels);
-			Result result = formOutputLabels(shared.intersectionNodes, shared.forwardVisited, shared.backwardVisited);
+			
+			// Use routing mode to determine output strategy
+			System.out.println("[Query] Processing labels with routing mode: " + routingMode);
+			Result result = formOutputLabels(shared.intersectionNodes, shared.forwardVisited, shared.backwardVisited, routingMode);
 			if (result == null) {
 				// Fallback: return the fastest path found by plain time Dijkstra when labeling yields nothing
 				result = fallbackFastestPath(source, destination, budget, start_departure_time);
 				if (result != null) {
 					System.out.println("[Query] Fallback fastest-path returned due to empty label merge.");
 				}
+			}
+			if (result != null) {
+				result.setRoutingMode(routingMode);
 			}
 			System.out.println("[Query] Result built, returning to caller.");
 			return result;
@@ -394,7 +405,37 @@ public class BidirectionalDriver {
 //		}).filter(Objects::nonNull).max(Comparator.comparingDouble(Result::get_score)).orElse(null);//TODO
 //	}
 	
+	/**
+	 * Main entry point for forming output labels based on routing mode
+	 */
 	private Result formOutputLabels(
+	        Set<Integer> intersectionNodes,
+	        ConcurrentHashMap<Integer, PriorityBlockingQueue<Label>> forwardVisited,
+	        ConcurrentHashMap<Integer, PriorityBlockingQueue<Label>> backwardVisited,
+	        RoutingMode mode) {
+		
+		if (mode == null) {
+			mode = RoutingMode.ALL_OBJECTIVES;
+		}
+		
+		switch (mode) {
+			case WIDENESS_ONLY:
+				return formOutputLabelsWidenessOnly(intersectionNodes, forwardVisited, backwardVisited);
+			case MIN_TURNS_ONLY:
+				return formOutputLabelsTurnsOnly(intersectionNodes, forwardVisited, backwardVisited);
+			case WIDENESS_AND_TURNS:
+				return formOutputLabelsPareto(intersectionNodes, forwardVisited, backwardVisited);
+			case ALL_OBJECTIVES:
+			default:
+				return formOutputLabelsAllObjectives(intersectionNodes, forwardVisited, backwardVisited);
+		}
+	}
+	
+	/**
+	 * WIDENESS_ONLY: Maximize wideness score within travel time budget
+	 * Single objective optimization - returns the path with highest wideness score
+	 */
+	private Result formOutputLabelsWidenessOnly(
 	        Set<Integer> intersectionNodes,
 	        ConcurrentHashMap<Integer, PriorityBlockingQueue<Label>> forwardVisited,
 	        ConcurrentHashMap<Integer, PriorityBlockingQueue<Label>> backwardVisited) {
@@ -403,14 +444,140 @@ public class BidirectionalDriver {
 	        .map(node -> {
 	            Label forward = forwardVisited.get(node).peek();
 	            Label backward = backwardVisited.get(node).peek();
-
 	            if (forward == null || backward == null) return null;
+	            return getResult(forward, backward);
+	        })
+	        .filter(Objects::nonNull)
+	        .max(Comparator.comparingDouble(Result::get_score)) // Maximize wideness only
+	        .orElse(null);
+	}
+	
+	/**
+	 * MIN_TURNS_ONLY: Minimize right turns within travel time budget
+	 * Single objective optimization - returns the path with fewest right turns
+	 */
+	private Result formOutputLabelsTurnsOnly(
+	        Set<Integer> intersectionNodes,
+	        ConcurrentHashMap<Integer, PriorityBlockingQueue<Label>> forwardVisited,
+	        ConcurrentHashMap<Integer, PriorityBlockingQueue<Label>> backwardVisited) {
 
+	    return intersectionNodes.parallelStream()
+	        .map(node -> {
+	            Label forward = forwardVisited.get(node).peek();
+	            Label backward = backwardVisited.get(node).peek();
+	            if (forward == null || backward == null) return null;
+	            return getResult(forward, backward);
+	        })
+	        .filter(Objects::nonNull)
+	        .min(Comparator.comparingInt(Result::get_right_turns)) // Minimize turns only
+	        .orElse(null);
+	}
+	
+	/**
+	 * WIDENESS_AND_TURNS: Multi-objective Pareto optimization
+	 * Returns all Pareto optimal paths that balance wideness and turns
+	 */
+	private Result formOutputLabelsPareto(
+	        Set<Integer> intersectionNodes,
+	        ConcurrentHashMap<Integer, PriorityBlockingQueue<Label>> forwardVisited,
+	        ConcurrentHashMap<Integer, PriorityBlockingQueue<Label>> backwardVisited) {
+
+	    // Collect all candidate results
+	    List<Result> allResults = intersectionNodes.parallelStream()
+	        .flatMap(node -> {
+	            PriorityBlockingQueue<Label> forwards = forwardVisited.get(node);
+	            PriorityBlockingQueue<Label> backwards = backwardVisited.get(node);
+	            if (forwards == null || backwards == null) return java.util.stream.Stream.empty();
+	            
+	            List<Result> nodeResults = new ArrayList<>();
+	            for (Label forward : forwards) {
+	                for (Label backward : backwards) {
+	                    Result r = getResult(forward, backward);
+	                    if (r != null) nodeResults.add(r);
+	                }
+	            }
+	            return nodeResults.stream();
+	        })
+	        .filter(Objects::nonNull)
+	        .collect(Collectors.toList());
+	    
+	    if (allResults.isEmpty()) return null;
+	    
+	    // Find Pareto optimal set
+	    List<Result> paretoSet = computeParetoSet(allResults);
+	    
+	    if (paretoSet.isEmpty()) return null;
+	    
+	    // Sort by wideness score descending (primary), then by turns ascending (secondary)
+	    paretoSet.sort(Comparator
+	        .comparingDouble(Result::get_score).reversed()
+	        .thenComparingInt(Result::get_right_turns));
+	    
+	    // Create a container result with all Pareto optimal paths
+	    Result mainResult = paretoSet.get(0); // Best by wideness as default selection
+	    for (int i = 0; i < paretoSet.size(); i++) {
+	        mainResult.addParetoPath(paretoSet.get(i));
+	    }
+	    
+	    System.out.println("[Query] Found " + paretoSet.size() + " Pareto optimal paths");
+	    for (Result r : paretoSet) {
+	        System.out.println("  - Score: " + String.format("%.1f%%", r.get_score()) + 
+	                           ", Turns: " + r.get_right_turns() + 
+	                           ", Travel: " + String.format("%.1f", r.get_travel_time()) + "min");
+	    }
+	    
+	    return mainResult;
+	}
+	
+	/**
+	 * Compute Pareto optimal set from a list of results
+	 * A result is Pareto optimal if no other result dominates it
+	 */
+	private List<Result> computeParetoSet(List<Result> results) {
+	    List<Result> paretoSet = new ArrayList<>();
+	    
+	    for (Result candidate : results) {
+	        boolean isDominated = false;
+	        List<Result> toRemove = new ArrayList<>();
+	        
+	        for (Result existing : paretoSet) {
+	            if (existing.dominates(candidate)) {
+	                isDominated = true;
+	                break;
+	            }
+	            if (candidate.dominates(existing)) {
+	                toRemove.add(existing);
+	            }
+	        }
+	        
+	        if (!isDominated) {
+	            paretoSet.removeAll(toRemove);
+	            paretoSet.add(candidate);
+	        }
+	    }
+	    
+	    return paretoSet;
+	}
+	
+	/**
+	 * ALL_OBJECTIVES: Original behavior - minimize turns first, then maximize wideness, avoid sharp turns
+	 */
+	private Result formOutputLabelsAllObjectives(
+	        Set<Integer> intersectionNodes,
+	        ConcurrentHashMap<Integer, PriorityBlockingQueue<Label>> forwardVisited,
+	        ConcurrentHashMap<Integer, PriorityBlockingQueue<Label>> backwardVisited) {
+
+	    return intersectionNodes.parallelStream()
+	        .map(node -> {
+	            Label forward = forwardVisited.get(node).peek();
+	            Label backward = backwardVisited.get(node).peek();
+	            if (forward == null || backward == null) return null;
 	            return getResult(forward, backward);
 	        })
 	        .filter(Objects::nonNull)
 	        .min(Comparator
 	                .comparingInt(Result::get_right_turns)        // fewer right turns first
+	                .thenComparingInt(Result::get_sharp_turns)    // fewer sharp turns second
 	                .thenComparing(Comparator.comparingDouble(Result::get_score).reversed()) // higher score wins if tie
 	        ).orElse(null);
 	}

@@ -1,4 +1,4 @@
-# Wide-Path Evolution - Feature Comparison
+# FlexRoute Evolution - Feature Comparison
 
 ## Version Comparison
 
@@ -370,7 +370,7 @@ src/
 
 ## Conclusion
 
-**Wide-Path has evolved from a functional pathfinding tool into a world-class visualization platform**, with each version building upon the last to deliver an increasingly polished and powerful user experience.
+**FlexRoute has evolved from a functional pathfinding tool into a world-class visualization platform**, with each version building upon the last to deliver an increasingly polished and powerful user experience.
 
 - **v1.0**: Proof of concept
 - **v2.0**: Production ready
