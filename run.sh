@@ -87,11 +87,11 @@ else
 fi
 
 # Launch application
-echo -e "${BLUE}[3/3]${NC} Launching FlexRoute Navigator..."
+echo -e "${BLUE}[3/3]${NC} Launching FlexiRoute Navigator..."
 echo ""
 echo -e "${CYAN}╔════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${CYAN}║${NC}                                                            ${CYAN}║${NC}"
-echo -e "${CYAN}║${NC}     🗺️  FlexRoute Navigator                                ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}     🗺️  FlexiRoute Navigator                               ${CYAN}║${NC}"
 echo -e "${CYAN}║${NC}                                                            ${CYAN}║${NC}"
 echo -e "${CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
 echo ""

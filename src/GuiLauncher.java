@@ -52,7 +52,7 @@ import ui.panels.QueryHistoryPanel;
 import ui.panels.MetricsDashboard;
 
 /**
- * FlexRoute Navigator - Professional GUI Application
+ * FlexiRoute Navigator - Professional GUI Application
  * A feature-rich GUI for pathfinding with wide road optimization
  * 
  * Features:
@@ -70,8 +70,8 @@ import ui.panels.MetricsDashboard;
 public class GuiLauncher extends JFrame {
     
     // === CONSTANTS ===
-    private static final String APP_TITLE = "🌟 FlexRoute Navigator🌟";
-    private static final String VERSION = "";
+    private static final String APP_TITLE = "🌟 FlexiRoute Navigator 🌟";
+    private static final String VERSION = "1.0";
     private static final int DEFAULT_WIDTH = 1550;
     private static final int DEFAULT_HEIGHT = 980;
     
@@ -812,8 +812,8 @@ public class GuiLauncher extends JFrame {
             Files.createDirectories(Paths.get("output"));
             
             StringBuilder sb = new StringBuilder();
-            sb.append("FlexRoute Query Result\n");
-            sb.append("======================\n\n");
+            sb.append("FlexiRoute Query Result\n");
+            sb.append("=======================\n\n");
             sb.append("Source: ").append(result.getSource()).append("\n");
             sb.append("Destination: ").append(result.getDestination()).append("\n");
             sb.append("Path Length: ").append(result.getPathLength()).append(" nodes\n");
@@ -881,13 +881,13 @@ public class GuiLauncher extends JFrame {
         String guide = """
             <html>
             <body style="font-family: Segoe UI; padding: 10px; width: 400px;">
-            <h2>🗺️ FlexRoute Navigator User Guide</h2>
+            <h2>🗺️ FlexiRoute Navigator User Guide</h2>
             
             <h3>Quick Start</h3>
             <ol>
                 <li>Enter source and destination node IDs</li>
                 <li>Adjust travel budget using the slider</li>
-                <li>Click "Find FlexRoute" or press Ctrl+Enter</li>
+                <li>Click "Find Route" or press Ctrl+Enter</li>
             </ol>
             
             <h3>Parameters</h3>
@@ -925,14 +925,14 @@ public class GuiLauncher extends JFrame {
         String about = """
             <html>
             <body style="font-family: Segoe UI; text-align: center; padding: 20px;">
-            <h1>🗺️ FlexRoute Navigator</h1>
-            <h3>Version 3.0</h3>
+            <h1>🗺️ FlexiRoute Navigator</h1>
+            <h3>Version 1.0</h3>
             <p>Advanced pathfinding with wide road optimization</p>
             <br>
             <p>Using Bi-TDCPO algorithm for optimal<br>
             constrained path queries on road networks.</p>
             <br>
-            <p><small>© 2024 FlexRoute Project</small></p>
+            <p><small>© 2024 FlexiRoute Project</small></p>
             </body>
             </html>
             """;
@@ -950,7 +950,7 @@ public class GuiLauncher extends JFrame {
         icon.setHorizontalAlignment(SwingConstants.CENTER);
         
         JLabel message = new JLabel("<html><div style='text-align: center;'>" +
-            "<b>Exit FlexRoute Navigator?</b><br><br>" +
+            "<b>Exit FlexiRoute Navigator?</b><br><br>" +
             "Are you sure you want to exit?<br>" +
             "All unsaved data will be lost." +
             "</div></html>");
@@ -978,7 +978,7 @@ public class GuiLauncher extends JFrame {
     }
     
     private void performGracefulShutdown() {
-        setStatus("👋 Shutting down FlexRoute Navigator...");
+        setStatus("👋 Shutting down FlexiRoute Navigator...");
         
         // Cleanup resources
         try {

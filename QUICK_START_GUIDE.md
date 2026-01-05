@@ -1,4 +1,4 @@
-# FlexRoute Pro - Quick Start Guide
+# FlexiRoute Navigator - Quick Start Guide
 
 ## 🚀 Getting Started in 5 Minutes
 
@@ -7,10 +7,10 @@
 #### Option A: Using the GUI Launcher (Recommended)
 ```bash
 # On Linux/Mac
-./run_gui.sh
+./run.sh
 
 # On Windows
-run_with_guide.bat
+run.bat
 ```
 
 #### Option B: Direct Java Execution
@@ -24,7 +24,7 @@ java -cp target/classes GuiLauncher
 
 ### 2. First Launch
 
-When you first launch FlexRoute Pro, you'll see:
+When you first launch FlexiRoute Navigator, you'll see:
 
 1. **Animated Splash Screen** 🎨
    - Modern gradient background
