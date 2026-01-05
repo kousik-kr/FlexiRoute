@@ -23,7 +23,8 @@ FlexiRoute is a **professional pathfinding analysis platform** featuring:
 ### 🎯 **Smart Query System**
 ✨ **Input Validation**: Real-time feedback with visual indicators  
 ✨ **Recent History**: Last 10 queries with one-click reload  
-✨ **Quick Actions**: Swap source/dest  
+✨ **Quick Actions**: Swap source/dest (S↔D button)  
+✨ **Node Search**: Quick lookup by ID or name  
 
 ### 📊 **Real-Time Analytics**
 ✨ **4 Metric Cards**: Total queries, avg time, success rate, throughput  
@@ -31,14 +32,17 @@ FlexiRoute is a **professional pathfinding analysis platform** featuring:
 ✨ **Live Updates**: 1-second refresh with smooth animations  
 ✨ **Data Export**: PDF reports, CSV data, chart screenshots  
 
+### ⚡ **Search Strategies**
+✨ **Aggressive Mode**: Faster search with frontier threshold of 10 (more pruning)  
+✨ **Balanced Mode**: Thorough search with frontier threshold of 50 (balanced exploration)  
+
 ### ⌨️ **Power User Features**
 ✨ **20+ Keyboard Shortcuts**: Ctrl+Enter (run), Ctrl+T (theme), Ctrl+S (export)  
 ✨ **Splash Screen**: Professional animated startup  
 ✨ **Toast Notifications**: Success, error, warning, info messages  
-✨ **Status Bar**: Real-time feedback and system info  
+✨ **Tabbed Interface**: Results, Visualization, Metrics, History  
 
 📚 **[🚀 Quick Start Guide →](QUICK_START_GUIDE.md)**  
-📚 **[✨ Features Guide →](GUI_REDESIGN_SUMMARY.md)**  
 📚 **[🎨 Design System →](DESIGN_SYSTEM.md)**  
 
 ## Prerequisites
@@ -82,8 +86,8 @@ pip install gdown
 📚 **[Dataset Setup Guide →](dataset/README.md)**
 
 ## 📁 Project Layout
-- `src/` – Java sources for API server, GUI application, and bidirectional A* implementation.
-  - `GuiLauncher.java` – Main desktop GUI application (NEW v2.0)
+- `src/` – Java sources for API server, GUI application, and bidirectional A* implementation
+  - `GuiLauncher.java` – Main desktop GUI application
   - `models/` – Data models (QueryResult, RoutingMode)
   - `managers/` – Business logic (ThemeManager, QueryHistoryManager, MetricsCollector)
   - `ui/components/` – Reusable UI components (SplashScreen)
@@ -92,40 +96,49 @@ pip install gdown
   - `BidirectionalAstar.java` – Core pathfinding algorithm
   - `BidirectionalLabeling.java` – Label-based search with pruning strategies
 - `frontend/` – React + Vite web UI (optional)
-- `run.sh` / `run_gui.sh` – Helper scripts for Linux/Mac
-- `MODULAR_ARCHITECTURE.md` – Complete architecture documentation (NEW)
-- `QUICK_REFERENCE.md` – Developer quick reference (NEW)
-- `TRANSFORMATION_SUMMARY.md` – What changed in v2.0 (NEW)
+- `run.sh` / `run.bat` / `run.ps1` – Helper scripts for Linux/Mac/Windows
+- `QUICK_START_GUIDE.md` – Quick start documentation
+- `DESIGN_SYSTEM.md` – Design system documentation
 
 ## 🚀 Quick Start
-  - `models/` – Data models (QueryResult)
-  - `managers/` – Business logic (Theme, History, Metrics)
-  - `ui/components/` – Reusable UI components (StatusBar, ModernButton)
-  - `ui/panels/` – Complex UI panels (Input, Metrics, History, Visualization)
-  - `ApiServer.java` – REST API server
-  - `BidirectionalAstar.java` – Core pathfinding algorithm
-- `frontend/` – React + Vite web UI (optional)
-- `run.sh` / `run.bat` – Launch scripts for Linux/Mac/Windows
+
+### Desktop GUI (Recommended)
+
+**Windows**:
+```bash
+run.bat
+**Windows**:
+```bash
+run.bat
+```
+
+**Linux/Mac**:
+```bash
+./run.sh
+```
+
+**Or using Java directly**:
+```bash
 java -cp target/classes GuiLauncher
 ```
 
-Or using Maven directly:
+**Or using Maven**:
 ```bash
 mvn exec:java -Dexec.mainClass="GuiLauncher"
 ```
 
 **Features**:
 - 📊 Tabbed interface (Results, Visualization, Metrics, History)
-- 🎨 5 creative visualization modes
-- 📈 Real-time performance metrics
-- 🕐 Query history with analytics
-- 🎯 Multiple visualization modes (Classic, Neon Glow, Gradient Flow, 3D, Pulse)
-- 📈 Real-time performance metrics
+- 🎨 5 creative visualization modes (Classic, Neon Glow, Gradient Flow, 3D, Pulse)
+- 📈 Real-time performance metrics with live charts
 - 🕐 Query history with analytics
 - 🎯 Pre-query input visualization
 - 📄 Graph pagination for large datasets
 - ⚡ Configurable search strategies (Aggressive/Balanced)
 - 🎨 Professional themes and design system
+
+### Web Frontend (Optional)
+
 For the complete web-based experience:
 
 ```bash
@@ -135,32 +148,12 @@ run.bat
 This compiles the Java sources, starts the API on port **8080**, and launches the Vite dev server on **5173** with `VITE_API_BASE` pointed at the API. Visit http://localhost:5173 to use the web UI.
 
 Options:
-- `BACKEND_PORT` and `FRONTEND_PORT` environment variables override the defaults.
-- `--port` and `--frontend-port` flags set the ports explicitly.
+- `BACKEND_PORT` and `FRONTEND_PORT` environment variables override the defaults
+- `--port` and `--frontend-port` flags set the ports explicitly
 
-## 📚 Documentation
+## 🎨 Visualization Modes
 
-- **[MODULAR_ARCHITECTURE.md](MODULAR_ARCHITECTURE.md)** - Complete architecture guide
-  - Package structure and component details
-  - Design patterns and best practices
-  - Architecture**: Modular design with clear separation of concerns
-  - `models/` - Data models (QueryResult, RoutingMode)
-  - `managers/` - Business logic & state management (ThemeManager, QueryHistoryManager, MetricsCollector)
-  - `ui/components/` - Reusable UI components (SplashScreen)
-  - `ui/panels/` - Complex composite views (QueryPanel, MapPanel, ResultsPanel, MetricsDashboard, QueryHistoryPanel)
-
-- **Design Patterns**: Builder, Observer, Strategy  
-- **Thread Safety**: Lock-free atomic counters, SwingWorker, ExecutorService  
-- **UI Framework**: Java Swing with Material Design principles
 The desktop GUI offers 5 creative visualization modes:
-
-1. **Classic** - Traditional node-edge rendering with color coding
-2. **Neon Glow** - Futuristic glowing effects with cyan palette
-3. **Gradient Flow** - Smooth blue-to-orange color transitions
-4. **3D Effect** - Pseudo-3D with shadows and highlights
-5. **Pulse Animation** - Animated traveling marker along path
-
-## 🏗️ Architecturemultiple creative visualization modes:
 
 1. **Classic** - Traditional node-edge rendering with color coding
 2. **Neon Glow** - Futuristic glowing effects with cyan palette
@@ -176,157 +169,63 @@ Choose between two search optimization modes:
 
 ## 🏗️ Architecture
 
-FlexiRoute
+FlexiRoute follows a modular design with clear separation of concerns:
+
 **Design Patterns**: Builder, Observer, Strategy  
-**Thread Safety**: AtomicLong/AtomicInteger, SwingWorker, ExecutorService  
+**Thread Safety**: Lock-free atomic counters, SwingWorker, ExecutorService  
 **UI Framework**: Java Swing with Material Design principles
 
----
-
-## 🌐 API Server & Web Frontend
-
-### Running without the frontend
-
-Run only the Java API server (good for headless benchmarking or hooking up a different client):
-```bash
-run.bat --backend-only --port 9000
-```
-The server seeds a tiny in-memory network so the endpoints respond immediately even without a dataset on disk.
-
-### Running only the web frontend
-
-Point the web UI at an existing API host:
-```bash
-run.bat --frontend-only --api-base "http://localhost:8080/api" --frontend-port 5173
-```
-Alternatively, run the commands manually:
-```bash
-cd frontend
-npm install
-VITE_API_BASE="http://localhost:8080/api" npm run dev -- --host 0.0.0.0 --port 5173
-```
-You can also copy `frontend/.env.example` to `.env` and edit `VITE_API_BASE`.
-
-### Manual backend build/run
-
-Compile and start the API directly:
-```bash
-javac -d build src/*.java
-java -cp build ApiServer 8080
-```
-
-Or using Maven:
-```bash
-mvn clean compile
-mvn exec:java -Dexec.mainClass="ApiServer" -Dexec.args="8080"
-```
-
-The server exposes:
-- `GET /api/nodes?search=<id substring>` – node search
-- `GET /api/network/meta` – vertex count and bounding box
-- `POST /api/queries/run` – run bidirectional A* query
-- `GET /api/metrics/live` – JVM memory snapshot
-
-### Production frontend build
-
-Build static files for the web UI:
-```bash
-cd frontend
-npm install
-npm run build
-```
-Output lands in `frontend/dist/` for serving by any static file server.
+### Package Structure
+- `models/` - Data models (QueryResult, RoutingMode)
+- `managers/` - Business logic & state management (ThemeManager, QueryHistoryManager, MetricsCollector)
+- `ui/components/` - Reusable UI components (SplashScreen)
+- `ui/panels/` - Complex composite views (QueryPanel, MapPanel, ResultsPanel, MetricsDashboard, QueryHistoryPanel)
 
 ---
 
-## 🧪 Testing
+## 📚 Documentation
 
-```bash
-# Run all tests
-mvn test
+- [Quick Start Guide](QUICK_START_GUIDE.md)
+- [Design System](DESIGN_SYSTEM.md)
 
-# Run specific test class
-mvn test -Dtest=YourTestClass
-
-# Build with tests
-mvn clean package
-```
-
-## 🔧 Development
-
-### Building the Project
-
-```bash
-# Clean and compile
-mvn clean compile
-
-# Package as JAR
-mvn package
-
-# Skip tests
-mvn package -DskipTests
-```
-
-### Running the GUI
-
-```bash
-# Direct Java execution
-java -cp target/classes GuiLauncher
-
-# Using Maven
-mvn exec:java -Dexec.mainClass="GuiLauncher"
-```
-
-1. Edit `src/ui/panels/AdvancedMapPanel.java`
-2. Add enum value to `VisualizationMode`
-3. Implement render method
-4. Add to switch statement
-
-See [QUICK_REFERENCE.md](QUICK_REFERENCE.md#adding-visualization-mode) for details.
+---
 
 ## 🐛 Troubleshooting
-- If `run.sh` reports missing commands, install the prerequisite packages above.
-- Use `--api-base` when the frontend and backend are on different hosts/ports.
-- Stop the script with `Ctrl+C`; it will shut down the background Java process when started in full-stack mode.
-
 
 ### Common Issues
 
 **Graph not loading in GUI**
-- Check Properties.java for correct graph file paths
+- Check [Properties.java](src/Properties.java) for correct graph file paths
 - Ensure graph files exist in configured directory
+- Verify dataset files are properly downloaded
 
 **Build errors**
 - Verify Java 21 is installed: `java -version`
 - Clean and rebuild: `mvn clean compile`
 
+**Dataset download issues**
+- If `run.sh` reports missing commands, install the prerequisite packages
+- Use manual download from Google Drive if auto-download fails
+
+**Port conflicts**
+- Use `--api-base` when the frontend and backend are on different hosts/ports
+- Change ports with `--port` and `--frontend-port` flags
+
 ---
 
-##  Performance
+## 🚀 Performance
 
 - **Thread-Safe Metrics**: Lock-free atomic counters
 - **Async Query Execution**: Non-blocking UI with SwingWorker
 - **Pagination**: Efficient rendering for large graphs (10-500 nodes/page)
 - **Double Buffering**: Smooth animations and transitions
 
-##  License & Credits
-
-FlexRoute Pro v2.0 - Advanced Pathfinding Analysis System
-
-**AriRoute NavigatorModular design with separation of concerns
-**Patterns**: Builder, Observer, Strategy
-**UI Design**: Material Design principles
-
 ---
 
-##  Additional Resources
+## 📄 License & Credits
 
-- [Complete Architecture Guide](MODULAR_ARCHITECTURE.md)
-- [Developer Quick Reference](QUICK_REFERENCE.md)
-- [Quick Start Guide](QUICK_START_GUIDE.md)
-- [Design System](DESIGN_SYSTEM.md)
-- [Features Guide](GUI_REDESIGN_SUMMARY.md)
+FlexiRoute Navigator - Advanced Pathfinding Analysis System
 
 **Status**: Production Ready | **Java**: 21 LTS Required
 
- **Enjoy FlexiRoute Navigator
+**Enjoy FlexiRoute Navigator!** 🚀
