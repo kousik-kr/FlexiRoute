@@ -1,7 +1,7 @@
-# FlexRoute Navigator - PowerShell Launch Script
+# FlexiRoute Navigator - PowerShell Launch Script
 
 Write-Host "====================================================" -ForegroundColor Cyan
-Write-Host "         FlexRoute Navigator" -ForegroundColor Cyan
+Write-Host "         FlexiRoute Navigator" -ForegroundColor Cyan
 Write-Host "====================================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -76,7 +76,7 @@ if (-not (Test-Path "target\classes\GuiLauncher.class")) {
 }
 
 Write-Host ""
-Write-Host "[*] Starting FlexRoute Navigator..." -ForegroundColor Cyan
+Write-Host "[*] Starting FlexiRoute Navigator..." -ForegroundColor Cyan
 Write-Host ""
 
 java -Dsun.java2d.uiScale=1.0 `

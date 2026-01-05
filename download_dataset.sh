@@ -1,5 +1,5 @@
 #!/bin/bash
-# FlexRoute Dataset Downloader
+# FlexiRoute Dataset Downloader
 # Downloads dataset from Google Drive using gdown
 
 set -e
@@ -7,7 +7,7 @@ set -e
 DATASET_DIR="dataset"
 DRIVE_URL="https://drive.google.com/drive/folders/1l3NG641rHeshkYW7aDxpb7RhUy0kRuiP"
 
-echo "=== FlexRoute Dataset Downloader ==="
+echo "=== FlexiRoute Dataset Downloader ==="
 echo ""
 
 # Create dataset directory

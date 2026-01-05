@@ -1,9 +1,9 @@
 package models;
 
 /**
- * FlexRoute Routing Modes - User-selectable optimization objectives
+ * FlexiRoute Routing Modes - User-selectable optimization objectives
  * 
- * Defines the different optimization strategies available in the FlexRoute navigation system.
+ * Defines the different optimization strategies available in the FlexiRoute navigation system.
  * Users can choose their preferred balance between wideness, turns, and travel time.
  */
 public enum RoutingMode {

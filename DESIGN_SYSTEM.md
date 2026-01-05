@@ -1,4 +1,4 @@
-# FlexRoute Pro - Design System
+# FlexiRoute Navigator - Design System
 
 ## Color Palette
 
