@@ -15,22 +15,12 @@ target/
 .classpath
 .settings/
 
-# Node and Vite
-node_modules/
-frontend/node_modules/
-frontend/dist/
-frontend/.vite/
-
 # Logs
 *.log
-.backend.log
 
 # Environment files
 .env
 .env.local
-.env.*.local
-frontend/.env
-frontend/.env.local
 
 # Dataset folder - contains large graph data files
 dataset/
