@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# FlexRoute Navigator
+# FlexiRoute Navigator
 # Launch Script for Ubuntu/Linux
 # =============================================================================
 
@@ -14,7 +14,7 @@ NC='\033[0m' # No Color
 
 echo -e "${CYAN}"
 echo "╔════════════════════════════════════════════════════════════╗"
-echo "║             🗺️  FlexRoute Navigator                        ║"
+echo "║             🗺️  FlexiRoute Navigator                       ║"
 echo "╚════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 
@@ -62,16 +62,16 @@ if [ ! -f "target/classes/GuiLauncher.class" ]; then
     
     # Compile UI panels
     javac -d target/classes -cp target/classes \
-        src/ui/panels/WorldClassQueryPanel.java \
-        src/ui/panels/WorldClassMapPanel.java \
-        src/ui/panels/WorldClassResultsPanel.java \
+        src/ui/panels/QueryPanel.java \
+        src/ui/panels/MapPanel.java \
+        src/ui/panels/ResultsPanel.java \
         src/ui/panels/ResultData.java \
         src/ui/panels/QueryHistoryPanel.java \
         src/ui/panels/MetricsDashboard.java 2>&1
     
     # Compile UI components
     javac -d target/classes -cp target/classes \
-        src/ui/components/WorldClassSplashScreen.java 2>&1
+        src/ui/components/SplashScreen.java 2>&1
     
     # Compile launcher
     javac -d target/classes -cp target/classes \

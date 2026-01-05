@@ -43,11 +43,11 @@ import managers.MetricsCollector;
 import managers.ThemeManager;
 import models.QueryResult;
 import models.RoutingMode;
-import ui.components.WorldClassSplashScreen;
+import ui.components.SplashScreen;
 import ui.panels.ResultData;
-import ui.panels.WorldClassMapPanel;
-import ui.panels.WorldClassQueryPanel;
-import ui.panels.WorldClassResultsPanel;
+import ui.panels.MapPanel;
+import ui.panels.QueryPanel;
+import ui.panels.ResultsPanel;
 import ui.panels.QueryHistoryPanel;
 import ui.panels.MetricsDashboard;
 
@@ -93,9 +93,9 @@ public class GuiLauncher extends JFrame {
     private static final Color TEXT_SECONDARY = new Color(100, 116, 139);  // Cool Gray
     
     // === UI COMPONENTS ===
-    private WorldClassQueryPanel queryPanel;
-    private WorldClassMapPanel mapPanel;
-    private WorldClassResultsPanel resultsPanel;
+    private QueryPanel queryPanel;
+    private MapPanel mapPanel;
+    private ResultsPanel resultsPanel;
     private JTabbedPane rightTabs;
     private JLabel statusLabel;
     private JProgressBar globalProgress;
@@ -277,7 +277,7 @@ public class GuiLauncher extends JFrame {
     
     private JSplitPane createMainSplit() {
         // Left side: Query Panel
-        queryPanel = new WorldClassQueryPanel();
+        queryPanel = new QueryPanel();
         queryPanel.setPreferredSize(new Dimension(500, 0));
         queryPanel.setMinimumSize(new Dimension(500, 0));
         
@@ -291,11 +291,11 @@ public class GuiLauncher extends JFrame {
         rightTabs.setBackground(BG_COLOR);
         
         // Map Panel
-        mapPanel = new WorldClassMapPanel();
+        mapPanel = new MapPanel();
         rightTabs.addTab("🗺️ Map View", mapPanel);
         
         // Results Panel
-        resultsPanel = new WorldClassResultsPanel();
+        resultsPanel = new ResultsPanel();
         rightTabs.addTab("📊 Results", resultsPanel);
         
         // Metrics Dashboard
@@ -1003,7 +1003,7 @@ public class GuiLauncher extends JFrame {
     public static void main(String[] args) {
         // Show splash screen
         SwingUtilities.invokeLater(() -> {
-            WorldClassSplashScreen splash = new WorldClassSplashScreen();
+            SplashScreen splash = new SplashScreen();
             splash.showSplash();
             
             // Simulate loading

@@ -4,7 +4,7 @@ import java.util.List;
 import models.RoutingMode;
 
 /**
- * Enhanced Result class for World-Class FlexRoute Navigator
+ * Enhanced Result class for FlexiRoute Navigator
  * Stores query results with comprehensive path information
  * Supports both single optimal path and multiple Pareto optimal paths
  */
@@ -18,7 +18,7 @@ public class Result {
 	private List<Integer> pathNodes;
 	private List<Integer> wideEdgeIndices;
 	
-	// Enhanced fields for world-class UI
+	// Enhanced fields for UI
 	private int source;
 	private int destination;
 	private int budget;
@@ -79,7 +79,7 @@ public class Result {
 		this.score = final_score;
 	}
 	
-	// === NEW WORLD-CLASS API ===
+	// === NEW API ===
 	
 	// Getters for enhanced UI
 	public List<Integer> getPathNodes() {
