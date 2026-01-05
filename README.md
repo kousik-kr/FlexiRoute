@@ -171,3 +171,31 @@ Contributions are welcome! Please see our [Contributing Guide](CONTRIBUTING.md) 
 ---
 
 **Enjoy FlexiRoute Navigator!** 🚀
+
+# FlexiRoute
+
+FlexiRoute is a high-performance, open-source Java application for advanced route planning and network analysis. It features:
+
+- Fast bidirectional pathfinding algorithms (Aggressive/Balanced modes)
+- Interactive desktop GUI built with Java Swing
+- Material-inspired design with multiple themes
+- Support for large-scale datasets (road networks, clusters, POIs)
+- Easy-to-use query panel, live metrics, and results visualization
+- MIT licensed for academic and commercial use
+
+## Key Features
+- **BidirectionalLabeling**: Efficient shortest-path search with dynamic pruning
+- **Aggressive/Balanced Modes**: User-selectable frontier threshold for search speed vs. accuracy
+- **GUI-Only**: No web frontend, focused on desktop usability
+- **Extensible**: Modular codebase for custom algorithms and data sources
+
+## Getting Started
+- Launch with `run.bat` (Windows) or `run.sh` (Linux/Mac)
+- See `README.md` for setup, dataset formats, and usage instructions
+
+## License
+MIT License — free for personal, academic, and commercial use.
+
+---
+
+For more details, see the [README.md](README.md) and [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md).
