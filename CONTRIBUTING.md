@@ -7,7 +7,6 @@ Thank you for your interest in contributing to FlexiRoute Navigator! 🎉
 ### Prerequisites
 - Java 21 LTS or higher
 - Maven 3.6+
-- Node.js 18+ (for frontend development)
 
 ### Setting Up the Development Environment
 
@@ -34,11 +33,9 @@ Thank you for your interest in contributing to FlexiRoute Navigator! 🎉
 FlexiRoute/
 ├── src/                    # Java source files
 │   ├── GuiLauncher.java   # Main GUI application
-│   ├── ApiServer.java     # REST API server
 │   ├── models/            # Data models
 │   ├── managers/          # Business logic
 │   └── ui/                # UI components
-├── frontend/              # React + Vite web UI
 ├── dataset/               # Graph data files (gitignored)
 └── docs/                  # Documentation
 ```
@@ -50,11 +47,6 @@ FlexiRoute/
 - Follow standard Java naming conventions
 - Add Javadoc comments for public methods
 - Keep methods focused and under 50 lines when possible
-
-### Frontend (TypeScript/React)
-- Use 2 spaces for indentation
-- Use functional components with hooks
-- Follow React best practices
 
 ## Submitting Changes
 
