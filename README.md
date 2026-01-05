@@ -1,5 +1,10 @@
 # FlexiRoute Navigator
 
+![Java](https://img.shields.io/badge/Java-21%20LTS-ED8B00?style=flat&logo=openjdk&logoColor=white)
+![React](https://img.shields.io/badge/React-18-61DAFB?style=flat&logo=react&logoColor=black)
+![Vite](https://img.shields.io/badge/Vite-5-646CFF?style=flat&logo=vite&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-green.svg)
+
 FlexiRoute is a **professional pathfinding analysis platform** featuring:
 - **Java 21 LTS** backend with bidirectional A* algorithm
 - **Enterprise-Grade Swing GUI** with premium design system
@@ -83,7 +88,7 @@ pip install gdown
 - Visit: https://drive.google.com/drive/folders/1l3NG641rHeshkYW7aDxpb7RhUy0kRuiP
 - Download all files and place them in the `dataset/` folder
 
-📚 **[Dataset Setup Guide →](dataset/README.md)**
+📚 **[Dataset Setup Guide →](GOOGLE_DRIVE_SETUP.md)**
 
 ## 📁 Project Layout
 - `src/` – Java sources for API server, GUI application, and bidirectional A* implementation
@@ -104,9 +109,6 @@ pip install gdown
 
 ### Desktop GUI (Recommended)
 
-**Windows**:
-```bash
-run.bat
 **Windows**:
 ```bash
 run.bat
@@ -226,6 +228,14 @@ FlexiRoute follows a modular design with clear separation of concerns:
 
 FlexiRoute Navigator - Advanced Pathfinding Analysis System
 
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
 **Status**: Production Ready | **Java**: 21 LTS Required
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
 **Enjoy FlexiRoute Navigator!** 🚀

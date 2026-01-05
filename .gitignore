@@ -1,25 +1,52 @@
 # Java build artifacts
 build/
+target/
 *.class
+*.jar
+*.war
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+.project
+.classpath
+.settings/
 
 # Node and Vite
+node_modules/
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
+
+# Logs
+*.log
 .backend.log
 
 # Environment files
 .env
+.env.local
+.env.*.local
 frontend/.env
 frontend/.env.local
 
 # Dataset folder - contains large graph data files
 dataset/
 datasets/
-*.txt
-*.dat
-*.csv
 
-# Except configuration files
-!dataset/.gitkeep
-!config/*.txt
+# OS generated files
+.DS_Store
+.DS_Store?
+Thumbs.db
+ehthumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+
+# Output files
+output/*.txt
+!output/.gitkeep
