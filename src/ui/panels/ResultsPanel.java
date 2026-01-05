@@ -32,13 +32,13 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 
 /**
- * World-Class Results Dashboard
+ * Results Dashboard
  * - Animated result cards
  * - Path statistics visualization
  * - Export options
  * - Detailed breakdown
  */
-public class WorldClassResultsPanel extends JPanel {
+public class ResultsPanel extends JPanel {
     
     // 🌈 VIBRANT RAINBOW COLOR PALETTE - Maximum Visual Impact!
     private static final Color CORAL_PINK = new Color(255, 107, 107);      // Coral 
@@ -70,7 +70,7 @@ public class WorldClassResultsPanel extends JPanel {
     private Timer animationTimer;
     private float animProgress = 0f;
     
-    public WorldClassResultsPanel() {
+    public ResultsPanel() {
         setLayout(new BorderLayout(0, 20));
         setBackground(BG_SURFACE);
         setBorder(new EmptyBorder(20, 20, 20, 20));
@@ -379,10 +379,10 @@ public class WorldClassResultsPanel extends JPanel {
         pathDetailsArea.setText("""
             ╔══════════════════════════════════════════════════════════╗
             ║                                                          ║
-            ║     🗺️  Welcome to FlexRoute Navigator!                   ║
+            ║     🗺️  Welcome to FlexiRoute Navigator!                   ║
             ║                                                          ║
             ║     Configure your query in the left panel and click     ║
-            ║     "Find FlexRoute" to discover the optimal route.      ║
+            ║     "Find FlexiRoute" to discover the optimal route.      ║
             ║                                                          ║
             ║     The algorithm will find a path that maximizes        ║
             ║     wide road usage within your travel budget.           ║
@@ -669,7 +669,7 @@ public class WorldClassResultsPanel extends JPanel {
             
             ╔════════════════════════════════════════════════════════╗
             ║                                                        ║
-            ║     ⏳  Finding the optimal FlexRoute path...            ║
+            ║     ⏳  Finding the optimal FlexiRoute path...            ║
             ║                                                        ║
             ║     The bidirectional labeling algorithm is            ║
             ║     exploring possible routes to maximize              ║

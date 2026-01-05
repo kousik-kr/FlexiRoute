@@ -281,8 +281,8 @@ Now that you're familiar with the basics:
 4. ✅ Analyze metrics and patterns
 5. ✅ Export and share results
 
-**Enjoy your world-class pathfinding experience!** 🚀
+**Enjoy your pathfinding experience!** 🚀
 
 ---
 
-*FlexRoute Pro - Making pathfinding visualization extraordinary.*
+*FlexiRoute - Making pathfinding visualization extraordinary.*

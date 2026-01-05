@@ -42,10 +42,10 @@ import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
 /**
- * World-Class Map Visualization Panel with Advanced Features
+ * Map Visualization Panel with Advanced Features
  * Works with coordinates directly (no dependency on Node class)
  */
-public class WorldClassMapPanel extends JPanel {
+public class MapPanel extends JPanel {
     
     public enum RenderMode {
         SATELLITE("🛰️ Satellite View", "Realistic map-style rendering"),
@@ -107,7 +107,7 @@ public class WorldClassMapPanel extends JPanel {
     private static final Color CYBER_YELLOW = new Color(250, 204, 21);
     private static final Color ROYAL_INDIGO = new Color(99, 102, 241);
     
-    public WorldClassMapPanel() {
+    public MapPanel() {
         setBackground(BG_SURFACE);
         setPreferredSize(new Dimension(900, 650));
         setupInteraction();
@@ -376,7 +376,7 @@ public class WorldClassMapPanel extends JPanel {
         
         g2d.setFont(new Font("Segoe UI", Font.BOLD, 34));
         g2d.setColor(PATH_COLOR);
-        String title = "FlexRoute Navigator";
+        String title = "FlexiRoute Navigator";
         FontMetrics fm = g2d.getFontMetrics();
         g2d.drawString(title, cx - fm.stringWidth(title) / 2, cy - 110);
         
@@ -695,7 +695,7 @@ public class WorldClassMapPanel extends JPanel {
     
     private void exportImage() {
         JFileChooser chooser = new JFileChooser();
-        chooser.setSelectedFile(new java.io.File("flexroute_map.png"));
+        chooser.setSelectedFile(new java.io.File("flexiroute_map.png"));
         if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
             try {
                 BufferedImage img = new BufferedImage(getWidth(), getHeight(), BufferedImage.TYPE_INT_ARGB);

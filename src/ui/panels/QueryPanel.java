@@ -34,7 +34,7 @@ import models.RoutingMode;
 /**
  * Query Panel - 500px width with large readable fonts
  */
-public class WorldClassQueryPanel extends JPanel {
+public class QueryPanel extends JPanel {
     
     // 🌈 VIBRANT RAINBOW COLOR PALETTE
     private static final Color CORAL_PINK = new Color(255, 107, 107);
@@ -70,7 +70,11 @@ public class WorldClassQueryPanel extends JPanel {
     private JComboBox<RoutingMode> routingModeCombo;
     private JLabel routingModeDescription;
     
-    public WorldClassQueryPanel() {
+    // Frontier threshold mode selector
+    private JComboBox<String> frontierThresholdCombo;
+    private JLabel frontierThresholdDescription;
+    
+    public QueryPanel() {
         setLayout(new BorderLayout());
         setBackground(BG_SURFACE);
         setBorder(new EmptyBorder(12, 12, 12, 12));
@@ -96,6 +100,10 @@ public class WorldClassQueryPanel extends JPanel {
         
         // === ROUTING MODE ===
         mainPanel.add(createRoutingModePanel());
+        mainPanel.add(Box.createVerticalStrut(14));
+        
+        // === FRONTIER THRESHOLD MODE ===
+        mainPanel.add(createFrontierThresholdPanel());
         mainPanel.add(Box.createVerticalStrut(14));
         
         // === QUICK ACTIONS (2 buttons) ===
@@ -195,6 +203,57 @@ public class WorldClassQueryPanel extends JPanel {
                 } else {
                     routingModeDescription.setForeground(TEXT_SECONDARY);
                 }
+            }
+        });
+        
+        return panel;
+    }
+    
+    /**
+     * Create the frontier threshold mode selection panel with dropdown and description
+     */
+    private JPanel createFrontierThresholdPanel() {
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setOpaque(false);
+        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 100));
+        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        // Label
+        JLabel label = new JLabel("⚡ Search Strategy");
+        label.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        label.setForeground(OCEAN_TEAL);
+        label.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(label);
+        panel.add(Box.createVerticalStrut(4));
+        
+        // Combo box with frontier threshold modes
+        String[] modes = {"Aggressive (Frontier: 10)", "Balanced (Frontier: 50)"};
+        frontierThresholdCombo = new JComboBox<>(modes);
+        frontierThresholdCombo.setFont(new Font("Segoe UI", Font.PLAIN, 18));
+        frontierThresholdCombo.setBackground(Color.WHITE);
+        frontierThresholdCombo.setBorder(BorderFactory.createLineBorder(OCEAN_TEAL, 2, true));
+        frontierThresholdCombo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        frontierThresholdCombo.setAlignmentX(Component.LEFT_ALIGNMENT);
+        frontierThresholdCombo.setSelectedIndex(0); // Default: Aggressive
+        
+        panel.add(frontierThresholdCombo);
+        panel.add(Box.createVerticalStrut(4));
+        
+        // Description label
+        frontierThresholdDescription = new JLabel("Faster search, more aggressive pruning");
+        frontierThresholdDescription.setFont(new Font("Segoe UI", Font.ITALIC, 14));
+        frontierThresholdDescription.setForeground(TEXT_SECONDARY);
+        frontierThresholdDescription.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(frontierThresholdDescription);
+        
+        // Update description when selection changes
+        frontierThresholdCombo.addActionListener(e -> {
+            int selected = frontierThresholdCombo.getSelectedIndex();
+            if (selected == 0) {
+                frontierThresholdDescription.setText("Faster search, more aggressive pruning");
+            } else {
+                frontierThresholdDescription.setText("Thorough search, balanced exploration");
             }
         });
         
@@ -485,7 +544,7 @@ public class WorldClassQueryPanel extends JPanel {
         panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 55));
         panel.setAlignmentX(Component.LEFT_ALIGNMENT);
         
-        runButton = new JButton("Find FlexRoute") {
+        runButton = new JButton("Find FlexiRoute") {
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2d = (Graphics2D) g.create();
@@ -548,7 +607,7 @@ public class WorldClassQueryPanel extends JPanel {
                     statusLabel.setText("Source = Destination");
                     statusLabel.setForeground(SUNSET_ORANGE);
                 } else {
-                    statusLabel.setText("Ready! Click Find FlexRoute");
+                    statusLabel.setText("Ready! Click Find FlexiRoute");
                     statusLabel.setForeground(NEON_GREEN);
                 }
             }
@@ -612,13 +671,29 @@ public class WorldClassQueryPanel extends JPanel {
         }
     }
     
+    /**
+     * Get the selected frontier threshold mode (0 = Aggressive, 1 = Balanced)
+     */
+    public int getFrontierThresholdMode() {
+        return frontierThresholdCombo.getSelectedIndex();
+    }
+    
+    /**
+     * Set the frontier threshold mode programmatically (0 = Aggressive, 1 = Balanced)
+     */
+    public void setFrontierThresholdMode(int mode) {
+        if (mode >= 0 && mode <= 1) {
+            frontierThresholdCombo.setSelectedIndex(mode);
+        }
+    }
+    
     public void setSource(int value) { sourceField.setText(String.valueOf(value)); updateStatus(); }
     public void setDestination(int value) { destField.setText(String.valueOf(value)); updateStatus(); }
     public void setMaxNodeId(int max) { this.maxNodeId = max; updateStatus(); }
     
     public void setRunning(boolean running) {
         runButton.setEnabled(!running);
-        runButton.setText(running ? "Processing..." : "Find FlexRoute");
+        runButton.setText(running ? "Processing..." : "Find FlexiRoute");
         statusLabel.setText(running ? "Running query..." : "Ready!");
     }
 }

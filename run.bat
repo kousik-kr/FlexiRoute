@@ -1,8 +1,8 @@
 @echo off
-title FlexRoute Navigator
+title FlexiRoute Navigator
 echo.
 echo ====================================================
-echo        FlexRoute Navigator
+echo        FlexiRoute Navigator
 echo ====================================================
 echo.
 
@@ -21,10 +21,10 @@ REM Compile managers
 javac -d target/classes -cp target/classes src/managers/*.java 2>nul
 
 REM Compile UI panels
-javac -d target/classes -cp target/classes src/ui/panels/WorldClassQueryPanel.java src/ui/panels/WorldClassMapPanel.java src/ui/panels/WorldClassResultsPanel.java src/ui/panels/ResultData.java src/ui/panels/QueryHistoryPanel.java src/ui/panels/MetricsDashboard.java 2>nul
+javac -d target/classes -cp target/classes src/ui/panels/QueryPanel.java src/ui/panels/MapPanel.java src/ui/panels/ResultsPanel.java src/ui/panels/ResultData.java src/ui/panels/QueryHistoryPanel.java src/ui/panels/MetricsDashboard.java 2>nul
 
 REM Compile UI components
-javac -d target/classes -cp target/classes src/ui/components/WorldClassSplashScreen.java 2>nul
+javac -d target/classes -cp target/classes src/ui/components/SplashScreen.java 2>nul
 
 REM Compile the launcher
 javac -d target/classes -cp target/classes src/GuiLauncher.java 2>nul
@@ -35,7 +35,7 @@ if not exist "target\classes\GuiLauncher.class" (
     exit /b 1
 )
 
-echo [*] Starting FlexRoute Navigator...
+echo [*] Starting FlexiRoute Navigator...
 echo.
 
 REM Run with high-DPI support and additional memory

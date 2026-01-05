@@ -1,7 +1,7 @@
 import models.RoutingMode;
 
 /**
- * Query class for FlexRoute Navigation System
+ * Query class for FlexiRoute Navigation System
  * Stores query parameters including user-selected routing preferences
  */
 public class Query {

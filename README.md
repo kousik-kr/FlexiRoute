@@ -1,12 +1,12 @@
-# FlexRoute Navigator
+# FlexiRoute Navigator
 
-FlexRoute is a **professional pathfinding analysis platform** featuring:
+FlexiRoute is a **professional pathfinding analysis platform** featuring:
 - **Java 21 LTS** backend with bidirectional A* algorithm
 - **Enterprise-Grade Swing GUI** with premium design system
 - **React + Vite frontend** for web-based visualization (Optional)
 - **REST API** for programmatic access
 
-## ✨ What's New - Version 3.0
+## ✨ Features
 
 ### 🎨 **Premium Design System**
 ✨ **6 Professional Themes**: Light, Dark, Auto, Oceanic, Forest, Sunset  
@@ -40,19 +40,6 @@ FlexRoute is a **professional pathfinding analysis platform** featuring:
 📚 **[🚀 Quick Start Guide →](QUICK_START_GUIDE.md)**  
 📚 **[✨ Features Guide →](GUI_REDESIGN_SUMMARY.md)**  
 📚 **[🎨 Design System →](DESIGN_SYSTEM.md)**  
-📚 **[📋 Complete Features Summary →](IMPLEMENTATION_SUMMARY.md)**
-
-## 🎯 Previous Versions
-
-### v2.0 Features (Still Available)
-✨ Modular Architecture with 11 classes across 4 packages  
-✨ Query History with last 100 queries  
-✨ Graph Pagination for large datasets  
-✨ Reset Query & Exit System  
-
-📚 **[v2.0 Transformation Summary →](TRANSFORMATION_SUMMARY.md)**  
-📚 **[Reset & Exit Features →](QUERY_RESET_EXIT_FEATURES.md)**  
-📚 **[Visual Workflow →](VISUAL_WORKFLOW.md)**
 
 ## Prerequisites
 - **Java 21+ JDK** (LTS version recommended).
@@ -97,12 +84,13 @@ pip install gdown
 ## 📁 Project Layout
 - `src/` – Java sources for API server, GUI application, and bidirectional A* implementation.
   - `GuiLauncher.java` – Main desktop GUI application (NEW v2.0)
-  - `models/` – Data models (QueryResult)
-  - `managers/` – Business logic (Theme, History, Metrics)
-  - `ui/components/` – Reusable UI components (StatusBar, ModernButton)
-  - `ui/panels/` – Complex UI panels (Input, Metrics, History, Visualization)
+  - `models/` – Data models (QueryResult, RoutingMode)
+  - `managers/` – Business logic (ThemeManager, QueryHistoryManager, MetricsCollector)
+  - `ui/components/` – Reusable UI components (SplashScreen)
+  - `ui/panels/` – UI panels (QueryPanel, MapPanel, ResultsPanel, MetricsDashboard, QueryHistoryPanel, ResultData)
   - `ApiServer.java` – REST API server
   - `BidirectionalAstar.java` – Core pathfinding algorithm
+  - `BidirectionalLabeling.java` – Label-based search with pruning strategies
 - `frontend/` – React + Vite web UI (optional)
 - `run.sh` / `run_gui.sh` – Helper scripts for Linux/Mac
 - `MODULAR_ARCHITECTURE.md` – Complete architecture documentation (NEW)
@@ -110,17 +98,14 @@ pip install gdown
 - `TRANSFORMATION_SUMMARY.md` – What changed in v2.0 (NEW)
 
 ## 🚀 Quick Start
-
-### Option 1: Desktop GUI Application (Recommended)
-
-Run the modern Swing GUI application:
-
-```bash
-# Windows: use the launcher
-run.bat
-
-# Linux/Mac: build + run manually
-mvn clean compile
+  - `models/` – Data models (QueryResult)
+  - `managers/` – Business logic (Theme, History, Metrics)
+  - `ui/components/` – Reusable UI components (StatusBar, ModernButton)
+  - `ui/panels/` – Complex UI panels (Input, Metrics, History, Visualization)
+  - `ApiServer.java` – REST API server
+  - `BidirectionalAstar.java` – Core pathfinding algorithm
+- `frontend/` – React + Vite web UI (optional)
+- `run.sh` / `run.bat` – Launch scripts for Linux/Mac/Windows
 java -cp target/classes GuiLauncher
 ```
 
@@ -134,13 +119,13 @@ mvn exec:java -Dexec.mainClass="GuiLauncher"
 - 🎨 5 creative visualization modes
 - 📈 Real-time performance metrics
 - 🕐 Query history with analytics
+- 🎯 Multiple visualization modes (Classic, Neon Glow, Gradient Flow, 3D, Pulse)
+- 📈 Real-time performance metrics
+- 🕐 Query history with analytics
 - 🎯 Pre-query input visualization
 - 📄 Graph pagination for large datasets
-
-**[Read GUI Quick Reference →](QUICK_REFERENCE.md)**
-
-### Option 2: Full Stack (API + Web Frontend)
-
+- ⚡ Configurable search strategies (Aggressive/Balanced)
+- 🎨 Professional themes and design system
 For the complete web-based experience:
 
 ```bash
@@ -158,23 +143,15 @@ Options:
 - **[MODULAR_ARCHITECTURE.md](MODULAR_ARCHITECTURE.md)** - Complete architecture guide
   - Package structure and component details
   - Design patterns and best practices
-  - API documentation for all classes
-  - Usage examples and code snippets
+  - Architecture**: Modular design with clear separation of concerns
+  - `models/` - Data models (QueryResult, RoutingMode)
+  - `managers/` - Business logic & state management (ThemeManager, QueryHistoryManager, MetricsCollector)
+  - `ui/components/` - Reusable UI components (SplashScreen)
+  - `ui/panels/` - Complex composite views (QueryPanel, MapPanel, ResultsPanel, MetricsDashboard, QueryHistoryPanel)
 
-- **[QUICK_REFERENCE.md](QUICK_REFERENCE.md)** - Developer quick reference
-  - Common tasks and code examples
-  - Color palette and styling guide
-  - Performance tips
-  - Debugging help
-
-- **[TRANSFORMATION_SUMMARY.md](TRANSFORMATION_SUMMARY.md)** - v2.0 changes
-  - Before/after comparison
-  - New features overview
-  - Migration guide
-  - Achievement summary
-
-## 🎨 Visualization Modes
-
+- **Design Patterns**: Builder, Observer, Strategy  
+- **Thread Safety**: Lock-free atomic counters, SwingWorker, ExecutorService  
+- **UI Framework**: Java Swing with Material Design principles
 The desktop GUI offers 5 creative visualization modes:
 
 1. **Classic** - Traditional node-edge rendering with color coding
@@ -183,17 +160,23 @@ The desktop GUI offers 5 creative visualization modes:
 4. **3D Effect** - Pseudo-3D with shadows and highlights
 5. **Pulse Animation** - Animated traveling marker along path
 
+## 🏗️ Architecturemultiple creative visualization modes:
+
+1. **Classic** - Traditional node-edge rendering with color coding
+2. **Neon Glow** - Futuristic glowing effects with cyan palette
+3. **Gradient Flow** - Smooth blue-to-orange color transitions
+4. **3D Effect** - Pseudo-3D with shadows and highlights
+5. **Pulse Animation** - Animated traveling marker along path
+
+## ⚡ Search Strategies
+
+Choose between two search optimization modes:
+- **Aggressive** - Faster search with frontier threshold of 10 (more pruning)
+- **Balanced** - Thorough search with frontier threshold of 50 (balanced exploration)
+
 ## 🏗️ Architecture
 
-FlexRoute v2.0 uses a **modular architecture** with clear separation of concerns:
-
-```
-models/          → Immutable data structures
-managers/        → Business logic & state management
-ui/components/   → Reusable UI elements
-ui/panels/       → Complex composite views
-```
-
+FlexiRoute
 **Design Patterns**: Builder, Observer, Strategy  
 **Thread Safety**: AtomicLong/AtomicInteger, SwingWorker, ExecutorService  
 **UI Framework**: Java Swing with Material Design principles
@@ -294,8 +277,6 @@ java -cp target/classes GuiLauncher
 mvn exec:java -Dexec.mainClass="GuiLauncher"
 ```
 
-### Adding a New Visualization Mode
-
 1. Edit `src/ui/panels/AdvancedMapPanel.java`
 2. Add enum value to `VisualizationMode`
 3. Implement render method
@@ -332,7 +313,7 @@ See [QUICK_REFERENCE.md](QUICK_REFERENCE.md#adding-visualization-mode) for detai
 
 FlexRoute Pro v2.0 - Advanced Pathfinding Analysis System
 
-**Architecture**: Modular design with separation of concerns
+**AriRoute NavigatorModular design with separation of concerns
 **Patterns**: Builder, Observer, Strategy
 **UI Design**: Material Design principles
 
@@ -342,8 +323,10 @@ FlexRoute Pro v2.0 - Advanced Pathfinding Analysis System
 
 - [Complete Architecture Guide](MODULAR_ARCHITECTURE.md)
 - [Developer Quick Reference](QUICK_REFERENCE.md)
-- [v2.0 Transformation Summary](TRANSFORMATION_SUMMARY.md)
+- [Quick Start Guide](QUICK_START_GUIDE.md)
+- [Design System](DESIGN_SYSTEM.md)
+- [Features Guide](GUI_REDESIGN_SUMMARY.md)
 
-**Version**: 2.0 | **Status**: Production Ready  | **Java**: 21 LTS Required
+**Status**: Production Ready | **Java**: 21 LTS Required
 
- **Enjoy FlexRoute Pro!** 
+ **Enjoy FlexiRoute Navigator
