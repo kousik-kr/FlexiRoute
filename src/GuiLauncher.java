@@ -36,20 +36,19 @@ import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
-import javax.swing.border.EmptyBorder;
 
-import managers.QueryHistoryManager;
 import managers.MetricsCollector;
+import managers.QueryHistoryManager;
 import managers.ThemeManager;
 import models.QueryResult;
 import models.RoutingMode;
 import ui.components.SplashScreen;
-import ui.panels.ResultData;
 import ui.panels.MapPanel;
-import ui.panels.QueryPanel;
-import ui.panels.ResultsPanel;
-import ui.panels.QueryHistoryPanel;
 import ui.panels.MetricsDashboard;
+import ui.panels.QueryHistoryPanel;
+import ui.panels.QueryPanel;
+import ui.panels.ResultData;
+import ui.panels.ResultsPanel;
 
 /**
  * FlexiRoute Navigator - Professional GUI Application
@@ -738,7 +737,7 @@ public class GuiLauncher extends JFrame {
             .wideEdgeCount(result.getWideEdgeCount())
             .rightTurns(result.get_right_turns())
             .wideScore(result.get_score())
-            .routingModeName(result.getRoutingMode() != null ? result.getRoutingMode().getDisplayName() : "All Objectives")
+            .routingModeName(result.getRoutingMode() != null ? result.getRoutingMode().getDisplayName() : "Wideness Only")
             .pathNodes(result.getPathNodes())
             .pathCoordinates(result.getPathCoordinates())
             .wideEdgeIndices(result.getWideEdgeIndices());

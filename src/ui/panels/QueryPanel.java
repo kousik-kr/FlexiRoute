@@ -160,7 +160,7 @@ public class QueryPanel extends JPanel {
         routingModeCombo.setBorder(BorderFactory.createLineBorder(CYBER_YELLOW, 2, true));
         routingModeCombo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
         routingModeCombo.setAlignmentX(Component.LEFT_ALIGNMENT);
-        routingModeCombo.setSelectedItem(RoutingMode.ALL_OBJECTIVES); // Default
+        routingModeCombo.setSelectedItem(RoutingMode.WIDENESS_ONLY); // Default
         
         // Custom renderer for nice display
         routingModeCombo.setRenderer(new javax.swing.DefaultListCellRenderer() {
@@ -174,7 +174,7 @@ public class QueryPanel extends JPanel {
                     setText(mode.getDisplayName());
                     if (isSelected) {
                         setBackground(CYBER_YELLOW);
-                        setForeground(Color.BLACK);
+                        setForeground(Color.WHITE);
                     }
                 }
                 return this;
@@ -185,7 +185,7 @@ public class QueryPanel extends JPanel {
         panel.add(Box.createVerticalStrut(4));
         
         // Description label
-        routingModeDescription = new JLabel(RoutingMode.ALL_OBJECTIVES.getDescription());
+        routingModeDescription = new JLabel(RoutingMode.WIDENESS_ONLY.getDescription());
         routingModeDescription.setFont(new Font("Segoe UI", Font.ITALIC, 14));
         routingModeDescription.setForeground(TEXT_SECONDARY);
         routingModeDescription.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -196,9 +196,8 @@ public class QueryPanel extends JPanel {
             RoutingMode selected = (RoutingMode) routingModeCombo.getSelectedItem();
             if (selected != null) {
                 routingModeDescription.setText(selected.getDescription());
-                // Show special hint for Pareto mode
+                // Highlight Pareto mode description
                 if (selected.isParetoMode()) {
-                    routingModeDescription.setText(selected.getDescription() + " (returns multiple paths)");
                     routingModeDescription.setForeground(CYBER_YELLOW.darker());
                 } else {
                     routingModeDescription.setForeground(TEXT_SECONDARY);
@@ -236,6 +235,21 @@ public class QueryPanel extends JPanel {
         frontierThresholdCombo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
         frontierThresholdCombo.setAlignmentX(Component.LEFT_ALIGNMENT);
         frontierThresholdCombo.setSelectedIndex(0); // Default: Aggressive
+        
+        // Custom renderer for consistent yellow highlighting
+        frontierThresholdCombo.setRenderer(new javax.swing.DefaultListCellRenderer() {
+            @Override
+            public java.awt.Component getListCellRendererComponent(
+                    javax.swing.JList<?> list, Object value, int index, 
+                    boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (isSelected) {
+                    setBackground(OCEAN_TEAL);
+                    setForeground(Color.WHITE);
+                }
+                return this;
+            }
+        });
         
         panel.add(frontierThresholdCombo);
         panel.add(Box.createVerticalStrut(4));
@@ -363,6 +377,22 @@ public class QueryPanel extends JPanel {
         combo.setFont(new Font("Segoe UI", Font.PLAIN, 22));
         combo.setBackground(Color.WHITE);
         combo.setBorder(BorderFactory.createLineBorder(color, 2, true));
+        
+        // Custom renderer for consistent color highlighting
+        final Color highlightColor = color;
+        combo.setRenderer(new javax.swing.DefaultListCellRenderer() {
+            @Override
+            public java.awt.Component getListCellRendererComponent(
+                    javax.swing.JList<?> list, Object value, int index, 
+                    boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (isSelected) {
+                    setBackground(highlightColor);
+                    setForeground(Color.WHITE);
+                }
+                return this;
+            }
+        });
         
         // Only heuristic combo is used now (dataset removed)
         heuristicCombo = combo;

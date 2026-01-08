@@ -415,7 +415,7 @@ public class BidirectionalDriver {
 	        RoutingMode mode) {
 		
 		if (mode == null) {
-			mode = RoutingMode.ALL_OBJECTIVES;
+			mode = RoutingMode.WIDENESS_ONLY; // Default to wideness
 		}
 		
 		switch (mode) {
@@ -424,10 +424,8 @@ public class BidirectionalDriver {
 			case MIN_TURNS_ONLY:
 				return formOutputLabelsTurnsOnly(intersectionNodes, forwardVisited, backwardVisited);
 			case WIDENESS_AND_TURNS:
-				return formOutputLabelsPareto(intersectionNodes, forwardVisited, backwardVisited);
-			case ALL_OBJECTIVES:
 			default:
-				return formOutputLabelsAllObjectives(intersectionNodes, forwardVisited, backwardVisited);
+				return formOutputLabelsPareto(intersectionNodes, forwardVisited, backwardVisited);
 		}
 	}
 	

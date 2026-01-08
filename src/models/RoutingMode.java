@@ -31,15 +31,7 @@ public enum RoutingMode {
      * - Returns: All Pareto optimal paths
      * - Use case: Users who want to see trade-offs between wideness and turns
      */
-    WIDENESS_AND_TURNS("Wideness + Turns (Pareto)", "Find all Pareto optimal routes balancing wideness and turns"),
-    
-    /**
-     * ALL_OBJECTIVES: Full optimization (original behavior)
-     * - Objectives: Maximize wideness, minimize right turns, avoid sharp turns
-     * - Constraint: Travel time ≤ budget
-     * - Use case: Users who want the best overall route quality
-     */
-    ALL_OBJECTIVES("All Objectives", "Optimize wideness, turns, and avoid sharp turns");
+    WIDENESS_AND_TURNS("Wideness + Turns (Pareto)", "Returns multiple optimal paths (Pareto front)");
     
     private final String displayName;
     private final String description;
@@ -73,20 +65,20 @@ public enum RoutingMode {
      * Check if wideness optimization is enabled
      */
     public boolean optimizeWideness() {
-        return this == WIDENESS_ONLY || this == WIDENESS_AND_TURNS || this == ALL_OBJECTIVES;
+        return this == WIDENESS_ONLY || this == WIDENESS_AND_TURNS;
     }
     
     /**
      * Check if turn minimization is enabled
      */
     public boolean optimizeTurns() {
-        return this == MIN_TURNS_ONLY || this == WIDENESS_AND_TURNS || this == ALL_OBJECTIVES;
+        return this == MIN_TURNS_ONLY || this == WIDENESS_AND_TURNS;
     }
     
     /**
      * Check if sharp turn avoidance is enabled
      */
     public boolean avoidSharpTurns() {
-        return this == ALL_OBJECTIVES;
+        return false; // No longer using ALL_OBJECTIVES mode
     }
 }
