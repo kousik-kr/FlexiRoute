@@ -41,7 +41,7 @@ public class Query {
 	}
 
 	/**
-	 * Original constructor - defaults to ALL_OBJECTIVES mode
+	 * Original constructor - defaults to WIDENESS_ONLY mode
 	 */
 	public Query(int src, int dest, double s_dep_time, double e_dep_time, double b) {
 		this.source = src;
@@ -49,7 +49,7 @@ public class Query {
 		this.start_departure_time = s_dep_time;
 		this.end_departure_time = e_dep_time;
 		this.budget = b;
-		this.routingMode = RoutingMode.ALL_OBJECTIVES; // Default behavior
+		this.routingMode = RoutingMode.WIDENESS_ONLY; // Default behavior
 	}
 
 	/**
@@ -61,7 +61,7 @@ public class Query {
 		this.start_departure_time = s_dep_time;
 		this.end_departure_time = e_dep_time;
 		this.budget = b;
-		this.routingMode = mode != null ? mode : RoutingMode.ALL_OBJECTIVES;
+		this.routingMode = mode != null ? mode : RoutingMode.WIDENESS_ONLY;
 	}
 
 	@Override

@@ -519,11 +519,11 @@ public class BidirectionalAstar {
    
     /**
      * Run a single query with an explicit interval duration for the end time window.
-     * Uses default ALL_OBJECTIVES routing mode.
+     * Uses default WIDENESS_ONLY routing mode.
      */
     public static Result runSingleQuery(int source, int destination, double departureMinutes, double intervalMinutes, double budgetMinutes)
             throws InterruptedException, ExecutionException {
-        return runSingleQuery(source, destination, departureMinutes, intervalMinutes, budgetMinutes, RoutingMode.ALL_OBJECTIVES);
+        return runSingleQuery(source, destination, departureMinutes, intervalMinutes, budgetMinutes, RoutingMode.WIDENESS_ONLY);
     }
 
     /**
