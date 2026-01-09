@@ -71,7 +71,7 @@ public class GuiLauncher extends JFrame {
     
     // === CONSTANTS ===
     private static final String APP_TITLE = "🌟 FlexiRoute Navigator 🌟";
-    private static final String VERSION = "1.0";
+    private static final String VERSION = "";
     private static final int DEFAULT_WIDTH = 1550;
     private static final int DEFAULT_HEIGHT = 980;
     
@@ -501,12 +501,8 @@ public class GuiLauncher extends JFrame {
                 // Update progress
                 SwingUtilities.invokeLater(() -> mapPanel.setSearchProgress(10, "Setting up bidirectional search..."));
                 
-                // Configure algorithm based on heuristic mode
-                if (heuristic == 1) {
-                    BidirectionalLabeling.setAggressiveMode();
-                } else {
-                    BidirectionalLabeling.setBalancedMode();
-                }
+                // Always use aggressive mode
+                BidirectionalLabeling.setAggressiveMode();
                 
                 SwingUtilities.invokeLater(() -> mapPanel.setSearchProgress(30, "Expanding labels..."));
                 
@@ -1047,7 +1043,6 @@ public class GuiLauncher extends JFrame {
             <html>
             <body style="font-family: Segoe UI; text-align: center; padding: 20px;">
             <h1>🗺️ FlexiRoute Navigator</h1>
-            <h3>Version 1.0</h3>
             <p>Advanced pathfinding with wide road optimization</p>
             <br>
             <p>Using Bi-TDCPO algorithm for optimal<br>
