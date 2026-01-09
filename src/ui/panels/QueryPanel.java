@@ -68,7 +68,7 @@ public class QueryPanel extends JPanel {
     
     // Routing mode selector
     private JComboBox<RoutingMode> routingModeCombo;
-    private JLabel routingModeDescription;
+    private javax.swing.JTextArea routingModeDescriptionArea;
     
     // Frontier threshold mode selector
     private JComboBox<String> frontierThresholdCombo;
@@ -142,7 +142,7 @@ public class QueryPanel extends JPanel {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setOpaque(false);
-        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 100));
+        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 115));
         panel.setAlignmentX(Component.LEFT_ALIGNMENT);
         
         // Label
@@ -184,23 +184,32 @@ public class QueryPanel extends JPanel {
         panel.add(routingModeCombo);
         panel.add(Box.createVerticalStrut(4));
         
-        // Description label
-        routingModeDescription = new JLabel(RoutingMode.WIDENESS_ONLY.getDescription());
-        routingModeDescription.setFont(new Font("Segoe UI", Font.ITALIC, 14));
-        routingModeDescription.setForeground(TEXT_SECONDARY);
-        routingModeDescription.setAlignmentX(Component.LEFT_ALIGNMENT);
-        panel.add(routingModeDescription);
+        // Description using JTextArea for proper text wrapping
+        routingModeDescriptionArea = new javax.swing.JTextArea(RoutingMode.WIDENESS_ONLY.getDescription());
+        routingModeDescriptionArea.setFont(new Font("Segoe UI", Font.ITALIC, 14));
+        routingModeDescriptionArea.setForeground(TEXT_SECONDARY);
+        routingModeDescriptionArea.setBackground(BG_SURFACE);
+        routingModeDescriptionArea.setWrapStyleWord(true);
+        routingModeDescriptionArea.setLineWrap(true);
+        routingModeDescriptionArea.setEditable(false);
+        routingModeDescriptionArea.setFocusable(false);
+        routingModeDescriptionArea.setBorder(null);
+        routingModeDescriptionArea.setAlignmentX(Component.LEFT_ALIGNMENT);
+        // Constrain width to ~300px so long text wraps within the query panel
+        routingModeDescriptionArea.setMaximumSize(new Dimension(320, 60));
+        routingModeDescriptionArea.setPreferredSize(new Dimension(320, 40));
+        panel.add(routingModeDescriptionArea);
         
         // Update description when selection changes
         routingModeCombo.addActionListener(e -> {
             RoutingMode selected = (RoutingMode) routingModeCombo.getSelectedItem();
             if (selected != null) {
-                routingModeDescription.setText(selected.getDescription());
+                routingModeDescriptionArea.setText(selected.getDescription());
                 // Highlight Pareto mode description
                 if (selected.isParetoMode()) {
-                    routingModeDescription.setForeground(CYBER_YELLOW.darker());
+                    routingModeDescriptionArea.setForeground(CYBER_YELLOW.darker());
                 } else {
-                    routingModeDescription.setForeground(TEXT_SECONDARY);
+                    routingModeDescriptionArea.setForeground(TEXT_SECONDARY);
                 }
             }
         });
@@ -335,7 +344,6 @@ public class QueryPanel extends JPanel {
             @Override
             public void keyReleased(KeyEvent e) {
                 updateStatus();
-                triggerPreview();
             }
         });
         fieldRow.add(sourceField);
@@ -352,7 +360,6 @@ public class QueryPanel extends JPanel {
             @Override
             public void keyReleased(KeyEvent e) {
                 updateStatus();
-                triggerPreview();
             }
         });
         fieldRow.add(destField);
@@ -434,7 +441,7 @@ public class QueryPanel extends JPanel {
             @Override
             public void keyReleased(KeyEvent e) {
                 updateStatus();
-                triggerPreview();
+
             }
         });
         
@@ -569,12 +576,60 @@ public class QueryPanel extends JPanel {
     }
     
     private JPanel createRunPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
         panel.setOpaque(false);
         panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 55));
         panel.setAlignmentX(Component.LEFT_ALIGNMENT);
         
-        runButton = new JButton("Find FlexiRoute") {
+        // Add glue for centering
+        panel.add(Box.createHorizontalGlue());
+        
+        // Preview button
+        JButton previewButton = new JButton("👁 Preview") {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                
+                java.awt.GradientPaint gp;
+                if (getModel().isPressed()) {
+                    gp = new java.awt.GradientPaint(0, 0, OCEAN_TEAL.darker(), getWidth(), 0, ELECTRIC_BLUE.darker());
+                } else if (getModel().isRollover()) {
+                    gp = new java.awt.GradientPaint(0, 0, new Color(30, 204, 186), getWidth(), 0, new Color(79, 150, 246));
+                } else {
+                    gp = new java.awt.GradientPaint(0, 0, OCEAN_TEAL, getWidth(), 0, ELECTRIC_BLUE);
+                }
+                g2d.setPaint(gp);
+                g2d.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 14, 14));
+                
+                // Shine
+                g2d.setColor(new Color(255, 255, 255, 50));
+                g2d.fill(new RoundRectangle2D.Float(2, 2, getWidth()-4, getHeight()/2-2, 12, 12));
+                g2d.dispose();
+                
+                g.setColor(Color.WHITE);
+                g.setFont(new Font("Segoe UI", Font.BOLD, 20));
+                FontMetrics fm = g.getFontMetrics();
+                g.drawString(getText(), (getWidth() - fm.stringWidth(getText())) / 2,
+                    (getHeight() + fm.getAscent() - fm.getDescent()) / 2);
+            }
+        };
+        previewButton.setPreferredSize(new Dimension(200, 55));
+        previewButton.setMinimumSize(new Dimension(200, 55));
+        previewButton.setMaximumSize(new Dimension(200, 55));
+        previewButton.setFocusPainted(false);
+        previewButton.setBorderPainted(false);
+        previewButton.setContentAreaFilled(false);
+        previewButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        previewButton.addActionListener(e -> {
+            if (validateInputs()) {
+                triggerPreview();
+            }
+        });
+        
+        // Run button
+        runButton = new JButton("▶ Run") {
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2d = (Graphics2D) g.create();
@@ -603,7 +658,9 @@ public class QueryPanel extends JPanel {
                     (getHeight() + fm.getAscent() - fm.getDescent()) / 2);
             }
         };
-        runButton.setPreferredSize(new Dimension(0, 55));
+        runButton.setPreferredSize(new Dimension(200, 55));
+        runButton.setMinimumSize(new Dimension(200, 55));
+        runButton.setMaximumSize(new Dimension(200, 55));
         runButton.setFocusPainted(false);
         runButton.setBorderPainted(false);
         runButton.setContentAreaFilled(false);
@@ -614,7 +671,10 @@ public class QueryPanel extends JPanel {
             }
         });
         
-        panel.add(runButton, BorderLayout.CENTER);
+        panel.add(previewButton);
+        panel.add(Box.createHorizontalStrut(10));
+        panel.add(runButton);
+        panel.add(Box.createHorizontalGlue());
         return panel;
     }
     
@@ -637,7 +697,7 @@ public class QueryPanel extends JPanel {
                     statusLabel.setText("Source = Destination");
                     statusLabel.setForeground(SUNSET_ORANGE);
                 } else {
-                    statusLabel.setText("Ready! Click Find FlexiRoute");
+                    statusLabel.setText("Ready! Click Run to find route");
                     statusLabel.setForeground(NEON_GREEN);
                 }
             }
@@ -723,7 +783,7 @@ public class QueryPanel extends JPanel {
     
     public void setRunning(boolean running) {
         runButton.setEnabled(!running);
-        runButton.setText(running ? "Processing..." : "Find FlexiRoute");
+        runButton.setText(running ? "Processing..." : "▶ Run");
         statusLabel.setText(running ? "Running query..." : "Ready!");
     }
 }

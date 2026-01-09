@@ -31,7 +31,7 @@ public enum RoutingMode {
      * - Returns: All Pareto optimal paths
      * - Use case: Users who want to see trade-offs between wideness and turns
      */
-    WIDENESS_AND_TURNS("Wideness + Turns (Pareto)", "Returns multiple optimal paths (Pareto front)");
+    WIDENESS_AND_TURNS("Wideness + Turns (Pareto)", "Find all Pareto optimal routes balancing wideness and turns");
     
     private final String displayName;
     private final String description;

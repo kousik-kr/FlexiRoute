@@ -84,6 +84,11 @@ public class MapPanel extends JPanel {
     private double[] previewSourceCoord = null;
     private double[] previewDestCoord = null;
     
+    // Subgraph preview data
+    private List<double[]> subgraphNodeCoordinates = new ArrayList<>();
+    private List<int[]> subgraphEdges = new ArrayList<>();  // [fromIdx, toIdx]
+    private boolean showSubgraphPreview = false;
+    
     private int searchProgress = 0;
     private String progressMessage = "";
     private boolean showSearchProgress = false;
@@ -95,6 +100,7 @@ public class MapPanel extends JPanel {
     private static final Color WIDE_PATH_COLOR = new Color(16, 185, 129); // Neon Green  
     private static final Color SOURCE_COLOR = new Color(59, 130, 246);    // Electric Blue
     private static final Color DEST_COLOR = new Color(251, 146, 60);      // Sunset Orange
+    private static final Color PATH_NODE_COLOR = new Color(25, 42, 86);   // Dark Navy Blue for intermediate nodes
     private static final Color TEXT_PRIMARY = new Color(30, 41, 59);      // Dark Slate
     private static final Color TEXT_SECONDARY = new Color(100, 116, 139); // Cool Gray
     private static final Color BORDER = new Color(226, 232, 240);         // Light Border
@@ -404,6 +410,14 @@ public class MapPanel extends JPanel {
             minLon = Math.min(minLon, c[1]); maxLon = Math.max(maxLon, c[1]);
         }
         
+        // Include subgraph nodes in bounds calculation
+        if (showSubgraphPreview && !subgraphNodeCoordinates.isEmpty()) {
+            for (double[] c : subgraphNodeCoordinates) {
+                minLat = Math.min(minLat, c[0]); maxLat = Math.max(maxLat, c[0]);
+                minLon = Math.min(minLon, c[1]); maxLon = Math.max(maxLon, c[1]);
+            }
+        }
+        
         double latPad = (maxLat - minLat) * 0.15;
         double lonPad = (maxLon - minLon) * 0.15;
         minLat -= latPad; maxLat += latPad;
@@ -423,6 +437,29 @@ public class MapPanel extends JPanel {
         
         if (showGrid) drawGrid(g2d, w, h, pad);
         
+        // Draw subgraph (larger map context) as the VERY FIRST background layer
+        if (showSubgraphPreview && !subgraphNodeCoordinates.isEmpty()) {
+            // Draw subgraph edges in very light color - no arrows
+            g2d.setColor(new Color(160, 180, 210, 100));
+            g2d.setStroke(new BasicStroke(1.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            for (int[] edge : subgraphEdges) {
+                if (edge[0] < subgraphNodeCoordinates.size() && edge[1] < subgraphNodeCoordinates.size()) {
+                    double[] c1 = subgraphNodeCoordinates.get(edge[0]);
+                    double[] c2 = subgraphNodeCoordinates.get(edge[1]);
+                    Point2D.Double p1 = toScreen(c1[0], c1[1], w, h, pad);
+                    Point2D.Double p2 = toScreen(c2[0], c2[1], w, h, pad);
+                    g2d.draw(new Line2D.Double(p1, p2));
+                }
+            }
+            
+            // Draw subgraph nodes as small dots
+            for (double[] coord : subgraphNodeCoordinates) {
+                Point2D.Double p = toScreen(coord[0], coord[1], w, h, pad);
+                g2d.setColor(new Color(140, 170, 210, 120));
+                g2d.fill(new Ellipse2D.Double(p.x - 2, p.y - 2, 4, 4));
+            }
+        }
+        
         // Draw graph context (neighboring nodes) in lighter color FIRST (background layer)
         if (showGraphContext && !contextNodeCoordinates.isEmpty()) {
             // Draw edges from path nodes to context nodes (dashed lines)
@@ -441,7 +478,7 @@ public class MapPanel extends JPanel {
                 }
             }
             
-            // Draw context edges in very light gray (solid lines)
+            // Draw context edges in very light gray (solid lines) - no arrows
             g2d.setColor(new Color(180, 190, 210, 80));
             g2d.setStroke(new BasicStroke(1.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             for (int[] edge : contextEdges) {
@@ -490,6 +527,9 @@ public class MapPanel extends JPanel {
             g2d.setColor(color);
             g2d.setStroke(new BasicStroke(isWide ? 5 : 3, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             g2d.draw(new Line2D.Double(p1, p2));
+            
+            // Draw directional arrow on path edge with lighter blue color to reduce visual congestion
+            drawArrowHead(g2d, p1, p2, isWide ? 3 : 2.5, new Color(100, 150, 255, 180));
         }
         
         // Draw nodes
@@ -499,17 +539,17 @@ public class MapPanel extends JPanel {
             if (i == 0 || i == pathCoordinates.size() - 1) {
                 Color c = i == 0 ? SOURCE_COLOR : DEST_COLOR;
                 g2d.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), 50));
-                g2d.fill(new Ellipse2D.Double(p.x - 20, p.y - 20, 40, 40));
+                g2d.fill(new Ellipse2D.Double(p.x - 10, p.y - 10, 20, 20));
                 g2d.setColor(c);
-                g2d.fill(new Ellipse2D.Double(p.x - 12, p.y - 12, 24, 24));
+                g2d.fill(new Ellipse2D.Double(p.x - 6, p.y - 6, 12, 12));
                 g2d.setColor(Color.WHITE);
-                g2d.setStroke(new BasicStroke(2));
-                g2d.draw(new Ellipse2D.Double(p.x - 12, p.y - 12, 24, 24));
-                g2d.setFont(new Font("Segoe UI", Font.BOLD, 18));
-                g2d.drawString(i == 0 ? "S" : "D", (int) p.x - 5, (int) p.y + 5);
+                g2d.setStroke(new BasicStroke(1));
+                g2d.draw(new Ellipse2D.Double(p.x - 6, p.y - 6, 12, 12));
+                g2d.setFont(new Font("Segoe UI", Font.BOLD, 10));
+                g2d.drawString(i == 0 ? "S" : "D", (int) p.x - 3, (int) p.y + 3);
             } else {
-                g2d.setColor(PATH_COLOR);
-                g2d.fill(new Ellipse2D.Double(p.x - 3, p.y - 3, 6, 6));
+                g2d.setColor(PATH_NODE_COLOR);
+                g2d.fill(new Ellipse2D.Double(p.x - 1.5, p.y - 1.5, 3, 3));
             }
         }
         
@@ -624,29 +664,91 @@ public class MapPanel extends JPanel {
         minLon = Math.min(previewSourceCoord[1], previewDestCoord[1]) - 0.01;
         maxLon = Math.max(previewSourceCoord[1], previewDestCoord[1]) + 0.01;
         
+        // Expand bounds to include subgraph nodes
+        if (showSubgraphPreview && !subgraphNodeCoordinates.isEmpty()) {
+            for (double[] coord : subgraphNodeCoordinates) {
+                minLat = Math.min(minLat, coord[0]);
+                maxLat = Math.max(maxLat, coord[0]);
+                minLon = Math.min(minLon, coord[1]);
+                maxLon = Math.max(maxLon, coord[1]);
+            }
+            // Add padding
+            double latPad = (maxLat - minLat) * 0.1;
+            double lonPad = (maxLon - minLon) * 0.1;
+            minLat -= latPad; maxLat += latPad;
+            minLon -= lonPad; maxLon += lonPad;
+        }
+        
         int w = getWidth(), h = getHeight(), pad = 100;
+        
+        // Draw subgraph edges first (background layer) - no arrows, just lines
+        if (showSubgraphPreview && !subgraphEdges.isEmpty()) {
+            g2d.setColor(new Color(140, 170, 210, 150));
+            g2d.setStroke(new BasicStroke(1.2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            for (int[] edge : subgraphEdges) {
+                if (edge[0] < subgraphNodeCoordinates.size() && edge[1] < subgraphNodeCoordinates.size()) {
+                    double[] c1 = subgraphNodeCoordinates.get(edge[0]);
+                    double[] c2 = subgraphNodeCoordinates.get(edge[1]);
+                    Point2D.Double p1 = toScreen(c1[0], c1[1], w, h, pad);
+                    Point2D.Double p2 = toScreen(c2[0], c2[1], w, h, pad);
+                    g2d.draw(new Line2D.Double(p1, p2));
+                }
+            }
+        }
+        
+        // Draw subgraph nodes
+        if (showSubgraphPreview && !subgraphNodeCoordinates.isEmpty()) {
+            for (double[] coord : subgraphNodeCoordinates) {
+                Point2D.Double p = toScreen(coord[0], coord[1], w, h, pad);
+                // Outer glow
+                g2d.setColor(new Color(150, 180, 220, 60));
+                g2d.fill(new Ellipse2D.Double(p.x - 5, p.y - 5, 10, 10));
+                // Fill
+                g2d.setColor(new Color(80, 130, 190, 180));
+                g2d.fill(new Ellipse2D.Double(p.x - 3, p.y - 3, 6, 6));
+            }
+        }
+        
         Point2D.Double pSrc = toScreen(previewSourceCoord[0], previewSourceCoord[1], w, h, pad);
         Point2D.Double pDst = toScreen(previewDestCoord[0], previewDestCoord[1], w, h, pad);
         
+        // Draw dashed line between source and destination
         g2d.setColor(new Color(100, 100, 100, 150));
         g2d.setStroke(new BasicStroke(3, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10f, new float[]{15, 10}, 0f));
         QuadCurve2D curve = new QuadCurve2D.Double(pSrc.x, pSrc.y, (pSrc.x + pDst.x) / 2, (pSrc.y + pDst.y) / 2 - 50, pDst.x, pDst.y);
         g2d.draw(curve);
         
+        // Draw arrow at destination end of the dashed line
+        double ctrlX = (pSrc.x + pDst.x) / 2;
+        double ctrlY = (pSrc.y + pDst.y) / 2 - 50;
+        // Calculate tangent direction at the end of curve (from control point towards destination)
+        Point2D.Double arrowFrom = new Point2D.Double(ctrlX, ctrlY);
+        drawArrowHead(g2d, arrowFrom, pDst, 14, new Color(80, 80, 80, 200));
+        
+        // Draw source node
         g2d.setColor(SOURCE_COLOR);
         g2d.fill(new Ellipse2D.Double(pSrc.x - 15, pSrc.y - 15, 30, 30));
         g2d.setColor(Color.WHITE);
         g2d.setFont(new Font("Segoe UI", Font.BOLD, 20));
         g2d.drawString("S", (int) pSrc.x - 5, (int) pSrc.y + 5);
         
+        // Draw destination node
         g2d.setColor(DEST_COLOR);
         g2d.fill(new Ellipse2D.Double(pDst.x - 15, pDst.y - 15, 30, 30));
         g2d.setColor(Color.WHITE);
         g2d.drawString("D", (int) pDst.x - 5, (int) pDst.y + 5);
         
+        // Draw title
         g2d.setColor(PATH_COLOR);
         g2d.setFont(new Font("Segoe UI", Font.BOLD, 22));
         g2d.drawString("Query Preview", 30, 40);
+        
+        // Draw subgraph info
+        if (showSubgraphPreview && !subgraphNodeCoordinates.isEmpty()) {
+            g2d.setColor(new Color(100, 140, 200));
+            g2d.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+            g2d.drawString("Subgraph: " + subgraphNodeCoordinates.size() + " nodes, " + subgraphEdges.size() + " edges", 30, 65);
+        }
     }
     
     private void renderProgressOverlay(Graphics2D g2d) {
@@ -665,6 +767,52 @@ public class MapPanel extends JPanel {
         g2d.setFont(new Font("Segoe UI", Font.PLAIN, 17));
         g2d.setColor(TEXT_SECONDARY);
         g2d.drawString(progressMessage, w/2 - 120, h/2 + 48);
+    }
+    
+    /**
+     * Draw an arrowhead at the end of a line segment
+     * @param g2d Graphics context
+     * @param from Start point of the line
+     * @param to End point of the line (where arrow points)
+     * @param arrowSize Size of the arrowhead
+     * @param color Color of the arrowhead
+     */
+    private void drawArrowHead(Graphics2D g2d, Point2D.Double from, Point2D.Double to, double arrowSize, Color color) {
+        double dx = to.x - from.x;
+        double dy = to.y - from.y;
+        double length = Math.sqrt(dx * dx + dy * dy);
+        
+        if (length < 1) return; // Skip if points are too close
+        
+        // Normalize direction
+        dx /= length;
+        dy /= length;
+        
+        // Calculate arrow tip position (slightly before the end point)
+        double tipX = to.x - dx * arrowSize * 0.5;
+        double tipY = to.y - dy * arrowSize * 0.5;
+        
+        // Calculate the two base points of the arrow
+        double perpX = -dy;
+        double perpY = dx;
+        
+        double baseX = tipX - dx * arrowSize;
+        double baseY = tipY - dy * arrowSize;
+        
+        double x1 = baseX + perpX * arrowSize * 0.4;
+        double y1 = baseY + perpY * arrowSize * 0.4;
+        double x2 = baseX - perpX * arrowSize * 0.4;
+        double y2 = baseY - perpY * arrowSize * 0.4;
+        
+        // Draw filled arrow
+        GeneralPath arrow = new GeneralPath();
+        arrow.moveTo(tipX, tipY);
+        arrow.lineTo(x1, y1);
+        arrow.lineTo(x2, y2);
+        arrow.closePath();
+        
+        g2d.setColor(color);
+        g2d.fill(arrow);
     }
     
     private void drawGrid(Graphics2D g2d, int w, int h, int pad) {
@@ -765,6 +913,35 @@ public class MapPanel extends JPanel {
         repaint();
     }
     
+    /**
+     * Set path along with graph context AND subgraph for map-like visualization
+     */
+    public void setPathWithContextAndSubgraph(List<Integer> nodes, List<Integer> wideEdgeIndices, 
+                                    List<double[]> coordinates, List<double[]> contextCoords, 
+                                    List<int[]> contextEdgeList, List<int[]> pathToContextList,
+                                    List<double[]> subgraphCoords, List<int[]> subgraphEdgeList) {
+        this.pathNodes = nodes != null ? new ArrayList<>(nodes) : Collections.emptyList();
+        this.wideEdges = wideEdgeIndices != null ? new ArrayList<>(wideEdgeIndices) : Collections.emptyList();
+        this.pathCoordinates = coordinates != null ? new ArrayList<>(coordinates) : new ArrayList<>();
+        this.contextNodeCoordinates = contextCoords != null ? new ArrayList<>(contextCoords) : new ArrayList<>();
+        this.contextEdges = contextEdgeList != null ? new ArrayList<>(contextEdgeList) : new ArrayList<>();
+        this.pathToContextEdges = pathToContextList != null ? new ArrayList<>(pathToContextList) : new ArrayList<>();
+        this.subgraphNodeCoordinates = subgraphCoords != null ? new ArrayList<>(subgraphCoords) : new ArrayList<>();
+        this.subgraphEdges = subgraphEdgeList != null ? new ArrayList<>(subgraphEdgeList) : new ArrayList<>();
+        this.showSubgraphPreview = !this.subgraphNodeCoordinates.isEmpty();
+        this.boundsCalculated = false;
+        clearQueryPreviewOnly();  // Clear preview but keep subgraph
+        repaint();
+    }
+    
+    /**
+     * Clear only query preview data without affecting subgraph
+     */
+    private void clearQueryPreviewOnly() {
+        previewSource = previewDest = null;
+        previewSourceCoord = previewDestCoord = null;
+    }
+    
     public void setQueryPreview(int source, int dest, double[] sourceCoord, double[] destCoord) {
         this.previewSource = source;
         this.previewDest = dest;
@@ -773,9 +950,39 @@ public class MapPanel extends JPanel {
         repaint();
     }
     
+    /**
+     * Set subgraph preview data to show nodes and edges within the view area
+     * @param nodeCoordinates List of [lat, lon] for subgraph nodes
+     * @param edges List of [fromIdx, toIdx] for subgraph edges
+     */
+    public void setSubgraphPreview(List<double[]> nodeCoordinates, List<int[]> edges) {
+        this.subgraphNodeCoordinates = nodeCoordinates != null ? new ArrayList<>(nodeCoordinates) : new ArrayList<>();
+        this.subgraphEdges = edges != null ? new ArrayList<>(edges) : new ArrayList<>();
+        this.showSubgraphPreview = !this.subgraphNodeCoordinates.isEmpty();
+        repaint();
+    }
+    
+    /**
+     * Set query preview along with subgraph in one call
+     */
+    public void setQueryPreviewWithSubgraph(int source, int dest, double[] sourceCoord, double[] destCoord,
+                                             List<double[]> subgraphNodes, List<int[]> subgraphEdgeList) {
+        this.previewSource = source;
+        this.previewDest = dest;
+        this.previewSourceCoord = sourceCoord;
+        this.previewDestCoord = destCoord;
+        this.subgraphNodeCoordinates = subgraphNodes != null ? new ArrayList<>(subgraphNodes) : new ArrayList<>();
+        this.subgraphEdges = subgraphEdgeList != null ? new ArrayList<>(subgraphEdgeList) : new ArrayList<>();
+        this.showSubgraphPreview = !this.subgraphNodeCoordinates.isEmpty();
+        repaint();
+    }
+    
     public void clearQueryPreview() {
         previewSource = previewDest = null;
         previewSourceCoord = previewDestCoord = null;
+        subgraphNodeCoordinates = new ArrayList<>();
+        subgraphEdges = new ArrayList<>();
+        showSubgraphPreview = false;
         repaint();
     }
     
