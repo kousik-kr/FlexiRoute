@@ -40,3 +40,6 @@ ehthumbs.db
 # Output files
 output/*.txt
 !output/.gitkeep
+
+# CSV data
+*.csv
