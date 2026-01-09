@@ -71,7 +71,7 @@ public class GuiLauncher extends JFrame {
     
     // === CONSTANTS ===
     private static final String APP_TITLE = "🌟 FlexiRoute Navigator 🌟";
-    private static final String VERSION = "";
+    //private static final String VERSION = "";
     private static final int DEFAULT_WIDTH = 1550;
     private static final int DEFAULT_HEIGHT = 980;
     
@@ -113,7 +113,7 @@ public class GuiLauncher extends JFrame {
     private ExecutorService executor = Executors.newSingleThreadExecutor();
     
     public GuiLauncher() {
-        super(APP_TITLE + " — " + VERSION);
+        super(APP_TITLE);
         initializeUI();
         loadDataset();
     }
@@ -373,13 +373,13 @@ public class GuiLauncher extends JFrame {
         globalProgress.setFont(new Font("Segoe UI", Font.BOLD, 17));
         globalProgress.setBorder(null);
         
-        JLabel versionLabel = new JLabel("🌟 " + VERSION + " 🌟");
-        versionLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        versionLabel.setForeground(HOT_PINK);
+        //JLabel versionLabel = new JLabel("🌟 " + VERSION + " 🌟");
+        // versionLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        // versionLabel.setForeground(HOT_PINK);
         
         statusBar.add(statusLabel, BorderLayout.WEST);
         statusBar.add(globalProgress, BorderLayout.CENTER);
-        statusBar.add(versionLabel, BorderLayout.EAST);
+        //statusBar.add(versionLabel, BorderLayout.EAST);
         
         return statusBar;
     }
