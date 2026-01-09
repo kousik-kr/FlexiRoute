@@ -63,10 +63,7 @@ public class MapPanel extends JPanel {
     private List<Integer> pathNodes = Collections.emptyList();
     private List<Integer> wideEdges = Collections.emptyList();
     private List<double[]> pathCoordinates = new ArrayList<>();
-    private List<double[]> contextNodeCoordinates = new ArrayList<>();  // Neighboring nodes (lighter color)
-    private List<int[]> contextEdges = new ArrayList<>();  // Edges between context nodes [fromIdx, toIdx]
-    private List<int[]> pathToContextEdges = new ArrayList<>();  // Edges from path to context [pathIdx, contextIdx]
-    private boolean showGraphContext = true;  // Toggle for showing graph context
+    // Context feature removed
     private RenderMode currentMode = RenderMode.SATELLITE;
     
     private double zoomLevel = 1.0;
@@ -235,12 +232,7 @@ public class MapPanel extends JPanel {
         anim.addActionListener(e -> animatePath = anim.isSelected());
         toolbar.add(anim);
         
-        JCheckBox context = new JCheckBox("Context", showGraphContext);
-        context.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        context.setOpaque(false);
-        context.setToolTipText("Show neighboring graph nodes in lighter color");
-        context.addActionListener(e -> { showGraphContext = context.isSelected(); repaint(); });
-        toolbar.add(context);
+        // Context checkbox removed
         
         toolbar.add(Box.createHorizontalStrut(8));
         
@@ -330,8 +322,6 @@ public class MapPanel extends JPanel {
         legend.add(createLegendItem("━ Path", PATH_COLOR));
         legend.add(Box.createVerticalStrut(8));
         legend.add(createLegendItem("━ Wide", WIDE_PATH_COLOR));
-        legend.add(Box.createVerticalStrut(8));
-        legend.add(createLegendItem("◌ Context", new Color(200, 200, 220)));
         legend.add(Box.createVerticalGlue());
         
         return legend;
@@ -404,11 +394,7 @@ public class MapPanel extends JPanel {
             minLon = Math.min(minLon, c[1]); maxLon = Math.max(maxLon, c[1]);
         }
         
-        // Include context nodes in bounds calculation
-        for (double[] c : contextNodeCoordinates) {
-            minLat = Math.min(minLat, c[0]); maxLat = Math.max(maxLat, c[0]);
-            minLon = Math.min(minLon, c[1]); maxLon = Math.max(maxLon, c[1]);
-        }
+        // Context nodes removed
         
         // Include subgraph nodes in bounds calculation
         if (showSubgraphPreview && !subgraphNodeCoordinates.isEmpty()) {
@@ -460,52 +446,7 @@ public class MapPanel extends JPanel {
             }
         }
         
-        // Draw graph context (neighboring nodes) in lighter color FIRST (background layer)
-        if (showGraphContext && !contextNodeCoordinates.isEmpty()) {
-            // Draw edges from path nodes to context nodes (dashed lines)
-            g2d.setColor(new Color(150, 180, 220, 100));
-            float[] dash = {5.0f, 5.0f};
-            g2d.setStroke(new BasicStroke(1.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 10.0f, dash, 0.0f));
-            for (int[] edge : pathToContextEdges) {
-                int pathIdx = edge[0];
-                int contextIdx = edge[1];
-                if (pathIdx < pathCoordinates.size() && contextIdx < contextNodeCoordinates.size()) {
-                    double[] pathCoord = pathCoordinates.get(pathIdx);
-                    double[] contextCoord = contextNodeCoordinates.get(contextIdx);
-                    Point2D.Double p1 = toScreen(pathCoord[0], pathCoord[1], w, h, pad);
-                    Point2D.Double p2 = toScreen(contextCoord[0], contextCoord[1], w, h, pad);
-                    g2d.draw(new Line2D.Double(p1, p2));
-                }
-            }
-            
-            // Draw context edges in very light gray (solid lines) - no arrows
-            g2d.setColor(new Color(180, 190, 210, 80));
-            g2d.setStroke(new BasicStroke(1.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-            for (int[] edge : contextEdges) {
-                if (edge[0] < contextNodeCoordinates.size() && edge[1] < contextNodeCoordinates.size()) {
-                    double[] c1 = contextNodeCoordinates.get(edge[0]);
-                    double[] c2 = contextNodeCoordinates.get(edge[1]);
-                    Point2D.Double p1 = toScreen(c1[0], c1[1], w, h, pad);
-                    Point2D.Double p2 = toScreen(c2[0], c2[1], w, h, pad);
-                    g2d.draw(new Line2D.Double(p1, p2));
-                }
-            }
-            
-            // Draw context nodes in light blue/gray (larger and more visible)
-            for (double[] coord : contextNodeCoordinates) {
-                Point2D.Double p = toScreen(coord[0], coord[1], w, h, pad);
-                // Outer glow
-                g2d.setColor(new Color(150, 180, 220, 40));
-                g2d.fill(new Ellipse2D.Double(p.x - 8, p.y - 8, 16, 16));
-                // Fill
-                g2d.setColor(new Color(180, 200, 230, 120));
-                g2d.fill(new Ellipse2D.Double(p.x - 5, p.y - 5, 10, 10));
-                // Border
-                g2d.setColor(new Color(120, 150, 200, 150));
-                g2d.setStroke(new BasicStroke(1.0f));
-                g2d.draw(new Ellipse2D.Double(p.x - 5, p.y - 5, 10, 10));
-            }
-        }
+        // Context graph drawing removed
         
         // Draw path edges (main path on top)
         for (int i = 0; i < pathCoordinates.size() - 1; i++) {
@@ -822,7 +763,7 @@ public class MapPanel extends JPanel {
     }
     
     private void drawInfoOverlay(Graphics2D g2d) {
-        int height = showGraphContext && !contextNodeCoordinates.isEmpty() ? 100 : 80;
+        int height = 80;
         g2d.setColor(new Color(255, 255, 255, 230));
         g2d.fillRoundRect(12, 12, 200, height, 12, 12);
         g2d.setColor(BORDER);
@@ -835,10 +776,6 @@ public class MapPanel extends JPanel {
         g2d.setColor(TEXT_SECONDARY);
         g2d.drawString("Path Nodes: " + pathCoordinates.size(), 24, 55);
         g2d.drawString("Zoom: " + String.format("%.0f%%", zoomLevel * 100), 24, 75);
-        if (showGraphContext && !contextNodeCoordinates.isEmpty()) {
-            g2d.setColor(new Color(120, 150, 200));
-            g2d.drawString("Context: " + contextNodeCoordinates.size() + " nodes", 24, 95);
-        }
     }
     
     private void exportImage() {
@@ -862,9 +799,6 @@ public class MapPanel extends JPanel {
         this.pathNodes = Collections.emptyList();
         this.wideEdges = Collections.emptyList();
         this.pathCoordinates = new ArrayList<>();
-        this.contextNodeCoordinates = new ArrayList<>();
-        this.contextEdges = new ArrayList<>();
-        this.pathToContextEdges = new ArrayList<>();
         this.boundsCalculated = false;
         clearQueryPreview();
         showSearchProgress = false;
@@ -884,18 +818,7 @@ public class MapPanel extends JPanel {
     }
     
     /**
-     * Set the graph context (neighboring nodes and edges) to display in lighter color
-     * @param nodeCoordinates List of [lat, lon] for context nodes
-     * @param edges List of [fromNodeIdx, toNodeIdx] for context edges
-     */
-    public void setGraphContext(List<double[]> nodeCoordinates, List<int[]> edges) {
-        this.contextNodeCoordinates = nodeCoordinates != null ? new ArrayList<>(nodeCoordinates) : new ArrayList<>();
-        this.contextEdges = edges != null ? new ArrayList<>(edges) : new ArrayList<>();
-        this.boundsCalculated = false;
-        repaint();
-    }
-    
-    /**
+
      * Set path along with graph context in one call
      * @param pathToContextList Edges from path nodes to context nodes [pathNodeIndex, contextNodeIndex]
      */
@@ -905,16 +828,13 @@ public class MapPanel extends JPanel {
         this.pathNodes = nodes != null ? new ArrayList<>(nodes) : Collections.emptyList();
         this.wideEdges = wideEdgeIndices != null ? new ArrayList<>(wideEdgeIndices) : Collections.emptyList();
         this.pathCoordinates = coordinates != null ? new ArrayList<>(coordinates) : new ArrayList<>();
-        this.contextNodeCoordinates = contextCoords != null ? new ArrayList<>(contextCoords) : new ArrayList<>();
-        this.contextEdges = contextEdgeList != null ? new ArrayList<>(contextEdgeList) : new ArrayList<>();
-        this.pathToContextEdges = pathToContextList != null ? new ArrayList<>(pathToContextList) : new ArrayList<>();
         this.boundsCalculated = false;
         clearQueryPreview();
         repaint();
     }
     
     /**
-     * Set path along with graph context AND subgraph for map-like visualization
+     * Set path along with subgraph for map-like visualization (context feature removed)
      */
     public void setPathWithContextAndSubgraph(List<Integer> nodes, List<Integer> wideEdgeIndices, 
                                     List<double[]> coordinates, List<double[]> contextCoords, 
@@ -923,9 +843,6 @@ public class MapPanel extends JPanel {
         this.pathNodes = nodes != null ? new ArrayList<>(nodes) : Collections.emptyList();
         this.wideEdges = wideEdgeIndices != null ? new ArrayList<>(wideEdgeIndices) : Collections.emptyList();
         this.pathCoordinates = coordinates != null ? new ArrayList<>(coordinates) : new ArrayList<>();
-        this.contextNodeCoordinates = contextCoords != null ? new ArrayList<>(contextCoords) : new ArrayList<>();
-        this.contextEdges = contextEdgeList != null ? new ArrayList<>(contextEdgeList) : new ArrayList<>();
-        this.pathToContextEdges = pathToContextList != null ? new ArrayList<>(pathToContextList) : new ArrayList<>();
         this.subgraphNodeCoordinates = subgraphCoords != null ? new ArrayList<>(subgraphCoords) : new ArrayList<>();
         this.subgraphEdges = subgraphEdgeList != null ? new ArrayList<>(subgraphEdgeList) : new ArrayList<>();
         this.showSubgraphPreview = !this.subgraphNodeCoordinates.isEmpty();
