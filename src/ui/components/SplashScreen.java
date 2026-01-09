@@ -105,10 +105,10 @@ public class SplashScreen extends JWindow {
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         
         // Version with rainbow styling
-        JLabel versionLabel = new JLabel("🌟 FlexiRoute Navigator 🌟");
-        versionLabel.setFont(new Font("Segoe UI", Font.BOLD, 24));
-        versionLabel.setForeground(new Color(250, 204, 21));
-        versionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        // JLabel versionLabel = new JLabel("🌟 FlexiRoute Navigator 🌟");
+        // versionLabel.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        // versionLabel.setForeground(new Color(250, 204, 21));
+        // versionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         
         // Subtitle
         JLabel subtitleLabel = new JLabel("🚀 Advanced Pathfinding with Wide Road Optimization 🚀");
@@ -120,8 +120,8 @@ public class SplashScreen extends JWindow {
         centerPanel.add(iconLabel);
         centerPanel.add(Box.createVerticalStrut(20));
         centerPanel.add(titleLabel);
-        centerPanel.add(Box.createVerticalStrut(10));
-        centerPanel.add(versionLabel);
+        // centerPanel.add(Box.createVerticalStrut(10));
+        // centerPanel.add(versionLabel);
         centerPanel.add(Box.createVerticalStrut(15));
         centerPanel.add(subtitleLabel);
         
