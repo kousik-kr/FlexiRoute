@@ -617,107 +617,7 @@ public class GuiLauncher extends JFrame {
         
         result.setPathCoordinates(coordinates);
     }
-    
-    /**
-     * Collect neighboring graph context around path nodes for visualization
-     * Returns: [context node coordinates, context edges, path-to-context edges]
-     * path-to-context edges: [pathNodeIndex, contextNodeIndex]
-     */
-    private Object[] collectGraphContext(List<Integer> pathNodes) {
-        List<double[]> contextCoords = new ArrayList<>();
-        List<int[]> contextEdges = new ArrayList<>();
-        List<int[]> pathToContextEdges = new ArrayList<>();  // Edges from path nodes to context nodes
-        
-        if (pathNodes == null || pathNodes.isEmpty()) {
-            return new Object[]{contextCoords, contextEdges, pathToContextEdges};
-        }
-        
-        Map<Integer, Node> allNodes = Graph.get_nodes();
-        Set<Integer> pathNodeSet = new HashSet<>(pathNodes);
-        Set<Integer> contextNodeSet = new HashSet<>();
-        Map<Integer, Integer> contextNodeToIndex = new java.util.HashMap<>();
-        Map<Integer, Integer> pathNodeToIndex = new java.util.HashMap<>();
-        
-        // Build path node index map
-        for (int i = 0; i < pathNodes.size(); i++) {
-            pathNodeToIndex.put(pathNodes.get(i), i);
-        }
-        
-        // Collect neighbors of path nodes (1-hop neighbors)
-        for (Integer pathNodeId : pathNodes) {
-            Node pathNode = allNodes.get(pathNodeId);
-            if (pathNode == null) continue;
-            
-            // Add outgoing neighbors
-            for (Integer neighborId : pathNode.get_outgoing_edges().keySet()) {
-                if (!pathNodeSet.contains(neighborId)) {
-                    contextNodeSet.add(neighborId);
-                }
-            }
-            
-            // Add incoming neighbors
-            for (Integer neighborId : pathNode.get_incoming_edges().keySet()) {
-                if (!pathNodeSet.contains(neighborId)) {
-                    contextNodeSet.add(neighborId);
-                }
-            }
-        }
-        
-        // Build coordinates list for context nodes
-        int index = 0;
-        for (Integer nodeId : contextNodeSet) {
-            Node node = allNodes.get(nodeId);
-            if (node != null) {
-                contextCoords.add(new double[]{node.get_latitude(), node.get_longitude()});
-                contextNodeToIndex.put(nodeId, index++);
-            }
-        }
-        
-        // Build edges between context nodes
-        for (Integer nodeId : contextNodeSet) {
-            Node node = allNodes.get(nodeId);
-            if (node == null) continue;
-            
-            Integer fromIdx = contextNodeToIndex.get(nodeId);
-            if (fromIdx == null) continue;
-            
-            // Add edges to other context nodes
-            for (Integer neighborId : node.get_outgoing_edges().keySet()) {
-                Integer toIdx = contextNodeToIndex.get(neighborId);
-                if (toIdx != null && fromIdx < toIdx) { // Avoid duplicates
-                    contextEdges.add(new int[]{fromIdx, toIdx});
-                }
-            }
-        }
-        
-        // Build edges from path nodes to context nodes
-        for (Integer pathNodeId : pathNodes) {
-            Node pathNode = allNodes.get(pathNodeId);
-            if (pathNode == null) continue;
-            
-            Integer pathIdx = pathNodeToIndex.get(pathNodeId);
-            if (pathIdx == null) continue;
-            
-            // Outgoing edges to context nodes
-            for (Integer neighborId : pathNode.get_outgoing_edges().keySet()) {
-                Integer contextIdx = contextNodeToIndex.get(neighborId);
-                if (contextIdx != null) {
-                    pathToContextEdges.add(new int[]{pathIdx, contextIdx});
-                }
-            }
-            
-            // Incoming edges from context nodes
-            for (Integer neighborId : pathNode.get_incoming_edges().keySet()) {
-                Integer contextIdx = contextNodeToIndex.get(neighborId);
-                if (contextIdx != null) {
-                    // Store as [pathIdx, contextIdx] for rendering
-                    pathToContextEdges.add(new int[]{pathIdx, contextIdx});
-                }
-            }
-        }
-        
-        return new Object[]{contextCoords, contextEdges, pathToContextEdges};
-    }
+
     
     private void displayResults(Result result) {
         // Convert Result to ResultData for UI panels
@@ -767,15 +667,6 @@ public class GuiLauncher extends JFrame {
         
         // Update map with path and graph context
         if (result.isPathFound()) {
-            // Collect graph context (neighboring nodes in lighter color)
-            Object[] context = collectGraphContext(result.getPathNodes());
-            @SuppressWarnings("unchecked")
-            List<double[]> contextCoords = (List<double[]>) context[0];
-            @SuppressWarnings("unchecked")
-            List<int[]> contextEdges = (List<int[]>) context[1];
-            @SuppressWarnings("unchecked")
-            List<int[]> pathToContextEdges = (List<int[]>) context[2];
-            
             // Collect subgraph around the path for map-like visualization
             Object[] subgraph = collectSubgraphForPath(result.getPathCoordinates());
             @SuppressWarnings("unchecked")
@@ -783,14 +674,14 @@ public class GuiLauncher extends JFrame {
             @SuppressWarnings("unchecked")
             List<int[]> subgraphEdges = (List<int[]>) subgraph[1];
             
-            // Set path with context and subgraph
+            // Set path with subgraph
             mapPanel.setPathWithContextAndSubgraph(
                 result.getPathNodes(), 
                 result.getWideEdgeIndices(), 
                 result.getPathCoordinates(),
-                contextCoords,
-                contextEdges,
-                pathToContextEdges,
+                null,  // context removed
+                null,  // context removed
+                null,  // context removed
                 subgraphNodes,
                 subgraphEdges
             );
