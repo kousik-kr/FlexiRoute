@@ -9,6 +9,7 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -779,17 +780,90 @@ public class GuiLauncher extends JFrame {
             @SuppressWarnings("unchecked")
             List<int[]> pathToContextEdges = (List<int[]>) context[2];
             
-            // Set path with context
-            mapPanel.setPathWithContext(
+            // Collect subgraph around the path for map-like visualization
+            Object[] subgraph = collectSubgraphForPath(result.getPathCoordinates());
+            @SuppressWarnings("unchecked")
+            List<double[]> subgraphNodes = (List<double[]>) subgraph[0];
+            @SuppressWarnings("unchecked")
+            List<int[]> subgraphEdges = (List<int[]>) subgraph[1];
+            
+            // Set path with context and subgraph
+            mapPanel.setPathWithContextAndSubgraph(
                 result.getPathNodes(), 
                 result.getWideEdgeIndices(), 
                 result.getPathCoordinates(),
                 contextCoords,
                 contextEdges,
-                pathToContextEdges
+                pathToContextEdges,
+                subgraphNodes,
+                subgraphEdges
             );
             rightTabs.setSelectedIndex(0); // Switch to map view
         }
+    }
+    
+    /**
+     * Collect subgraph nodes and edges within a bounding box around the path
+     * Returns: [subgraph node coordinates, subgraph edges]
+     */
+    private Object[] collectSubgraphForPath(List<double[]> pathCoordinates) {
+        List<double[]> subgraphNodes = new ArrayList<>();
+        List<int[]> subgraphEdges = new ArrayList<>();
+        
+        if (pathCoordinates == null || pathCoordinates.isEmpty()) {
+            return new Object[]{subgraphNodes, subgraphEdges};
+        }
+        
+        // Calculate bounding box of the path
+        double minLat = Double.MAX_VALUE, maxLat = -Double.MAX_VALUE;
+        double minLon = Double.MAX_VALUE, maxLon = -Double.MAX_VALUE;
+        
+        for (double[] coord : pathCoordinates) {
+            minLat = Math.min(minLat, coord[0]);
+            maxLat = Math.max(maxLat, coord[0]);
+            minLon = Math.min(minLon, coord[1]);
+            maxLon = Math.max(maxLon, coord[1]);
+        }
+        
+        // Add 80% padding to show more context around the path
+        double latPad = (maxLat - minLat) * 0.8 + 0.01;
+        double lonPad = (maxLon - minLon) * 0.8 + 0.01;
+        minLat -= latPad; maxLat += latPad;
+        minLon -= lonPad; maxLon += lonPad;
+        
+        Map<Integer, Node> allNodes = Graph.get_nodes();
+        Map<Integer, Integer> nodeIdToIndex = new HashMap<>();
+        
+        // Collect nodes within bounding box
+        for (Map.Entry<Integer, Node> entry : allNodes.entrySet()) {
+            Node node = entry.getValue();
+            double lat = node.get_latitude();
+            double lon = node.get_longitude();
+            
+            if (lat >= minLat && lat <= maxLat && lon >= minLon && lon <= maxLon) {
+                int idx = subgraphNodes.size();
+                nodeIdToIndex.put(entry.getKey(), idx);
+                subgraphNodes.add(new double[]{lat, lon});
+            }
+        }
+        
+        // Collect edges between nodes in the subgraph
+        for (Map.Entry<Integer, Node> entry : allNodes.entrySet()) {
+            Integer fromId = entry.getKey();
+            if (!nodeIdToIndex.containsKey(fromId)) continue;
+            
+            Node node = entry.getValue();
+            Map<Integer, Edge> outgoing = node.get_outgoing_edges();
+            if (outgoing != null) {
+                for (Integer toId : outgoing.keySet()) {
+                    if (nodeIdToIndex.containsKey(toId)) {
+                        subgraphEdges.add(new int[]{nodeIdToIndex.get(fromId), nodeIdToIndex.get(toId)});
+                    }
+                }
+            }
+        }
+        
+        return new Object[]{subgraphNodes, subgraphEdges};
     }
     
     private void updateQueryPreview(int source, int dest) {
@@ -800,7 +874,55 @@ public class GuiLauncher extends JFrame {
         if (srcNode != null && dstNode != null) {
             double[] srcCoord = new double[]{srcNode.get_latitude(), srcNode.get_longitude()};
             double[] dstCoord = new double[]{dstNode.get_latitude(), dstNode.get_longitude()};
-            mapPanel.setQueryPreview(source, dest, srcCoord, dstCoord);
+            
+            // Calculate bounding box with padding
+            double minLat = Math.min(srcNode.get_latitude(), dstNode.get_latitude());
+            double maxLat = Math.max(srcNode.get_latitude(), dstNode.get_latitude());
+            double minLon = Math.min(srcNode.get_longitude(), dstNode.get_longitude());
+            double maxLon = Math.max(srcNode.get_longitude(), dstNode.get_longitude());
+            
+            // Add 150% padding to the bounding box to show a larger subgraph (more map-like feel)
+            double latPad = (maxLat - minLat) * 1.5 + 0.02;
+            double lonPad = (maxLon - minLon) * 1.5 + 0.02;
+            minLat -= latPad; maxLat += latPad;
+            minLon -= lonPad; maxLon += lonPad;
+            
+            // Collect subgraph nodes and edges within bounding box
+            List<double[]> subgraphNodes = new ArrayList<>();
+            List<int[]> subgraphEdges = new ArrayList<>();
+            Map<Integer, Integer> nodeIdToIndex = new HashMap<>();
+            
+            // First pass: collect nodes within bounding box
+            for (Map.Entry<Integer, Node> entry : allNodes.entrySet()) {
+                Node node = entry.getValue();
+                double lat = node.get_latitude();
+                double lon = node.get_longitude();
+                
+                if (lat >= minLat && lat <= maxLat && lon >= minLon && lon <= maxLon) {
+                    int idx = subgraphNodes.size();
+                    nodeIdToIndex.put(entry.getKey(), idx);
+                    subgraphNodes.add(new double[]{lat, lon});
+                }
+            }
+            
+            // Second pass: collect edges between nodes in the subgraph
+            for (Map.Entry<Integer, Node> entry : allNodes.entrySet()) {
+                Integer fromId = entry.getKey();
+                if (!nodeIdToIndex.containsKey(fromId)) continue;
+                
+                Node node = entry.getValue();
+                Map<Integer, Edge> outgoing = node.get_outgoing_edges();
+                if (outgoing != null) {
+                    for (Integer toId : outgoing.keySet()) {
+                        if (nodeIdToIndex.containsKey(toId)) {
+                            subgraphEdges.add(new int[]{nodeIdToIndex.get(fromId), nodeIdToIndex.get(toId)});
+                        }
+                    }
+                }
+            }
+            
+            // Set preview with subgraph
+            mapPanel.setQueryPreviewWithSubgraph(source, dest, srcCoord, dstCoord, subgraphNodes, subgraphEdges);
         }
     }
     
