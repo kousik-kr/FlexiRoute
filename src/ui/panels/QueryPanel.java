@@ -20,7 +20,6 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
-import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -56,7 +55,6 @@ public class QueryPanel extends JPanel {
     private JTextField sourceField, destField;
     private JSlider departureSlider, intervalSlider, budgetSlider;
     private JLabel departureValue, intervalValue, budgetValue;
-    private JComboBox<String> heuristicCombo;
     private JButton runButton;
     private JLabel statusLabel;
     
@@ -65,14 +63,6 @@ public class QueryPanel extends JPanel {
     private java.util.function.BiConsumer<Integer, Integer> onPreviewChange;
     
     private int maxNodeId = 21048;
-    
-    // Routing mode selector
-    private JComboBox<RoutingMode> routingModeCombo;
-    private javax.swing.JTextArea routingModeDescriptionArea;
-    
-    // Frontier threshold mode selector
-    private JComboBox<String> frontierThresholdCombo;
-    private JLabel frontierThresholdDescription;
     
     public QueryPanel() {
         setLayout(new BorderLayout());
@@ -93,18 +83,6 @@ public class QueryPanel extends JPanel {
         // === SOURCE & DESTINATION (single row) ===
         mainPanel.add(createSourceDestRow());
         mainPanel.add(Box.createVerticalStrut(12));
-        
-        // === ALGORITHM (full width) ===
-        mainPanel.add(createLabeledCombo("Algorithm", VIVID_PURPLE, new String[]{"Best", "Euclidean", "Manhattan"}, false));
-        mainPanel.add(Box.createVerticalStrut(14));
-        
-        // === ROUTING MODE ===
-        mainPanel.add(createRoutingModePanel());
-        mainPanel.add(Box.createVerticalStrut(14));
-        
-        // === FRONTIER THRESHOLD MODE ===
-        mainPanel.add(createFrontierThresholdPanel());
-        mainPanel.add(Box.createVerticalStrut(14));
         
         // === QUICK ACTIONS (2 buttons) ===
         mainPanel.add(createActionsPanel());
@@ -133,154 +111,6 @@ public class QueryPanel extends JPanel {
         scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         scroll.getVerticalScrollBar().setUnitIncrement(16);
         add(scroll, BorderLayout.CENTER);
-    }
-    
-    /**
-     * Create the routing mode selection panel with dropdown and description
-     */
-    private JPanel createRoutingModePanel() {
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setOpaque(false);
-        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 115));
-        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        
-        // Label
-        JLabel label = new JLabel("🎯 Routing Mode");
-        label.setFont(new Font("Segoe UI", Font.BOLD, 20));
-        label.setForeground(CYBER_YELLOW);
-        label.setAlignmentX(Component.LEFT_ALIGNMENT);
-        panel.add(label);
-        panel.add(Box.createVerticalStrut(4));
-        
-        // Combo box with routing modes
-        routingModeCombo = new JComboBox<>(RoutingMode.values());
-        routingModeCombo.setFont(new Font("Segoe UI", Font.PLAIN, 18));
-        routingModeCombo.setBackground(Color.WHITE);
-        routingModeCombo.setBorder(BorderFactory.createLineBorder(CYBER_YELLOW, 2, true));
-        routingModeCombo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
-        routingModeCombo.setAlignmentX(Component.LEFT_ALIGNMENT);
-        routingModeCombo.setSelectedItem(RoutingMode.WIDENESS_ONLY); // Default
-        
-        // Custom renderer for nice display
-        routingModeCombo.setRenderer(new javax.swing.DefaultListCellRenderer() {
-            @Override
-            public java.awt.Component getListCellRendererComponent(
-                    javax.swing.JList<?> list, Object value, int index, 
-                    boolean isSelected, boolean cellHasFocus) {
-                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                if (value instanceof RoutingMode) {
-                    RoutingMode mode = (RoutingMode) value;
-                    setText(mode.getDisplayName());
-                    if (isSelected) {
-                        setBackground(CYBER_YELLOW);
-                        setForeground(Color.WHITE);
-                    }
-                }
-                return this;
-            }
-        });
-        
-        panel.add(routingModeCombo);
-        panel.add(Box.createVerticalStrut(4));
-        
-        // Description using JTextArea for proper text wrapping
-        routingModeDescriptionArea = new javax.swing.JTextArea(RoutingMode.WIDENESS_ONLY.getDescription());
-        routingModeDescriptionArea.setFont(new Font("Segoe UI", Font.ITALIC, 14));
-        routingModeDescriptionArea.setForeground(TEXT_SECONDARY);
-        routingModeDescriptionArea.setBackground(BG_SURFACE);
-        routingModeDescriptionArea.setWrapStyleWord(true);
-        routingModeDescriptionArea.setLineWrap(true);
-        routingModeDescriptionArea.setEditable(false);
-        routingModeDescriptionArea.setFocusable(false);
-        routingModeDescriptionArea.setBorder(null);
-        routingModeDescriptionArea.setAlignmentX(Component.LEFT_ALIGNMENT);
-        // Constrain width to ~300px so long text wraps within the query panel
-        routingModeDescriptionArea.setMaximumSize(new Dimension(320, 60));
-        routingModeDescriptionArea.setPreferredSize(new Dimension(320, 40));
-        panel.add(routingModeDescriptionArea);
-        
-        // Update description when selection changes
-        routingModeCombo.addActionListener(e -> {
-            RoutingMode selected = (RoutingMode) routingModeCombo.getSelectedItem();
-            if (selected != null) {
-                routingModeDescriptionArea.setText(selected.getDescription());
-                // Highlight Pareto mode description
-                if (selected.isParetoMode()) {
-                    routingModeDescriptionArea.setForeground(CYBER_YELLOW.darker());
-                } else {
-                    routingModeDescriptionArea.setForeground(TEXT_SECONDARY);
-                }
-            }
-        });
-        
-        return panel;
-    }
-    
-    /**
-     * Create the frontier threshold mode selection panel with dropdown and description
-     */
-    private JPanel createFrontierThresholdPanel() {
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setOpaque(false);
-        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 100));
-        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        
-        // Label
-        JLabel label = new JLabel("⚡ Search Strategy");
-        label.setFont(new Font("Segoe UI", Font.BOLD, 20));
-        label.setForeground(OCEAN_TEAL);
-        label.setAlignmentX(Component.LEFT_ALIGNMENT);
-        panel.add(label);
-        panel.add(Box.createVerticalStrut(4));
-        
-        // Combo box with frontier threshold modes
-        String[] modes = {"Aggressive (Frontier: 10)", "Balanced (Frontier: 50)"};
-        frontierThresholdCombo = new JComboBox<>(modes);
-        frontierThresholdCombo.setFont(new Font("Segoe UI", Font.PLAIN, 18));
-        frontierThresholdCombo.setBackground(Color.WHITE);
-        frontierThresholdCombo.setBorder(BorderFactory.createLineBorder(OCEAN_TEAL, 2, true));
-        frontierThresholdCombo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
-        frontierThresholdCombo.setAlignmentX(Component.LEFT_ALIGNMENT);
-        frontierThresholdCombo.setSelectedIndex(0); // Default: Aggressive
-        
-        // Custom renderer for consistent yellow highlighting
-        frontierThresholdCombo.setRenderer(new javax.swing.DefaultListCellRenderer() {
-            @Override
-            public java.awt.Component getListCellRendererComponent(
-                    javax.swing.JList<?> list, Object value, int index, 
-                    boolean isSelected, boolean cellHasFocus) {
-                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                if (isSelected) {
-                    setBackground(OCEAN_TEAL);
-                    setForeground(Color.WHITE);
-                }
-                return this;
-            }
-        });
-        
-        panel.add(frontierThresholdCombo);
-        panel.add(Box.createVerticalStrut(4));
-        
-        // Description label
-        frontierThresholdDescription = new JLabel("Faster search, more aggressive pruning");
-        frontierThresholdDescription.setFont(new Font("Segoe UI", Font.ITALIC, 14));
-        frontierThresholdDescription.setForeground(TEXT_SECONDARY);
-        frontierThresholdDescription.setAlignmentX(Component.LEFT_ALIGNMENT);
-        panel.add(frontierThresholdDescription);
-        
-        // Update description when selection changes
-        frontierThresholdCombo.addActionListener(e -> {
-            int selected = frontierThresholdCombo.getSelectedIndex();
-            if (selected == 0) {
-                frontierThresholdDescription.setText("Faster search, more aggressive pruning");
-            } else {
-                frontierThresholdDescription.setText("Thorough search, balanced exploration");
-            }
-        });
-        
-        return panel;
     }
     
     private JPanel createHeader() {
@@ -367,45 +197,6 @@ public class QueryPanel extends JPanel {
         rowPanel.add(fieldRow);
         
         return rowPanel;
-    }
-    
-    private JPanel createLabeledCombo(String labelText, Color color, String[] items, boolean isDataset) {
-        JPanel panel = new JPanel(new BorderLayout(6, 4));
-        panel.setOpaque(false);
-        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 65));
-        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        
-        JLabel label = new JLabel(labelText);
-        label.setFont(new Font("Segoe UI", Font.BOLD, 20));
-        label.setForeground(color);
-        panel.add(label, BorderLayout.NORTH);
-        
-        JComboBox<String> combo = new JComboBox<>(items);
-        combo.setFont(new Font("Segoe UI", Font.PLAIN, 22));
-        combo.setBackground(Color.WHITE);
-        combo.setBorder(BorderFactory.createLineBorder(color, 2, true));
-        
-        // Custom renderer for consistent color highlighting
-        final Color highlightColor = color;
-        combo.setRenderer(new javax.swing.DefaultListCellRenderer() {
-            @Override
-            public java.awt.Component getListCellRendererComponent(
-                    javax.swing.JList<?> list, Object value, int index, 
-                    boolean isSelected, boolean cellHasFocus) {
-                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                if (isSelected) {
-                    setBackground(highlightColor);
-                    setForeground(Color.WHITE);
-                }
-                return this;
-            }
-        });
-        
-        // Only heuristic combo is used now (dataset removed)
-        heuristicCombo = combo;
-        
-        panel.add(combo, BorderLayout.CENTER);
-        return panel;
     }
     
     private JPanel createInputField(String labelText, Color color, boolean isSource) {
@@ -741,40 +532,21 @@ public class QueryPanel extends JPanel {
     public int getBudget() { return budgetSlider.getValue(); }
     
     public int getHeuristicMode() {
-        int idx = heuristicCombo.getSelectedIndex();
-        return idx == 0 ? 3 : (idx == 1 ? 1 : 2);
+        return 3; // Always use Best algorithm
     }
     
     /**
-     * Get the user-selected routing mode
+     * Get the routing mode - always returns WIDENESS_ONLY (default)
      */
     public RoutingMode getRoutingMode() {
-        return (RoutingMode) routingModeCombo.getSelectedItem();
+        return RoutingMode.WIDENESS_ONLY;
     }
     
     /**
-     * Set the routing mode programmatically
-     */
-    public void setRoutingMode(RoutingMode mode) {
-        if (mode != null) {
-            routingModeCombo.setSelectedItem(mode);
-        }
-    }
-    
-    /**
-     * Get the selected frontier threshold mode (0 = Aggressive, 1 = Balanced)
+     * Get the frontier threshold mode - always returns Aggressive (0)
      */
     public int getFrontierThresholdMode() {
-        return frontierThresholdCombo.getSelectedIndex();
-    }
-    
-    /**
-     * Set the frontier threshold mode programmatically (0 = Aggressive, 1 = Balanced)
-     */
-    public void setFrontierThresholdMode(int mode) {
-        if (mode >= 0 && mode <= 1) {
-            frontierThresholdCombo.setSelectedIndex(mode);
-        }
+        return 0; // Always aggressive
     }
     
     public void setSource(int value) { sourceField.setText(String.valueOf(value)); updateStatus(); }
