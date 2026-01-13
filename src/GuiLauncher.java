@@ -457,11 +457,11 @@ public class GuiLauncher extends JFrame {
         toolbar.addSeparator(new Dimension(20, 0));
         
         // Zoom controls
-        JButton zoomInBtn = createToolbarButton("🔍+", "Zoom In", e -> zoomMap(1));
-        JButton zoomOutBtn = createToolbarButton("🔍-", "Zoom Out", e -> zoomMap(-1));
-        JButton fitBtn = createToolbarButton("📐", "Fit to Path", e -> fitMapToPath());
-        JButton resetBtn = createToolbarButton("🔄", "Reset View", e -> resetMapView());
-        JButton clearBtn = createToolbarButton("🗑️", "Clear Map", e -> clearMapView());
+        JButton zoomInBtn = createToolbarButton("🔍+ Zoom In", "Zoom In", e -> zoomMap(1));
+        JButton zoomOutBtn = createToolbarButton("🔍- Zoom Out", "Zoom Out", e -> zoomMap(-1));
+        JButton fitBtn = createToolbarButton("📐 Fit Path", "Fit to Path", e -> fitMapToPath());
+        JButton resetBtn = createToolbarButton("🔄 Reset", "Reset View", e -> resetMapView());
+        JButton clearBtn = createToolbarButton("🗑️ Clear", "Clear Map", e -> clearMapView());
         
         toolbar.add(zoomInBtn);
         toolbar.add(Box.createHorizontalStrut(5));
@@ -498,11 +498,12 @@ public class GuiLauncher extends JFrame {
     private JButton createToolbarButton(String text, String tooltip, java.awt.event.ActionListener action) {
         JButton btn = new JButton(text);
         btn.setToolTipText(tooltip);
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btn.setFocusPainted(false);
         btn.setBorderPainted(false);
         btn.setContentAreaFilled(false);
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.setPreferredSize(new Dimension(110, 32));
         btn.addActionListener(action);
         btn.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override

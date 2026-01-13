@@ -282,23 +282,31 @@ public class OSMMapComponent extends JPanel implements TileProvider.TileLoadList
         toolbar.add(Box.createHorizontalStrut(10));
         
         // Zoom controls
-        JButton zoomIn = createToolbarButton("➕", "Zoom In");
+        JButton zoomIn = createToolbarButton("➕ Zoom In", "Zoom In");
         zoomIn.addActionListener(e -> {
             converter.setZoomLevel(Math.min(19, converter.getZoomLevel() + 1));
             repaint();
         });
         toolbar.add(zoomIn);
         
-        JButton zoomOut = createToolbarButton("➖", "Zoom Out");
+        JButton zoomOut = createToolbarButton("➖ Zoom Out", "Zoom Out");
         zoomOut.addActionListener(e -> {
             converter.setZoomLevel(Math.max(1, converter.getZoomLevel() - 1));
             repaint();
         });
         toolbar.add(zoomOut);
         
-        JButton resetView = createToolbarButton("🔄", "Reset View");
+        JButton resetView = createToolbarButton("🔄 Reset View", "Reset View");
         resetView.addActionListener(e -> resetView());
         toolbar.add(resetView);
+        
+        JButton fitPath = createToolbarButton("📐 Fit Path", "Fit to Path");
+        fitPath.addActionListener(e -> fitToPath());
+        toolbar.add(fitPath);
+        
+        JButton clearMap = createToolbarButton("🗑️ Clear", "Clear Map");
+        clearMap.addActionListener(e -> clearMap());
+        toolbar.add(clearMap);
         
         toolbar.add(Box.createHorizontalStrut(10));
         
@@ -336,7 +344,7 @@ public class OSMMapComponent extends JPanel implements TileProvider.TileLoadList
         toolbar.add(Box.createHorizontalGlue());
         
         // Export button
-        JButton exportBtn = createToolbarButton("💾", "Export Map");
+        JButton exportBtn = createToolbarButton("💾 Export", "Export Map");
         exportBtn.addActionListener(e -> exportImage());
         toolbar.add(exportBtn);
         
@@ -345,14 +353,14 @@ public class OSMMapComponent extends JPanel implements TileProvider.TileLoadList
     
     private JButton createToolbarButton(String text, String tooltip) {
         JButton btn = new JButton(text);
-        btn.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        btn.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         btn.setToolTipText(tooltip);
         btn.setFocusPainted(false);
         btn.setBorderPainted(false);
         btn.setContentAreaFilled(false);
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.setPreferredSize(new Dimension(36, 28));
-        btn.setMaximumSize(new Dimension(36, 28));
+        btn.setPreferredSize(new Dimension(100, 28));
+        btn.setMaximumSize(new Dimension(100, 28));
         return btn;
     }
     
