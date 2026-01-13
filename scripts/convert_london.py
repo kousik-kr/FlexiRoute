@@ -8,7 +8,7 @@ The solver expects merged files in the output directory:
 This script uses the London_Edgelist.csv file which contains:
 - XCoord, YCoord, START_NODE, END_NODE, EDGE, LENGTH (in meters)
 
-The coordinates appear to be in British National Grid (EPSG:27700).
+The coordinates are in UTM Zone 30N (EPSG:32630).
 We convert them to WGS84 (lat/lon) for compatibility with the mapping system.
 
 Travel time generation:
@@ -78,22 +78,21 @@ class EdgeRecord:
 
 
 def bng_to_wgs84(easting: float, northing: float) -> Tuple[float, float]:
-    """Convert British National Grid coordinates to WGS84 lat/lon.
+    """Convert UTM Zone 30N coordinates to WGS84 lat/lon.
     
-    This is a simplified conversion using the approximate transformation.
-    For more accuracy, use a proper projection library like pyproj.
+    The London dataset uses UTM Zone 30N (EPSG:32630), not British National Grid.
     
     Args:
-        easting: BNG Easting coordinate (meters)
-        northing: BNG Northing coordinate (meters)
+        easting: UTM Easting coordinate (meters)
+        northing: UTM Northing coordinate (meters)
         
     Returns:
         Tuple of (latitude, longitude) in WGS84
     """
     try:
         from pyproj import Transformer
-        # Create transformer from EPSG:27700 (BNG) to EPSG:4326 (WGS84)
-        transformer = Transformer.from_crs("EPSG:27700", "EPSG:4326", always_xy=True)
+        # Create transformer from EPSG:32630 (UTM 30N) to EPSG:4326 (WGS84)
+        transformer = Transformer.from_crs("EPSG:32630", "EPSG:4326", always_xy=True)
         lon, lat = transformer.transform(easting, northing)
         return lat, lon
     except ImportError:
