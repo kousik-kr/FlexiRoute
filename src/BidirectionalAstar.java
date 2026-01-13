@@ -295,8 +295,8 @@ public class BidirectionalAstar {
 			int destination = Integer.parseInt(entries[1]);
 			String travel_cost = entries[2];
 
-			double baseWidth = 3.5;
-			double rushWidth = 2.5;
+			double baseWidth = 2.5;
+			double rushWidth = 3.5;
 			double distance = -1;
 			if (entries.length >= 6) {
 				baseWidth = Double.parseDouble(entries[3]);
