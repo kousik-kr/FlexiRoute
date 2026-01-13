@@ -18,16 +18,22 @@ FlexiRoute is a **professional pathfinding analysis platform** featuring:
 - **Accessibility**: WCAG 2.1 AA compliant with full keyboard navigation
 
 ### 🗺️ **Advanced Visualization**
-- **Interactive Map**: Zoom (0.1x-10x), pan, minimap, node search
+- **Dual Map Modes**: 
+  - **Coordinate-Based**: Traditional node-edge rendering with 5 render modes
+  - **OSM Tiles**: Real OpenStreetMap tiles with dynamic centering on loaded dataset
+- **Interactive Controls**: Zoom, pan, minimap, fit-to-path, reset view
+- **Multiple Tile Servers**: OpenStreetMap, OpenTopoMap, CartoDB Dark/Light
 - **5 Render Modes**: Classic, Neon Glow, Gradient Flow, 3D, Minimal
 - **Export Capabilities**: High-res PNG screenshots with Ctrl+S
 - **Real-Time Tooltips**: Hover for node information
 
 ### 🎯 **Smart Query System**
+- **Dataset Selection**: Choose between default (London) or custom datasets on startup
 - **Input Validation**: Real-time feedback with visual indicators
 - **Recent History**: Last 10 queries with one-click reload
 - **Quick Actions**: Swap source/dest (S↔D button)
 - **Node Search**: Quick lookup by ID or name
+- **Dynamic Map**: Automatically centers map on loaded dataset coordinates
 
 ### 📊 **Real-Time Analytics**
 - **4 Metric Cards**: Total queries, avg time, success rate, throughput
@@ -66,18 +72,37 @@ pip install gdown
 
 ## 📦 Dataset Setup
 
-The application requires graph dataset files to run. On first launch, the application will:
-1. Check for dataset files in the `dataset/` folder
-2. Automatically attempt to download them if missing (requires `gdown`)
-3. Provide manual download instructions if auto-download fails
+FlexiRoute now supports multiple datasets with automatic organization:
 
-**Manual Download (if needed)**:
+### 🌍 Available Datasets
+
+**1. London Dataset (Default)** - 288,016 nodes, 744,610 edges
+- Location: `dataset/London/`
+- Files: `nodes_288016.txt`, `edges_288016.txt`
+- Coverage: Greater London road network with time-dependent costs
+- Created from London_Edgelist.csv with British National Grid coordinates
+
+**2. California Dataset** - 21,048 nodes
+- Location: `dataset/California/`
+- Files: `nodes_21048.txt`, `edges_21048.txt`
+- Coverage: California road network subset
+
+### 📥 Getting Started
+
+**On first launch**, the application will prompt you to:
+- Load the **Default Dataset** (London) from `dataset/London/`
+- Or choose a **Custom Dataset** directory
+
+The map will automatically center on the loaded dataset's geographic coordinates.
+
+### 📝 Converting Your Own Dataset
+
+To convert a London format dataset:
 ```bash
-pip install gdown
-./download_dataset.sh
+python3 scripts/convert_london.py path/to/London_Edgelist.csv
 ```
 
-**Or download directly**: [Google Drive](https://drive.google.com/drive/folders/1l3NG641rHeshkYW7aDxpb7RhUy0kRuiP) → Download all files → Place in `dataset/` folder
+See `scripts/README_LONDON.md` for detailed conversion instructions.
 
 📚 **[Dataset Setup Guide →](GOOGLE_DRIVE_SETUP.md)**
 
@@ -91,10 +116,24 @@ FlexiRoute/
 │   ├── BidirectionalLabeling.java # Label-based search with pruning
 │   ├── models/                    # Data models (QueryResult, RoutingMode)
 │   ├── managers/                  # Business logic (Theme, History, Metrics)
+│   ├── map/                       # OSM map components
+│   │   ├── OSMMapComponent.java  # OpenStreetMap tile viewer
+│   │   ├── CoordinateConverter.java # Lat/lon to pixel conversion
+│   │   ├── TileProvider.java     # Tile server management
+│   │   └── RouteOverlayRenderer.java # Path rendering on map
 │   └── ui/                        # UI components and panels
 │       ├── components/            # Reusable components (SplashScreen)
 │       └── panels/                # Main panels (Query, Map, Results, Metrics)
-├── dataset/                       # Graph data files (gitignored)
+├── dataset/                       # Graph data files (organized by region)
+│   ├── London/                    # London dataset (default, 288K nodes)
+│   │   ├── nodes_288016.txt
+│   │   └── edges_288016.txt
+│   └── California/                # California dataset (21K nodes)
+│       ├── nodes_21048.txt
+│       └── edges_21048.txt
+├── scripts/                       # Utility scripts
+│   ├── convert_london.py         # Convert London CSV to FlexiRoute format
+│   └── README_LONDON.md          # Conversion documentation
 ├── run.bat / run.sh / run.ps1    # Launch scripts
 └── docs/                          # Documentation
 ```

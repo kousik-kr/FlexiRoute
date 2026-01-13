@@ -17,19 +17,21 @@ public class DatasetDownloader {
     // Dataset directory relative to project root
     private static final String DATASET_DIR = "dataset";
     
-    // Expected dataset files
-    private static final String[] REQUIRED_FILES = {
-        "edges_264346.txt",
-        "edges_264346_old.txt",
-        "graph_264346.txt",
-        "graph_264346_old.txt",
-        "nodes_264346.txt",
-        "nodes_264346_old.txt"
+    // Supported dataset subdirectories
+    private static final String[] DATASET_SUBDIRS = {
+        "London",
+        "California"
+    };
+    
+    // Known dataset file patterns (without directory path)
+    private static final String[][] DATASET_FILES = {
+        {"nodes_288016.txt", "edges_288016.txt"},  // London
+        {"nodes_21048.txt", "edges_21048.txt"}     // California
     };
     
     /**
-     * Check if dataset exists, download if missing
-     * @return Path to dataset directory
+     * Check if dataset exists in subdirectories
+     * @return Path to default dataset directory (London) if found, otherwise base dataset dir
      */
     public static String ensureDatasetExists() {
         try {
@@ -43,39 +45,36 @@ public class DatasetDownloader {
                 System.out.println("[Dataset] Created dataset directory: " + datasetPath);
             }
             
-            // Check if required files exist
-            boolean allFilesExist = checkRequiredFiles(datasetPath);
+            // Check for datasets in subdirectories
+            String foundDataset = checkDatasetSubdirectories(datasetPath);
             
-            if (!allFilesExist) {
-                System.out.println("[Dataset] Dataset files not found.");
+            if (foundDataset == null) {
+                System.out.println("[Dataset] No dataset files found.");
                 System.out.println();
                 
-                // Show manual download instructions immediately
-                showManualInstructions();
+                // Show manual setup instructions
+                showDatasetSetupInstructions();
                 
-                // Check which files are missing
-                System.out.println("File status:");
-                for (String file : REQUIRED_FILES) {
-                    Path filePath = datasetPath.resolve(file);
-                    String status = Files.exists(filePath) ? "✓ Found" : "✗ Missing";
-                    System.out.println("  " + status + " - " + file);
+                // Show status of expected datasets
+                System.out.println("Dataset status:");
+                for (int i = 0; i < DATASET_SUBDIRS.length; i++) {
+                    String subdir = DATASET_SUBDIRS[i];
+                    Path subdirPath = datasetPath.resolve(subdir);
+                    if (Files.isDirectory(subdirPath)) {
+                        boolean hasFiles = checkDatasetFiles(subdirPath, DATASET_FILES[i]);
+                        String status = hasFiles ? "✓ Complete" : "✗ Incomplete";
+                        System.out.println("  " + status + " - " + subdir + "/");
+                    } else {
+                        System.out.println("  ✗ Missing - " + subdir + "/");
+                    }
                 }
                 System.out.println();
                 
-                // Try automatic download if gdown available
-                if (isGdownAvailable()) {
-                    System.out.println("[Dataset] gdown detected - attempting automatic download...");
-                    downloadUsingGdown(datasetPath);
-                } else {
-                    System.out.println("[Dataset] For automatic download, install gdown:");
-                    System.out.println("[Dataset]   pip3 install gdown --break-system-packages");
-                    System.out.println();
-                }
+                return datasetPath.toAbsolutePath().toString();
             } else {
-                System.out.println("[Dataset] ✓ Dataset files found!");
+                System.out.println("[Dataset] ✓ Found dataset: " + foundDataset);
+                return Paths.get(projectRoot, DATASET_DIR, foundDataset).toAbsolutePath().toString();
             }
-            
-            return datasetPath.toAbsolutePath().toString();
             
         } catch (IOException e) {
             System.err.println("[Dataset] Error: " + e.getMessage());
@@ -84,107 +83,60 @@ public class DatasetDownloader {
     }
     
     /**
-     * Check if all required dataset files exist
+     * Check for dataset files in subdirectories
+     * @return Name of first valid dataset subdirectory found, or null if none
      */
-    private static boolean checkRequiredFiles(Path datasetPath) {
-        // Check for at least one set of files (old or new)
-        boolean hasNewFiles = Files.exists(datasetPath.resolve("nodes_264346.txt")) &&
-                              Files.exists(datasetPath.resolve("edges_264346.txt"));
-        
-        boolean hasOldFiles = Files.exists(datasetPath.resolve("nodes_264346_old.txt")) &&
-                             Files.exists(datasetPath.resolve("edges_264346_old.txt"));
-        
-        return hasNewFiles || hasOldFiles;
-    }
-    
-    /**
-     * Check if gdown is available for automatic downloads
-     */
-    private static boolean isGdownAvailable() {
-        try {
-            Process process = new ProcessBuilder("gdown", "--version")
-                .redirectErrorStream(true)
-                .start();
-            int exitCode = process.waitFor();
-            return exitCode == 0;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-    
-    /**
-     * Download dataset using gdown (Python tool)
-     */
-    private static void downloadUsingGdown(Path datasetPath) {
-        try {
-            System.out.println("[Dataset] Attempting automatic download...");
-            System.out.println("[Dataset] This may take several minutes depending on file size.");
-            System.out.println();
+    private static String checkDatasetSubdirectories(Path datasetPath) {
+        for (int i = 0; i < DATASET_SUBDIRS.length; i++) {
+            String subdir = DATASET_SUBDIRS[i];
+            Path subdirPath = datasetPath.resolve(subdir);
             
-            // Use gdown to download entire folder
-            ProcessBuilder pb = new ProcessBuilder(
-                "gdown",
-                "--folder",
-                "https://drive.google.com/drive/folders/" + DRIVE_FOLDER_ID,
-                "-O",
-                datasetPath.toAbsolutePath().toString(),
-                "--remaining-ok"
-            );
-            
-            pb.redirectErrorStream(true);
-            Process process = pb.start();
-            
-            // Show download progress
-            BufferedReader reader = new BufferedReader(
-                new InputStreamReader(process.getInputStream())
-            );
-            
-            String line;
-            while ((line = reader.readLine()) != null) {
-                System.out.println("[Dataset] " + line);
+            if (Files.isDirectory(subdirPath) && checkDatasetFiles(subdirPath, DATASET_FILES[i])) {
+                return subdir;
             }
-            
-            int exitCode = process.waitFor();
-            
-            if (exitCode == 0) {
-                System.out.println();
-                System.out.println("[Dataset] ✓ Download completed successfully!");
-                System.out.println("[Dataset] Restart the application to load the dataset.");
-            } else {
-                System.out.println();
-                System.out.println("[Dataset] ✗ Automatic download failed.");
-                showManualInstructions();
-            }
-            
-        } catch (Exception e) {
-            System.out.println();
-            System.out.println("[Dataset] ✗ Automatic download not available.");
-            showManualInstructions();
         }
+        return null;
     }
     
     /**
-     * Show detailed manual download instructions
+     * Check if specific dataset files exist in a directory
      */
-    private static void showManualInstructions() {
+    private static boolean checkDatasetFiles(Path directory, String[] files) {
+        for (String file : files) {
+            if (!Files.exists(directory.resolve(file))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    
+    /**
+     * Show dataset setup instructions
+     */
+    private static void showDatasetSetupInstructions() {
         System.out.println();
         System.out.println("╔════════════════════════════════════════════════════════════════╗");
-        System.out.println("║           MANUAL DOWNLOAD INSTRUCTIONS                         ║");
+        System.out.println("║           DATASET SETUP INSTRUCTIONS                           ║");
         System.out.println("╚════════════════════════════════════════════════════════════════╝");
         System.out.println();
-        System.out.println("Please follow these steps:");
+        System.out.println("FlexiRoute requires dataset files organized in subdirectories:");
         System.out.println();
-        System.out.println("1. Open this link in your browser:");
-        System.out.println("   https://drive.google.com/drive/folders/1l3NG641rHeshkYW7aDxpb7RhUy0kRuiP");
+        System.out.println("Expected structure:");
+        System.out.println("  dataset/");
+        System.out.println("  ├── London/           (Default - 288K nodes)");
+        System.out.println("  │   ├── nodes_288016.txt");
+        System.out.println("  │   └── edges_288016.txt");
+        System.out.println("  └── California/       (21K nodes)");
+        System.out.println("      ├── nodes_21048.txt");
+        System.out.println("      └── edges_21048.txt");
         System.out.println();
-        System.out.println("2. Download ALL .txt files from the folder");
+        System.out.println("To add datasets:");
+        System.out.println("1. Create subdirectories in: " + Paths.get(System.getProperty("user.dir"), DATASET_DIR).toAbsolutePath());
+        System.out.println("2. Place nodes_*.txt and edges_*.txt files in each subdirectory");
+        System.out.println("3. Restart the application");
         System.out.println();
-        System.out.println("3. Place the files in this directory:");
-        System.out.println("   " + Paths.get(System.getProperty("user.dir"), DATASET_DIR).toAbsolutePath());
-        System.out.println();
-        System.out.println("4. Restart the application");
-        System.out.println();
-        System.out.println("Need help? See: dataset/README.md");
+        System.out.println("For converting London datasets, see: scripts/README_LONDON.md");
         System.out.println();
     }
     
@@ -197,7 +149,7 @@ public class DatasetDownloader {
     }
     
     /**
-     * List all files in the dataset directory
+     * List all files in dataset subdirectories
      */
     public static void listDatasetFiles() {
         try {
@@ -209,18 +161,24 @@ public class DatasetDownloader {
                 return;
             }
             
-            System.out.println("[Dataset] Files in dataset directory:");
-            Files.list(datasetPath)
-                .filter(Files::isRegularFile)
-                .forEach(file -> {
-                    try {
-                        long size = Files.size(file);
-                        String sizeStr = formatFileSize(size);
-                        System.out.println("[Dataset]   - " + file.getFileName() + " (" + sizeStr + ")");
-                    } catch (IOException e) {
-                        System.out.println("[Dataset]   - " + file.getFileName());
-                    }
-                });
+            System.out.println("[Dataset] Available datasets:");
+            for (String subdir : DATASET_SUBDIRS) {
+                Path subdirPath = datasetPath.resolve(subdir);
+                if (Files.isDirectory(subdirPath)) {
+                    System.out.println("[Dataset]   " + subdir + "/");
+                    Files.list(subdirPath)
+                        .filter(Files::isRegularFile)
+                        .forEach(file -> {
+                            try {
+                                long size = Files.size(file);
+                                String sizeStr = formatFileSize(size);
+                                System.out.println("[Dataset]     - " + file.getFileName() + " (" + sizeStr + ")");
+                            } catch (IOException e) {
+                                System.out.println("[Dataset]     - " + file.getFileName());
+                            }
+                        });
+                }
+            }
                 
         } catch (IOException e) {
             System.err.println("[Dataset] Error listing files: " + e.getMessage());

@@ -810,8 +810,8 @@ public class OSMMapComponent extends JPanel implements TileProvider.TileLoadList
         } else if (!subgraphNodes.isEmpty()) {
             fitToSubgraph();
         } else {
-            // Default to Northern California (where the dataset is located)
-            converter.setCenter(42.0, -122.0);
+            // Default to London (where the default dataset is located)
+            converter.setCenter(51.5074, -0.1278);
             converter.setZoomLevel(12);
             converter.resetPan();
         }

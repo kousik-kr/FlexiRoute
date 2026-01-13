@@ -38,8 +38,8 @@ public class BidirectionalAstar {
 	/**
 	 * @param args
 	 */
-	private static final String currentDirectory = System.getProperty("user.dir") + File.separator + "dataset" + File.separator;	//current directory of the code
-	private static final int defaultVertexCount = 21048; // Default vertex count if not specified
+	private static final String currentDirectory = System.getProperty("user.dir") + File.separator + "dataset" + File.separator + "London" + File.separator;	//current directory of the code
+	private static final int defaultVertexCount = 288016; // Default vertex count for London dataset
     private static String dataDirectory = currentDirectory;
     private static String configuredGraphDataDir = currentDirectory;
     private static int configuredGraphVertexCount = defaultVertexCount;
@@ -401,16 +401,9 @@ public class BidirectionalAstar {
         pool = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
         System.out.println("[Init] Defaults configured. Thresholds set and pool size=" + pool.getParallelism());
         
-        // Ensure dataset exists (auto-download if missing)
-        try {
-            String datasetPath = DatasetDownloader.ensureDatasetExists();
-            if (datasetPath != null && !datasetPath.isEmpty()) {
-                configuredGraphDataDir = datasetPath + "/";
-                dataDirectory = configuredGraphDataDir;
-            }
-        } catch (Exception e) {
-            System.err.println("[Init] Warning: Could not verify dataset: " + e.getMessage());
-        }
+        // Use the pre-configured default directory (dataset/London/)
+        // configuredGraphDataDir and dataDirectory are already initialized to currentDirectory
+        System.out.println("[Init] Default data directory: " + configuredGraphDataDir);
     }
 
     /**

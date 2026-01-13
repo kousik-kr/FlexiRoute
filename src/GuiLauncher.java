@@ -132,7 +132,8 @@ public class GuiLauncher extends JFrame {
     public GuiLauncher() {
         super(APP_TITLE);
         initializeUI();
-        loadDataset();
+        // Don't load dataset automatically - prompt user to load
+        promptUserToLoadDataset();
     }
     
     private void initializeUI() {
@@ -720,13 +721,8 @@ public class GuiLauncher extends JFrame {
             double centerLat = (minLat + maxLat) / 2;
             double centerLon = (minLon + maxLon) / 2;
             
-            // Calculate appropriate zoom level
-            int zoom = map.CoordinateConverter.calculateZoomToFit(
-                minLat, maxLat, minLon, maxLon, 
-                osmMapComponent.getWidth() > 0 ? osmMapComponent.getWidth() : 800,
-                osmMapComponent.getHeight() > 0 ? osmMapComponent.getHeight() : 600
-            );
-            
+            // Always use zoom level 12 for both default and custom datasets
+            int zoom = 12;
             osmMapComponent.centerOn(centerLat, centerLon, zoom);
             updateStatus(String.format("📍 Map centered on dataset: %.4f, %.4f (zoom %d)", centerLat, centerLon, zoom));
             
@@ -764,6 +760,9 @@ public class GuiLauncher extends JFrame {
                         int nodeCount = Graph.get_nodes().size();
                         setStatus(String.format("Custom dataset loaded: %,d nodes", nodeCount));
                         queryPanel.setMaxNodeId(nodeCount);
+                        
+                        // Center OSM map on the custom dataset's location
+                        centerMapOnDataset();
                     });
                     
                 } catch (Exception e) {
@@ -776,6 +775,34 @@ public class GuiLauncher extends JFrame {
                 }
             });
         }
+    }
+    
+    private void promptUserToLoadDataset() {
+        SwingUtilities.invokeLater(() -> {
+            int choice = JOptionPane.showOptionDialog(
+                this,
+                "Please select a dataset to load:\n\n" +
+                "• Default Dataset - Load from dataset/London/ (288K nodes)\n" +
+                "• Custom Dataset - Choose a different directory",
+                "Load Dataset",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                new String[]{"Default Dataset", "Custom Dataset"},
+                "Default Dataset"
+            );
+            
+            if (choice == 0) {
+                // Load default dataset
+                loadDataset();
+            } else if (choice == 1) {
+                // Load custom dataset
+                loadCustomDataset();
+            } else {
+                // User closed dialog - show message
+                setStatus("No dataset loaded - use File > Load Dataset to begin");
+            }
+        });
     }
     
     private void executeQuery() {

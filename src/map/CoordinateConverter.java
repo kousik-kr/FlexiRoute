@@ -39,7 +39,7 @@ public class CoordinateConverter {
     private double panOffsetY = 0;
     
     public CoordinateConverter() {
-        this(42.0, -122.0, 12, 800, 600); // Default: Northern California (dataset location)
+        this(51.5074, -0.1278, 12, 800, 600); // Default: London (dataset location)
     }
     
     public CoordinateConverter(double centerLat, double centerLon, int zoomLevel, int viewWidth, int viewHeight) {
