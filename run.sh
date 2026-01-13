@@ -60,6 +60,10 @@ if [ ! -f "target/classes/GuiLauncher.class" ]; then
     javac -d target/classes -cp target/classes \
         src/managers/*.java 2>&1
     
+    # Compile map components (OSM support)
+    javac -d target/classes -cp target/classes \
+        src/map/*.java 2>&1
+    
     # Compile UI panels
     javac -d target/classes -cp target/classes \
         src/ui/panels/QueryPanel.java \
@@ -67,7 +71,8 @@ if [ ! -f "target/classes/GuiLauncher.class" ]; then
         src/ui/panels/ResultsPanel.java \
         src/ui/panels/ResultData.java \
         src/ui/panels/QueryHistoryPanel.java \
-        src/ui/panels/MetricsDashboard.java 2>&1
+        src/ui/panels/MetricsDashboard.java \
+        src/ui/panels/PreferenceSlidersPanel.java 2>&1
     
     # Compile UI components
     javac -d target/classes -cp target/classes \
