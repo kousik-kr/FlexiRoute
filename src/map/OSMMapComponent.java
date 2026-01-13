@@ -296,11 +296,11 @@ public class OSMMapComponent extends JPanel implements TileProvider.TileLoadList
         });
         toolbar.add(zoomOut);
         
-        JButton resetView = createToolbarButton("🔄 Reset View", "Reset View");
+        JButton resetView = createToolbarButton("🔄", "Reset View");
         resetView.addActionListener(e -> resetView());
         toolbar.add(resetView);
         
-        JButton fitPath = createToolbarButton("📐 Fit Path", "Fit to Path");
+        JButton fitPath = createToolbarButton("📐", "Fit to Path");
         fitPath.addActionListener(e -> fitToPath());
         toolbar.add(fitPath);
         
@@ -353,14 +353,16 @@ public class OSMMapComponent extends JPanel implements TileProvider.TileLoadList
     
     private JButton createToolbarButton(String text, String tooltip) {
         JButton btn = new JButton(text);
-        btn.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        btn.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         btn.setToolTipText(tooltip);
         btn.setFocusPainted(false);
         btn.setBorderPainted(false);
         btn.setContentAreaFilled(false);
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.setPreferredSize(new Dimension(100, 28));
-        btn.setMaximumSize(new Dimension(100, 28));
+        // Size based on text length (icons vs text+icons)
+        int width = text.length() > 3 ? 100 : 36;
+        btn.setPreferredSize(new Dimension(width, 28));
+        btn.setMaximumSize(new Dimension(width, 28));
         return btn;
     }
     

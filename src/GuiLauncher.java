@@ -459,8 +459,8 @@ public class GuiLauncher extends JFrame {
         // Zoom controls
         JButton zoomInBtn = createToolbarButton("🔍+ Zoom In", "Zoom In", e -> zoomMap(1));
         JButton zoomOutBtn = createToolbarButton("🔍- Zoom Out", "Zoom Out", e -> zoomMap(-1));
-        JButton fitBtn = createToolbarButton("📐 Fit Path", "Fit to Path", e -> fitMapToPath());
-        JButton resetBtn = createToolbarButton("🔄 Reset", "Reset View", e -> resetMapView());
+        JButton fitBtn = createToolbarButton("📐", "Fit to Path", e -> fitMapToPath());
+        JButton resetBtn = createToolbarButton("🔄", "Reset View", e -> resetMapView());
         JButton clearBtn = createToolbarButton("🗑️ Clear", "Clear Map", e -> clearMapView());
         
         toolbar.add(zoomInBtn);

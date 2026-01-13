@@ -22,6 +22,10 @@ import javax.swing.BoxLayout;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSlider;
+import javax.swing.JComboBox;
+import models.RoutingMode;
+import javax.swing.JComboBox;
+import models.RoutingMode;
 import javax.swing.JToggleButton;
 import javax.swing.border.EmptyBorder;
 
@@ -56,10 +60,7 @@ public class PreferenceSlidersPanel extends JPanel {
     private static final Color CARD_BG = new Color(255, 255, 255);
     
     // === COMPONENTS ===
-    private JSlider widenessSlider;
-    private JSlider timeSlider;
-    private JSlider distanceSlider;
-    private JSlider rightTurnSlider;
+    private JComboBox<RoutingMode> routingModeCombo;
     
     private JToggleButton prioritizeWideness;
     private JToggleButton prioritizeTime;
@@ -91,45 +92,8 @@ public class PreferenceSlidersPanel extends JPanel {
         mainPanel.add(createPresetsPanel());
         mainPanel.add(Box.createVerticalStrut(20));
         
-        // Sliders
-        mainPanel.add(createSliderCard("🛣️ Road Width Priority", 
-            "Prefer wider roads for comfortable driving", 
-            NEON_GREEN, 
-            0, 100, 70,
-            slider -> {
-                this.widenessSlider = slider;
-                slider.addChangeListener(e -> updatePreferences());
-            }));
-        mainPanel.add(Box.createVerticalStrut(12));
-        
-        mainPanel.add(createSliderCard("⏱️ Travel Time Priority", 
-            "Minimize overall travel time", 
-            ELECTRIC_BLUE, 
-            0, 100, 50,
-            slider -> {
-                this.timeSlider = slider;
-                slider.addChangeListener(e -> updatePreferences());
-            }));
-        mainPanel.add(Box.createVerticalStrut(12));
-        
-        mainPanel.add(createSliderCard("📏 Distance Priority", 
-            "Prefer shorter total distance", 
-            SUNSET_ORANGE, 
-            0, 100, 30,
-            slider -> {
-                this.distanceSlider = slider;
-                slider.addChangeListener(e -> updatePreferences());
-            }));
-        mainPanel.add(Box.createVerticalStrut(12));
-        
-        mainPanel.add(createSliderCard("↪️ Avoid Turns", 
-            "Minimize sharp right turns", 
-            HOT_PINK, 
-            0, 100, 20,
-            slider -> {
-                this.rightTurnSlider = slider;
-                slider.addChangeListener(e -> updatePreferences());
-            }));
+        // Routing Mode Selection
+        mainPanel.add(createRoutingModeCard());
         
         mainPanel.add(Box.createVerticalGlue());
         
@@ -172,10 +136,7 @@ public class PreferenceSlidersPanel extends JPanel {
             if (prioritizeWideness.isSelected()) {
                 prioritizeTime.setSelected(false);
                 balancedMode.setSelected(false);
-                widenessSlider.setValue(90);
-                timeSlider.setValue(30);
-                distanceSlider.setValue(20);
-                rightTurnSlider.setValue(40);
+                routingModeCombo.setSelectedItem(RoutingMode.WIDENESS_ONLY);
             }
         });
         panel.add(prioritizeWideness);
@@ -186,10 +147,7 @@ public class PreferenceSlidersPanel extends JPanel {
             if (prioritizeTime.isSelected()) {
                 prioritizeWideness.setSelected(false);
                 balancedMode.setSelected(false);
-                widenessSlider.setValue(30);
-                timeSlider.setValue(90);
-                distanceSlider.setValue(50);
-                rightTurnSlider.setValue(10);
+                routingModeCombo.setSelectedItem(RoutingMode.MIN_TURNS_ONLY);
             }
         });
         panel.add(prioritizeTime);
@@ -201,10 +159,7 @@ public class PreferenceSlidersPanel extends JPanel {
             if (balancedMode.isSelected()) {
                 prioritizeWideness.setSelected(false);
                 prioritizeTime.setSelected(false);
-                widenessSlider.setValue(50);
-                timeSlider.setValue(50);
-                distanceSlider.setValue(50);
-                rightTurnSlider.setValue(30);
+                routingModeCombo.setSelectedItem(RoutingMode.WIDENESS_AND_TURNS);
             }
         });
         panel.add(balancedMode);
@@ -248,6 +203,46 @@ public class PreferenceSlidersPanel extends JPanel {
         btn.setPreferredSize(new Dimension(95, 36));
         btn.setMaximumSize(new Dimension(95, 36));
         return btn;
+    }
+    
+    private JPanel createRoutingModeCard() {
+        JPanel card = new JPanel();
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        card.setBackground(CARD_BG);
+        card.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(226, 232, 240), 1, true),
+            new EmptyBorder(16, 16, 16, 16)
+        ));
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 120));
+        card.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        // Title
+        JLabel titleLabel = new JLabel("🎯 Route Optimization Mode");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        titleLabel.setForeground(TEXT_PRIMARY);
+        titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        card.add(titleLabel);
+        
+        card.add(Box.createVerticalStrut(8));
+        
+        // Description
+        JLabel descLabel = new JLabel("Select route optimization strategy");
+        descLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        descLabel.setForeground(TEXT_SECONDARY);
+        descLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        card.add(descLabel);
+        
+        card.add(Box.createVerticalStrut(12));
+        
+        // Dropdown
+        routingModeCombo = new JComboBox<>(RoutingMode.values());
+        routingModeCombo.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        routingModeCombo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
+        routingModeCombo.setAlignmentX(Component.LEFT_ALIGNMENT);
+        routingModeCombo.addActionListener(e -> updatePreferences());
+        card.add(routingModeCombo);
+        
+        return card;
     }
     
     private JPanel createSliderCard(String title, String description, Color accentColor, 
@@ -379,15 +374,29 @@ public class PreferenceSlidersPanel extends JPanel {
     }
     
     private void updatePreferences() {
-        if (widenessSlider == null || timeSlider == null || 
-            distanceSlider == null || rightTurnSlider == null) {
+        if (routingModeCombo == null) {
             return;
         }
         
-        currentValues.widenessWeight = widenessSlider.getValue() / 100.0;
-        currentValues.timeWeight = timeSlider.getValue() / 100.0;
-        currentValues.distanceWeight = distanceSlider.getValue() / 100.0;
-        currentValues.rightTurnWeight = rightTurnSlider.getValue() / 100.0;
+        RoutingMode mode = (RoutingMode) routingModeCombo.getSelectedItem();
+        
+        // Set weights based on routing mode
+        if (mode == RoutingMode.WIDENESS_ONLY) {
+            currentValues.widenessWeight = 1.0;
+            currentValues.timeWeight = 0.0;
+            currentValues.distanceWeight = 0.0;
+            currentValues.rightTurnWeight = 0.0;
+        } else if (mode == RoutingMode.MIN_TURNS_ONLY) {
+            currentValues.widenessWeight = 0.0;
+            currentValues.timeWeight = 0.0;
+            currentValues.distanceWeight = 0.0;
+            currentValues.rightTurnWeight = 1.0;
+        } else { // WIDENESS_AND_TURNS
+            currentValues.widenessWeight = 0.5;
+            currentValues.timeWeight = 0.0;
+            currentValues.distanceWeight = 0.0;
+            currentValues.rightTurnWeight = 0.5;
+        }
         
         if (onPreferenceChange != null) {
             onPreferenceChange.accept(currentValues);
@@ -402,22 +411,6 @@ public class PreferenceSlidersPanel extends JPanel {
     
     public PreferenceValues getPreferences() {
         return currentValues;
-    }
-    
-    public void setWidenessWeight(double weight) {
-        widenessSlider.setValue((int) (weight * 100));
-    }
-    
-    public void setTimeWeight(double weight) {
-        timeSlider.setValue((int) (weight * 100));
-    }
-    
-    public void setDistanceWeight(double weight) {
-        distanceSlider.setValue((int) (weight * 100));
-    }
-    
-    public void setRightTurnWeight(double weight) {
-        rightTurnSlider.setValue((int) (weight * 100));
     }
     
     /**
