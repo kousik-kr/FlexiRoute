@@ -461,6 +461,7 @@ public class GuiLauncher extends JFrame {
         JButton zoomOutBtn = createToolbarButton("🔍-", "Zoom Out", e -> zoomMap(-1));
         JButton fitBtn = createToolbarButton("📐", "Fit to Path", e -> fitMapToPath());
         JButton resetBtn = createToolbarButton("🔄", "Reset View", e -> resetMapView());
+        JButton clearBtn = createToolbarButton("🗑️", "Clear Map", e -> clearMapView());
         
         toolbar.add(zoomInBtn);
         toolbar.add(Box.createHorizontalStrut(5));
@@ -469,6 +470,8 @@ public class GuiLauncher extends JFrame {
         toolbar.add(fitBtn);
         toolbar.add(Box.createHorizontalStrut(5));
         toolbar.add(resetBtn);
+        toolbar.add(Box.createHorizontalStrut(5));
+        toolbar.add(clearBtn);
         
         toolbar.add(Box.createHorizontalGlue());
         
@@ -548,6 +551,17 @@ public class GuiLauncher extends JFrame {
         } else {
             mapPanel.clearMap();
             mapPanel.repaint();
+        }
+    }
+    
+    private void clearMapView() {
+        if (currentMapMode == MapViewMode.OSM_TILES) {
+            osmMapComponent.clearMap();
+            updateStatus("🗑️ Map cleared");
+        } else {
+            mapPanel.clearMap();
+            mapPanel.repaint();
+            updateStatus("🗑️ Map cleared");
         }
     }
     
