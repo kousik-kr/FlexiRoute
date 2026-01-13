@@ -23,9 +23,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSlider;
 import javax.swing.JToggleButton;
-import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
-import javax.swing.event.ChangeListener;
 
 /**
  * Preference Sliders Panel - Controls for routing preferences and visualization options.
