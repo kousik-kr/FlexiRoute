@@ -1,7 +1,13 @@
 import java.awt.BorderLayout;
+import java.awt.CardLayout;
 import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.GradientPaint;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.event.ActionEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
@@ -18,11 +24,16 @@ import java.util.concurrent.TimeUnit;
 
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.JButton;
 import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
@@ -31,6 +42,7 @@ import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JSplitPane;
 import javax.swing.JTabbedPane;
+import javax.swing.JToolBar;
 import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
@@ -39,11 +51,14 @@ import javax.swing.UIManager;
 import managers.MetricsCollector;
 import managers.QueryHistoryManager;
 import managers.ThemeManager;
+import map.MapViewMode;
+import map.OSMMapComponent;
 import models.QueryResult;
 import models.RoutingMode;
 import ui.components.SplashScreen;
 import ui.panels.MapPanel;
 import ui.panels.MetricsDashboard;
+import ui.panels.PreferenceSlidersPanel;
 import ui.panels.QueryHistoryPanel;
 import ui.panels.QueryPanel;
 import ui.panels.ResultData;
@@ -93,12 +108,16 @@ public class GuiLauncher extends JFrame {
     // === UI COMPONENTS ===
     private QueryPanel queryPanel;
     private MapPanel mapPanel;
+    private OSMMapComponent osmMapComponent;
+    private PreferenceSlidersPanel preferenceSlidersPanel;
     private ResultsPanel resultsPanel;
     private JTabbedPane rightTabs;
     private JLabel statusLabel;
     private JProgressBar globalProgress;
     private QueryHistoryPanel historyPanel;
     private MetricsDashboard metricsDashboard;
+    private MapViewMode currentMapMode = MapViewMode.COORDINATE_BASED;
+    private JPanel mapContainer;
     
     // === MANAGERS ===
     private final QueryHistoryManager historyManager = new QueryHistoryManager();
@@ -274,10 +293,27 @@ public class GuiLauncher extends JFrame {
     }
     
     private JSplitPane createMainSplit() {
-        // Left side: Query Panel
+        // Left side: Query Panel with Preference Sliders
+        JPanel leftPanel = new JPanel(new BorderLayout(0, 10));
+        leftPanel.setBackground(SIDEBAR_BG);
+        
         queryPanel = new QueryPanel();
-        queryPanel.setPreferredSize(new Dimension(500, 0));
-        queryPanel.setMinimumSize(new Dimension(500, 0));
+        
+        // Create preference sliders panel
+        preferenceSlidersPanel = new PreferenceSlidersPanel();
+        preferenceSlidersPanel.setOnPreferenceChange(values -> {
+            updateStatus("⚙️ Preferences updated: Wideness=" + (int)(values.widenessWeight * 100) + 
+                        "%, Time=" + (int)(values.timeWeight * 100) + "%, Distance=" + (int)(values.distanceWeight * 100) + "%");
+        });
+        
+        // Collapsible preference panel
+        JPanel preferenceWrapper = createCollapsiblePanel("🎚️ Routing Preferences", preferenceSlidersPanel);
+        
+        leftPanel.add(queryPanel, BorderLayout.CENTER);
+        leftPanel.add(preferenceWrapper, BorderLayout.SOUTH);
+        
+        leftPanel.setPreferredSize(new Dimension(500, 0));
+        leftPanel.setMinimumSize(new Dimension(500, 0));
         
         // Set callbacks
         queryPanel.setOnRunQuery(this::executeQuery);
@@ -288,9 +324,24 @@ public class GuiLauncher extends JFrame {
         rightTabs.setFont(new Font("Segoe UI", Font.BOLD, 19));
         rightTabs.setBackground(BG_COLOR);
         
-        // Map Panel
+        // Map Container with switchable views
+        mapContainer = new JPanel(new CardLayout());
+        mapContainer.setBackground(BG_COLOR);
+        
+        // Coordinate-based Map Panel (existing)
         mapPanel = new MapPanel();
-        rightTabs.addTab("🗺️ Map View", mapPanel);
+        mapContainer.add(mapPanel, MapViewMode.COORDINATE_BASED.name());
+        
+        // OSM Tile-based Map Component (new)
+        osmMapComponent = new OSMMapComponent();
+        mapContainer.add(osmMapComponent, MapViewMode.OSM_TILES.name());
+        
+        // Map view with toolbar
+        JPanel mapViewPanel = new JPanel(new BorderLayout(0, 0));
+        mapViewPanel.add(createMapToolbar(), BorderLayout.NORTH);
+        mapViewPanel.add(mapContainer, BorderLayout.CENTER);
+        
+        rightTabs.addTab("🗺️ Map View", mapViewPanel);
         
         // Results Panel
         resultsPanel = new ResultsPanel();
@@ -305,13 +356,220 @@ public class GuiLauncher extends JFrame {
         rightTabs.addTab("🕐 History", historyPanel);
         
         // Main split pane
-        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, queryPanel, rightTabs);
+        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPanel, rightTabs);
         split.setDividerLocation(500);
         split.setDividerSize(4);
         split.setContinuousLayout(true);
         split.setBorder(null);
         
         return split;
+    }
+    
+    private JPanel createCollapsiblePanel(String title, JComponent content) {
+        JPanel wrapper = new JPanel(new BorderLayout(0, 0));
+        wrapper.setBackground(SIDEBAR_BG);
+        wrapper.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(226, 232, 240)),
+            BorderFactory.createEmptyBorder(0, 0, 0, 0)
+        ));
+        
+        // Header with toggle
+        JPanel header = new JPanel(new BorderLayout(10, 0)) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                GradientPaint gp = new GradientPaint(0, 0, new Color(248, 250, 255), getWidth(), 0, new Color(240, 245, 255));
+                g2d.setPaint(gp);
+                g2d.fillRect(0, 0, getWidth(), getHeight());
+                g2d.dispose();
+            }
+        };
+        header.setOpaque(false);
+        header.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
+        header.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        
+        JLabel titleLabel = new JLabel(title);
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        titleLabel.setForeground(VIVID_PURPLE);
+        
+        JLabel toggleIcon = new JLabel("▼");
+        toggleIcon.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        toggleIcon.setForeground(TEXT_SECONDARY);
+        
+        header.add(titleLabel, BorderLayout.WEST);
+        header.add(toggleIcon, BorderLayout.EAST);
+        
+        // Toggle functionality
+        final boolean[] collapsed = {false};
+        header.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                collapsed[0] = !collapsed[0];
+                content.setVisible(!collapsed[0]);
+                toggleIcon.setText(collapsed[0] ? "▶" : "▼");
+                wrapper.revalidate();
+            }
+        });
+        
+        wrapper.add(header, BorderLayout.NORTH);
+        wrapper.add(content, BorderLayout.CENTER);
+        
+        return wrapper;
+    }
+    
+    private JToolBar createMapToolbar() {
+        JToolBar toolbar = new JToolBar();
+        toolbar.setFloatable(false);
+        toolbar.setOpaque(false);
+        toolbar.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(226, 232, 240)),
+            BorderFactory.createEmptyBorder(8, 15, 8, 15)
+        ));
+        toolbar.setBackground(new Color(248, 250, 255));
+        
+        // Map mode toggle
+        JLabel modeLabel = new JLabel("🗺️ Map Mode: ");
+        modeLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        modeLabel.setForeground(TEXT_PRIMARY);
+        
+        JComboBox<MapViewMode> modeCombo = new JComboBox<>(MapViewMode.values());
+        modeCombo.setSelectedItem(currentMapMode);
+        modeCombo.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        modeCombo.setPreferredSize(new Dimension(180, 30));
+        modeCombo.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof MapViewMode) {
+                    setText(((MapViewMode) value).getDisplayName());
+                }
+                return this;
+            }
+        });
+        modeCombo.addActionListener(e -> {
+            MapViewMode selected = (MapViewMode) modeCombo.getSelectedItem();
+            switchMapMode(selected);
+        });
+        
+        toolbar.add(modeLabel);
+        toolbar.add(modeCombo);
+        toolbar.addSeparator(new Dimension(20, 0));
+        
+        // Zoom controls
+        JButton zoomInBtn = createToolbarButton("🔍+", "Zoom In", e -> zoomMap(1));
+        JButton zoomOutBtn = createToolbarButton("🔍-", "Zoom Out", e -> zoomMap(-1));
+        JButton fitBtn = createToolbarButton("📐", "Fit to Path", e -> fitMapToPath());
+        JButton resetBtn = createToolbarButton("🔄", "Reset View", e -> resetMapView());
+        
+        toolbar.add(zoomInBtn);
+        toolbar.add(Box.createHorizontalStrut(5));
+        toolbar.add(zoomOutBtn);
+        toolbar.add(Box.createHorizontalStrut(10));
+        toolbar.add(fitBtn);
+        toolbar.add(Box.createHorizontalStrut(5));
+        toolbar.add(resetBtn);
+        
+        toolbar.add(Box.createHorizontalGlue());
+        
+        // Tile server selection (only for OSM mode)
+        JLabel serverLabel = new JLabel("🌐 Tiles: ");
+        serverLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        serverLabel.setForeground(TEXT_PRIMARY);
+        
+        JComboBox<map.TileProvider.TileServer> serverCombo = new JComboBox<>(map.TileProvider.TileServer.values());
+        serverCombo.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        serverCombo.setPreferredSize(new Dimension(150, 30));
+        serverCombo.addActionListener(e -> {
+            if (osmMapComponent != null) {
+                osmMapComponent.setTileServer((map.TileProvider.TileServer) serverCombo.getSelectedItem());
+            }
+        });
+        
+        toolbar.add(serverLabel);
+        toolbar.add(serverCombo);
+        
+        return toolbar;
+    }
+    
+    private JButton createToolbarButton(String text, String tooltip, java.awt.event.ActionListener action) {
+        JButton btn = new JButton(text);
+        btn.setToolTipText(tooltip);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        btn.setFocusPainted(false);
+        btn.setBorderPainted(false);
+        btn.setContentAreaFilled(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.addActionListener(action);
+        btn.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseEntered(java.awt.event.MouseEvent e) {
+                btn.setContentAreaFilled(true);
+                btn.setBackground(new Color(240, 245, 255));
+            }
+            @Override
+            public void mouseExited(java.awt.event.MouseEvent e) {
+                btn.setContentAreaFilled(false);
+            }
+        });
+        return btn;
+    }
+    
+    private void switchMapMode(MapViewMode mode) {
+        currentMapMode = mode;
+        CardLayout cl = (CardLayout) mapContainer.getLayout();
+        cl.show(mapContainer, mode.name());
+        updateStatus("🗺️ Switched to " + mode.getDisplayName() + " mode");
+        
+        // Sync the current path display
+        if (lastResult != null) {
+            displayPathOnCurrentMap(lastResult);
+        }
+    }
+    
+    private void zoomMap(int direction) {
+        if (currentMapMode == MapViewMode.OSM_TILES) {
+            osmMapComponent.zoom(direction);
+        } else {
+            // Coordinate-based zoom
+            mapPanel.repaint();
+        }
+    }
+    
+    private void fitMapToPath() {
+        if (currentMapMode == MapViewMode.OSM_TILES) {
+            osmMapComponent.fitToPath();
+        }
+    }
+    
+    private void resetMapView() {
+        if (currentMapMode == MapViewMode.OSM_TILES) {
+            osmMapComponent.resetView();
+        } else {
+            mapPanel.clearMap();
+            mapPanel.repaint();
+        }
+    }
+    
+    private void displayPathOnCurrentMap(Result result) {
+        if (result == null || !result.isPathFound()) return;
+        
+        List<double[]> pathCoords = result.getPathCoordinates();
+        
+        if (currentMapMode == MapViewMode.OSM_TILES && pathCoords != null && !pathCoords.isEmpty()) {
+            // Convert path coordinates for OSM display
+            osmMapComponent.setPath(result.getPathNodes(), result.getWideEdgeIndices(), pathCoords);
+            osmMapComponent.fitToPath();
+        } else {
+            // Use existing coordinate-based display
+            if (pathCoords != null) {
+                mapPanel.setPathWithContextAndSubgraph(
+                    result.getPathNodes(),
+                    result.getWideEdgeIndices(),
+                    pathCoords,
+                    null, null, null, null, null
+                );
+            }
+        }
     }
     
     private JPanel createStatusBar() {
@@ -424,6 +682,9 @@ public class GuiLauncher extends JFrame {
                     int nodeCount = Graph.get_nodes().size();
                     setStatus(String.format("Dataset loaded: %,d nodes", nodeCount));
                     queryPanel.setMaxNodeId(nodeCount);
+                    
+                    // Center OSM map on the dataset's location
+                    centerMapOnDataset();
                 });
                 
             } catch (Exception e) {
@@ -432,6 +693,46 @@ public class GuiLauncher extends JFrame {
                 });
             }
         });
+    }
+    
+    /**
+     * Center the OSM map component on the loaded dataset's coordinates
+     */
+    private void centerMapOnDataset() {
+        try {
+            Map<Integer, Node> nodes = Graph.get_nodes();
+            if (nodes == null || nodes.isEmpty()) return;
+            
+            // Calculate bounds of the dataset
+            double minLat = Double.MAX_VALUE, maxLat = -Double.MAX_VALUE;
+            double minLon = Double.MAX_VALUE, maxLon = -Double.MAX_VALUE;
+            
+            for (Node node : nodes.values()) {
+                double lat = node.get_latitude();
+                double lon = node.get_longitude();
+                minLat = Math.min(minLat, lat);
+                maxLat = Math.max(maxLat, lat);
+                minLon = Math.min(minLon, lon);
+                maxLon = Math.max(maxLon, lon);
+            }
+            
+            // Center and zoom the OSM map
+            double centerLat = (minLat + maxLat) / 2;
+            double centerLon = (minLon + maxLon) / 2;
+            
+            // Calculate appropriate zoom level
+            int zoom = map.CoordinateConverter.calculateZoomToFit(
+                minLat, maxLat, minLon, maxLon, 
+                osmMapComponent.getWidth() > 0 ? osmMapComponent.getWidth() : 800,
+                osmMapComponent.getHeight() > 0 ? osmMapComponent.getHeight() : 600
+            );
+            
+            osmMapComponent.centerOn(centerLat, centerLon, zoom);
+            updateStatus(String.format("📍 Map centered on dataset: %.4f, %.4f (zoom %d)", centerLat, centerLon, zoom));
+            
+        } catch (Exception e) {
+            System.err.println("Could not center map on dataset: " + e.getMessage());
+        }
     }
     
     private void loadCustomDataset() {
@@ -663,6 +964,9 @@ public class GuiLauncher extends JFrame {
         // Update results panel
         resultsPanel.displayResult(resultData);
         
+        // Store last result for map mode switching
+        lastResult = result;
+        
         // Update map with path and graph context
         if (result.isPathFound()) {
             // Collect subgraph around the path for map-like visualization
@@ -672,7 +976,7 @@ public class GuiLauncher extends JFrame {
             @SuppressWarnings("unchecked")
             List<int[]> subgraphEdges = (List<int[]>) subgraph[1];
             
-            // Set path with subgraph
+            // Set path with subgraph on coordinate-based map
             mapPanel.setPathWithContextAndSubgraph(
                 result.getPathNodes(), 
                 result.getWideEdgeIndices(), 
@@ -683,6 +987,10 @@ public class GuiLauncher extends JFrame {
                 subgraphNodes,
                 subgraphEdges
             );
+            
+            // Also display on OSM map component
+            displayPathOnCurrentMap(result);
+            
             rightTabs.setSelectedIndex(0); // Switch to map view
         }
     }
@@ -875,6 +1183,13 @@ public class GuiLauncher extends JFrame {
     
     private void setStatus(String message) {
         statusLabel.setText(message);
+    }
+    
+    private void updateStatus(String message) {
+        SwingUtilities.invokeLater(() -> {
+            statusLabel.setText(message);
+            statusLabel.setForeground(NEON_GREEN);
+        });
     }
     
     private void toggleDarkMode() {
