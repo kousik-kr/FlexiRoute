@@ -94,7 +94,7 @@ public class OSMMapComponent extends JPanel implements TileProvider.TileLoadList
     // View settings
     private boolean showGrid = false;
     private boolean showLabels = true;
-    private boolean showSubgraph = true;
+    private boolean showSubgraph = false;
     private boolean animatePath = false;
     
     // Animation
@@ -459,14 +459,8 @@ public class OSMMapComponent extends JPanel implements TileProvider.TileLoadList
         int minTileY = Math.max(0, tileRange[2]);
         int maxTileY = Math.min((1 << zoom) - 1, tileRange[3]);
         
-        System.out.println("RenderTiles: zoom=" + zoom + " tiles X:" + minTileX + "-" + maxTileX + " Y:" + minTileY + "-" + maxTileY);
-        
-        int tilesRequested = 0;
-        int tilesRendered = 0;
-        
         for (int tileX = minTileX; tileX <= maxTileX; tileX++) {
             for (int tileY = minTileY; tileY <= maxTileY; tileY++) {
-                tilesRequested++;
                 BufferedImage tile = tileProvider.getTile(tileX, tileY, zoom);
                 
                 // Calculate screen position for this tile
@@ -475,7 +469,6 @@ public class OSMMapComponent extends JPanel implements TileProvider.TileLoadList
                 Point2D.Double screenPos = converter.latLonToPixel(tileLat, tileLon);
                 
                 if (tile != null) {
-                    tilesRendered++;
                     g2d.drawImage(tile, (int) screenPos.x, (int) screenPos.y, 
                                   TileProvider.TILE_SIZE, TileProvider.TILE_SIZE, null);
                 } else {
@@ -493,8 +486,6 @@ public class OSMMapComponent extends JPanel implements TileProvider.TileLoadList
                 }
             }
         }
-        
-        System.out.println("RenderTiles: requested=" + tilesRequested + " rendered=" + tilesRendered);
     }
     
     private void renderGrid(Graphics2D g2d) {

@@ -62,11 +62,14 @@ public class TileProvider {
     // In-memory tile cache
     private final ConcurrentHashMap<String, BufferedImage> tileCache = new ConcurrentHashMap<>();
     
+    // Track pending tile loads to avoid duplicate requests
+    private final ConcurrentHashMap<String, Boolean> pendingTiles = new ConcurrentHashMap<>();
+    
     // Disk cache directory
     private final File cacheDir;
     
-    // Background loader
-    private final ExecutorService executor = Executors.newFixedThreadPool(4);
+    // Background loader - increased pool size for faster loading
+    private final ExecutorService executor = Executors.newFixedThreadPool(8);
     
     // Current tile server
     private TileServer currentServer = TileServer.OSM_STANDARD;
@@ -74,8 +77,8 @@ public class TileProvider {
     // Tile load listeners
     private TileLoadListener listener;
     
-    // Maximum cache size (tiles)
-    private static final int MAX_CACHE_SIZE = 500;
+    // Maximum cache size (tiles) - increased for better performance
+    private static final int MAX_CACHE_SIZE = 1000;
     
     public interface TileLoadListener {
         void onTileLoaded(int x, int y, int z, BufferedImage tile);
@@ -137,7 +140,6 @@ public class TileProvider {
         // Check memory cache
         BufferedImage cached = tileCache.get(key);
         if (cached != null) {
-            System.out.println("Tile " + z + "/" + x + "/" + y + " found in memory cache");
             return cached;
         }
         
@@ -147,7 +149,6 @@ public class TileProvider {
             try {
                 BufferedImage img = ImageIO.read(diskFile);
                 if (img != null) {
-                    System.out.println("Tile " + z + "/" + x + "/" + y + " found in disk cache");
                     addToCache(key, img);
                     return img;
                 }
@@ -157,7 +158,6 @@ public class TileProvider {
         }
         
         // Load asynchronously
-        System.out.println("Tile " + z + "/" + x + "/" + y + " not cached, loading async");
         loadTileAsync(x, y, z);
         
         return null; // Return null, tile will be loaded in background
@@ -203,7 +203,11 @@ public class TileProvider {
      */
     private void loadTileAsync(int x, int y, int z) {
         String key = getCacheKey(x, y, z);
-        System.out.println("loadTileAsync queuing: " + z + "/" + x + "/" + y);
+        
+        // Skip if already pending
+        if (pendingTiles.putIfAbsent(key, true) != null) {
+            return; // Already loading
+        }
         
         executor.submit(() -> {
             try {
@@ -215,6 +219,8 @@ public class TileProvider {
                 if (listener != null) {
                     listener.onTileError(x, y, z, e);
                 }
+            } finally {
+                pendingTiles.remove(key);
             }
         });
     }
@@ -224,7 +230,6 @@ public class TileProvider {
      */
     private BufferedImage downloadTile(int x, int y, int z) throws IOException {
         String urlStr = currentServer.getUrl(x, y, z);
-        System.out.println("Downloading tile: " + z + "/" + x + "/" + y + " from " + urlStr);
         
         HttpURLConnection conn = null;
         try {
@@ -235,27 +240,22 @@ public class TileProvider {
             conn.setReadTimeout(10000);
             
             int responseCode = conn.getResponseCode();
-            System.out.println("Response code for tile " + z + "/" + x + "/" + y + ": " + responseCode);
             
             if (responseCode == 200) {
                 try (InputStream is = conn.getInputStream()) {
                     BufferedImage img = ImageIO.read(is);
                     if (img != null) {
-                        System.out.println("Successfully loaded tile " + z + "/" + x + "/" + y);
                         // Save to disk cache
                         saveToDiskCache(img, x, y, z);
                         // Add to memory cache
                         addToCache(getCacheKey(x, y, z), img);
-                    } else {
-                        System.err.println("ImageIO.read returned null for tile " + z + "/" + x + "/" + y);
                     }
                     return img;
                 }
             } else {
-                System.err.println("Failed to download tile: HTTP " + responseCode);
+                System.err.println("Failed to download tile " + z + "/" + x + "/" + y + ": HTTP " + responseCode);
             }
         } catch (Exception e) {
-            System.err.println("Error downloading tile " + z + "/" + x + "/" + y + ": " + e.getMessage());
             throw new IOException("Tile download failed", e);
         } finally {
             if (conn != null) {
@@ -314,6 +314,7 @@ public class TileProvider {
     
     public void clearCache() {
         tileCache.clear();
+        pendingTiles.clear();
     }
     
     public void shutdown() {

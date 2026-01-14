@@ -116,7 +116,7 @@ public class GuiLauncher extends JFrame {
     private JProgressBar globalProgress;
     private QueryHistoryPanel historyPanel;
     private MetricsDashboard metricsDashboard;
-    private MapViewMode currentMapMode = MapViewMode.COORDINATE_BASED;
+    private MapViewMode currentMapMode = MapViewMode.OSM_TILES;
     private JPanel mapContainer;
     
     // === MANAGERS ===
@@ -1156,11 +1156,16 @@ public class GuiLauncher extends JFrame {
                 }
             }
             
-            // Set preview with subgraph
+            // Set preview with subgraph on both map panels
             mapPanel.setQueryPreviewWithSubgraph(source, dest, srcCoord, dstCoord, subgraphNodes, subgraphEdges);
+            
+            // Also update OSM map component when in OSM mode
+            if (currentMapMode == MapViewMode.OSM_TILES) {
+                osmMapComponent.setQueryPreviewWithSubgraph(source, dest, srcCoord, dstCoord, subgraphNodes, subgraphEdges);
+            }
         }
     }
-    
+
     private void writePathToFile(Result result) {
         if (result == null || !result.isPathFound()) return;
         
