@@ -19,15 +19,14 @@ import java.util.function.Consumer;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSlider;
-import javax.swing.JComboBox;
-import models.RoutingMode;
-import javax.swing.JComboBox;
-import models.RoutingMode;
 import javax.swing.JToggleButton;
 import javax.swing.border.EmptyBorder;
+
+import models.RoutingMode;
 
 /**
  * Preference Sliders Panel - Controls for routing preferences and visualization options.
