@@ -2,8 +2,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
 
-import models.RoutingMode;
-
 /**
  * LabelCache - Caches bidirectional labeling results for fast re-computation
  * 
