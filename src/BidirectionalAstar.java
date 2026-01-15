@@ -553,6 +553,42 @@ public class BidirectionalAstar {
     public static double getIntervalDuration() {
         return interval_duration;
     }
+    
+    /**
+     * Check if we can reuse cached labels for a quick recomputation.
+     * Returns true if the cache contains valid labels for the given query parameters.
+     */
+    public static boolean canReuseCachedLabels(int source, int destination, double budgetMinutes, double departureMinutes) {
+        LabelCache cache = LabelCache.getInstance();
+        return cache.isValid(source, destination, budgetMinutes, departureMinutes);
+    }
+    
+    /**
+     * Recompute result from cached labels with a new routing mode.
+     * This is MUCH faster than running the full algorithm.
+     * 
+     * Call canReuseCachedLabels() first to check if this is possible.
+     * 
+     * @param newMode The new routing mode to use
+     * @return Result computed from cached labels, or null if cache is invalid
+     */
+    public static Result recomputeFromCache(RoutingMode newMode) {
+        return BidirectionalDriver.recomputeFromCache(newMode);
+    }
+    
+    /**
+     * Get the current label cache status (for UI display)
+     */
+    public static String getCacheStatus() {
+        return LabelCache.getInstance().getStatus();
+    }
+    
+    /**
+     * Clear the label cache (call when starting fresh)
+     */
+    public static void clearCache() {
+        LabelCache.getInstance().clear();
+    }
 
 	public static void updateMemory() {
 		//runtime.gc();

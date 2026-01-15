@@ -25,9 +25,6 @@ public class ParetoWidenessTest {
                 return;
             }
             
-            // Set balanced mode
-            BidirectionalLabeling.setBalancedMode();
-            
             System.out.println("Testing pairs from " + csvFile + " for positive wideness in Pareto mode...\n");
             System.out.println("Pairs with positive wideness percentage:");
             System.out.println("=========================================");

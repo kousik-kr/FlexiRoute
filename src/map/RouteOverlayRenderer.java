@@ -40,6 +40,11 @@ public class RouteOverlayRenderer {
     public static final Color PATH_NARROW = new Color(239, 68, 68);       // Red warning
     public static final Color PATH_GLOW = new Color(59, 130, 246, 80);    // Glow effect
     
+    // Pareto path colors
+    public static final Color PARETO_MAX_WIDENESS = new Color(34, 197, 94);   // Green - max wideness
+    public static final Color PARETO_MIN_TURNS = new Color(251, 146, 60);     // Orange - min turns
+    public static final Color PARETO_OTHER = new Color(168, 85, 247);         // Purple - other Pareto paths
+    
     // Marker colors
     public static final Color SOURCE_COLOR = new Color(34, 197, 94);      // Green
     public static final Color DEST_COLOR = new Color(239, 68, 68);        // Red
@@ -557,6 +562,249 @@ public class RouteOverlayRenderer {
         g.setFont(new Font("Segoe UI", Font.PLAIN, 10));
         FontMetrics fm = g.getFontMetrics();
         g.drawString(label, x + 5 + (barWidth - fm.stringWidth(label)) / 2, y + 10);
+    }
+    
+    /**
+     * Pareto path info for rendering multiple paths
+     */
+    public static class ParetoPathInfo {
+        public final List<double[]> coordinates;
+        public final List<Integer> wideEdges;
+        public final double wideScore;
+        public final int rightTurns;
+        public final int pathIndex;
+        
+        public ParetoPathInfo(List<double[]> coordinates, List<Integer> wideEdges, 
+                              double wideScore, int rightTurns, int pathIndex) {
+            this.coordinates = coordinates;
+            this.wideEdges = wideEdges;
+            this.wideScore = wideScore;
+            this.rightTurns = rightTurns;
+            this.pathIndex = pathIndex;
+        }
+    }
+    
+    /**
+     * Render multiple Pareto optimal paths with color coding:
+     * - Green: path with maximum wideness
+     * - Orange: path with minimum turns
+     * - Purple: other Pareto optimal paths
+     */
+    public void renderParetoPaths(Graphics2D g2d, List<ParetoPathInfo> paretoPaths) {
+        if (paretoPaths == null || paretoPaths.isEmpty()) return;
+        
+        Graphics2D g = (Graphics2D) g2d.create();
+        setupRenderingHints(g);
+        
+        try {
+            // Find max wideness and min turns indices
+            int maxWidenessIdx = 0;
+            int minTurnsIdx = 0;
+            double maxWideness = -1;
+            int minTurns = Integer.MAX_VALUE;
+            
+            for (int i = 0; i < paretoPaths.size(); i++) {
+                ParetoPathInfo path = paretoPaths.get(i);
+                if (path.wideScore > maxWideness) {
+                    maxWideness = path.wideScore;
+                    maxWidenessIdx = i;
+                }
+                if (path.rightTurns < minTurns) {
+                    minTurns = path.rightTurns;
+                    minTurnsIdx = i;
+                }
+            }
+            
+            System.out.println("[Render] Pareto paths: " + paretoPaths.size() + 
+                ", maxWidenessIdx=" + maxWidenessIdx + ", minTurnsIdx=" + minTurnsIdx);
+            
+            // Render ALL paths - first the "other" paths (purple), then special ones on top
+            // Use different line offsets to make overlapping paths visible
+            int purpleCount = 0;
+            for (int i = paretoPaths.size() - 1; i >= 0; i--) {
+                if (i != maxWidenessIdx && i != minTurnsIdx) {
+                    // Render purple paths with slight offset to make them distinguishable
+                    renderParetoPathWithOffset(g, paretoPaths.get(i), PARETO_OTHER, 3.0f, 0.7f, purpleCount * 3);
+                    purpleCount++;
+                }
+            }
+            
+            // Then render min turns path (orange) if different from max wideness
+            if (minTurnsIdx != maxWidenessIdx) {
+                renderParetoPathWithOffset(g, paretoPaths.get(minTurnsIdx), PARETO_MIN_TURNS, 4.0f, 0.9f, 0);
+            }
+            
+            // Finally render max wideness path (green) on top
+            renderParetoPathWithOffset(g, paretoPaths.get(maxWidenessIdx), PARETO_MAX_WIDENESS, 5.0f, 1.0f, 0);
+            
+            // Render source and destination markers (from first path)
+            if (!paretoPaths.isEmpty() && paretoPaths.get(0).coordinates.size() >= 2) {
+                List<double[]> firstPath = paretoPaths.get(0).coordinates;
+                Point2D.Double srcPoint = converter.latLonToPixel(firstPath.get(0)[0], firstPath.get(0)[1]);
+                Point2D.Double dstPoint = converter.latLonToPixel(
+                    firstPath.get(firstPath.size() - 1)[0], 
+                    firstPath.get(firstPath.size() - 1)[1]);
+                renderMarker(g, srcPoint, SOURCE_COLOR, "S", true);
+                renderMarker(g, dstPoint, DEST_COLOR, "D", true);
+            }
+            
+            // Render legend for Pareto paths
+            renderParetoLegend(g, maxWideness, minTurns, paretoPaths.size());
+            
+        } finally {
+            g.dispose();
+        }
+    }
+    
+    /**
+     * Render a single Pareto path with specified color, width, and perpendicular offset
+     * The offset helps distinguish overlapping paths
+     */
+    private void renderParetoPathWithOffset(Graphics2D g, ParetoPathInfo pathInfo, Color color, float width, float alpha, int offset) {
+        if (pathInfo.coordinates == null || pathInfo.coordinates.size() < 2) {
+            System.out.println("[Render] Path " + pathInfo.pathIndex + " skipped - coords=" + 
+                (pathInfo.coordinates == null ? "null" : pathInfo.coordinates.size()));
+            return;
+        }
+        
+        List<Point2D.Double> screenPoints = new ArrayList<>();
+        for (double[] coord : pathInfo.coordinates) {
+            Point2D.Double pt = converter.latLonToPixel(coord[0], coord[1]);
+            screenPoints.add(pt);
+        }
+        
+        String colorName = color.equals(PARETO_MAX_WIDENESS) ? "GREEN" : 
+                          color.equals(PARETO_MIN_TURNS) ? "ORANGE" : "PURPLE";
+        System.out.println("[Render] Path " + pathInfo.pathIndex + ": " + screenPoints.size() + 
+            " points, color=" + colorName + ", score=" + String.format("%.1f%%", pathInfo.wideScore) + 
+            ", turns=" + pathInfo.rightTurns);
+        
+        // Apply perpendicular offset if needed (to separate overlapping paths)
+        if (offset != 0) {
+            screenPoints = applyPerpendicularOffset(screenPoints, offset);
+        }
+        
+        // Outer glow
+        Color glowColor = new Color(color.getRed(), color.getGreen(), color.getBlue(), (int)(40 * alpha));
+        g.setColor(glowColor);
+        g.setStroke(new BasicStroke(width + 6, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        for (int i = 0; i < screenPoints.size() - 1; i++) {
+            g.draw(new Line2D.Double(screenPoints.get(i), screenPoints.get(i + 1)));
+        }
+        
+        // Border (white)
+        g.setColor(new Color(255, 255, 255, (int)(180 * alpha)));
+        g.setStroke(new BasicStroke(width + 2, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        for (int i = 0; i < screenPoints.size() - 1; i++) {
+            g.draw(new Line2D.Double(screenPoints.get(i), screenPoints.get(i + 1)));
+        }
+        
+        // Core path
+        Color coreColor = new Color(color.getRed(), color.getGreen(), color.getBlue(), (int)(255 * alpha));
+        g.setColor(coreColor);
+        g.setStroke(new BasicStroke(width, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        for (int i = 0; i < screenPoints.size() - 1; i++) {
+            g.draw(new Line2D.Double(screenPoints.get(i), screenPoints.get(i + 1)));
+        }
+        
+        // Draw endpoint markers (circles at start and end of each path)
+        g.setColor(coreColor);
+        Point2D.Double startPt = screenPoints.get(0);
+        Point2D.Double endPt = screenPoints.get(screenPoints.size() - 1);
+        g.fill(new Ellipse2D.Double(startPt.x - 5, startPt.y - 5, 10, 10));
+        g.fill(new Ellipse2D.Double(endPt.x - 5, endPt.y - 5, 10, 10));
+    }
+    
+    /**
+     * Apply perpendicular offset to path points
+     */
+    private List<Point2D.Double> applyPerpendicularOffset(List<Point2D.Double> points, int offset) {
+        if (points.size() < 2 || offset == 0) return points;
+        
+        List<Point2D.Double> offsetPoints = new ArrayList<>();
+        for (int i = 0; i < points.size(); i++) {
+            Point2D.Double p = points.get(i);
+            double dx = 0, dy = 0;
+            
+            if (i < points.size() - 1) {
+                Point2D.Double next = points.get(i + 1);
+                dx = next.x - p.x;
+                dy = next.y - p.y;
+            } else {
+                Point2D.Double prev = points.get(i - 1);
+                dx = p.x - prev.x;
+                dy = p.y - prev.y;
+            }
+            
+            double len = Math.sqrt(dx * dx + dy * dy);
+            if (len > 0) {
+                // Perpendicular direction
+                double px = -dy / len * offset;
+                double py = dx / len * offset;
+                offsetPoints.add(new Point2D.Double(p.x + px, p.y + py));
+            } else {
+                offsetPoints.add(p);
+            }
+        }
+        return offsetPoints;
+    }
+    
+    /**
+     * Render a single Pareto path with specified color and width (no offset)
+     */
+    private void renderParetoPath(Graphics2D g, ParetoPathInfo pathInfo, Color color, float width, float alpha) {
+        renderParetoPathWithOffset(g, pathInfo, color, width, alpha, 0);
+    }
+    
+    /**
+     * Render legend for Pareto paths
+     */
+    private void renderParetoLegend(Graphics2D g, double maxWideness, int minTurns, int pathCount) {
+        int x = 10;
+        int y = 10;
+        int width = 200;
+        int height = 100;
+        
+        // Background
+        g.setColor(new Color(255, 255, 255, 230));
+        g.fill(new RoundRectangle2D.Double(x, y, width, height, 10, 10));
+        
+        // Border
+        g.setColor(new Color(100, 100, 100, 100));
+        g.setStroke(new BasicStroke(1));
+        g.draw(new RoundRectangle2D.Double(x, y, width, height, 10, 10));
+        
+        // Title
+        g.setColor(new Color(50, 50, 50));
+        g.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        g.drawString("Pareto Paths (" + pathCount + ")", x + 10, y + 18);
+        
+        // Legend items
+        g.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        int itemY = y + 35;
+        
+        // Max wideness (green)
+        g.setColor(PARETO_MAX_WIDENESS);
+        g.setStroke(new BasicStroke(4, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g.drawLine(x + 10, itemY, x + 35, itemY);
+        g.setColor(new Color(50, 50, 50));
+        g.drawString(String.format("Max Wide: %.2f%%", maxWideness), x + 45, itemY + 4);
+        
+        // Min turns (orange)
+        itemY += 22;
+        g.setColor(PARETO_MIN_TURNS);
+        g.setStroke(new BasicStroke(4, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g.drawLine(x + 10, itemY, x + 35, itemY);
+        g.setColor(new Color(50, 50, 50));
+        g.drawString(String.format("Min Turns: %d", minTurns), x + 45, itemY + 4);
+        
+        // Other paths (purple)
+        itemY += 22;
+        g.setColor(PARETO_OTHER);
+        g.setStroke(new BasicStroke(3, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g.drawLine(x + 10, itemY, x + 35, itemY);
+        g.setColor(new Color(50, 50, 50));
+        g.drawString("Other Pareto paths", x + 45, itemY + 4);
     }
     
     /**

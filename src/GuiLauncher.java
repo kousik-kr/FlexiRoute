@@ -307,6 +307,9 @@ public class GuiLauncher extends JFrame {
                         "%, Time=" + (int)(values.timeWeight * 100) + "%, Distance=" + (int)(values.distanceWeight * 100) + "%");
         });
         
+        // Set callback for instant recomputation when routing mode changes
+        preferenceSlidersPanel.setOnRoutingModeChange(this::onRoutingModeChanged);
+        
         // Collapsible preference panel
         JPanel preferenceWrapper = createCollapsiblePanel("🎚️ Routing Preferences", preferenceSlidersPanel);
         
@@ -571,6 +574,43 @@ public class GuiLauncher extends JFrame {
         
         List<double[]> pathCoords = result.getPathCoordinates();
         
+        // Check if we have multiple Pareto paths (hybrid mode)
+        if (result.hasParetoOptimalPaths() && result.getParetoPathCount() > 1) {
+            System.out.println("[Display] Found " + result.getParetoPathCount() + " Pareto paths");
+            
+            // Build ParetoPathInfo list for rendering
+            List<map.RouteOverlayRenderer.ParetoPathInfo> paretoPathInfos = new ArrayList<>();
+            
+            for (int i = 0; i < result.getParetoPathCount(); i++) {
+                Result paretoPath = result.getParetoPath(i);
+                List<double[]> coords = paretoPath != null ? paretoPath.getPathCoordinates() : null;
+                System.out.println("[Display] Path " + i + ": coords=" + (coords != null ? coords.size() : "null") +
+                    ", score=" + (paretoPath != null ? String.format("%.1f%%", paretoPath.get_score()) : "?") +
+                    ", turns=" + (paretoPath != null ? paretoPath.get_right_turns() : "?"));
+                
+                if (paretoPath != null && coords != null && !coords.isEmpty()) {
+                    paretoPathInfos.add(new map.RouteOverlayRenderer.ParetoPathInfo(
+                        coords,
+                        paretoPath.getWideEdgeIndices(),
+                        paretoPath.get_score(),
+                        paretoPath.get_right_turns(),
+                        i
+                    ));
+                }
+            }
+            
+            System.out.println("[Display] Sending " + paretoPathInfos.size() + " paths to renderer");
+            if (!paretoPathInfos.isEmpty()) {
+                if (currentMapMode == MapViewMode.OSM_TILES) {
+                    osmMapComponent.setParetoPaths(paretoPathInfos);
+                } else {
+                    mapPanel.setParetoPaths(paretoPathInfos);
+                }
+                return;
+            }
+        }
+        
+        // Single path display (non-Pareto mode)
         if (currentMapMode == MapViewMode.OSM_TILES && pathCoords != null && !pathCoords.isEmpty()) {
             // Convert path coordinates for OSM display
             osmMapComponent.setPath(result.getPathNodes(), result.getWideEdgeIndices(), pathCoords);
@@ -820,6 +860,69 @@ public class GuiLauncher extends JFrame {
         });
     }
     
+    /**
+     * Handle routing mode change - instant recomputation from cached labels if possible
+     */
+    private void onRoutingModeChanged(models.RoutingMode newMode) {
+        // Get current query parameters
+        int source = queryPanel.getSource();
+        int dest = queryPanel.getDestination();
+        int departure = queryPanel.getDeparture();
+        int budget = queryPanel.getBudget();
+        
+        // Check if we can reuse cached labels
+        if (BidirectionalAstar.canReuseCachedLabels(source, dest, budget, departure)) {
+            System.out.println("[GUI] Routing mode changed to " + newMode + " - recomputing from cache...");
+            setStatus("⚡ Instant recompute: " + newMode.getDisplayName() + "...");
+            
+            // Run recomputation in background thread to avoid blocking UI
+            executor.submit(() -> {
+                try {
+                    long startTime = System.currentTimeMillis();
+                    
+                    Result result = BidirectionalAstar.recomputeFromCache(newMode);
+                    
+                    long elapsed = System.currentTimeMillis() - startTime;
+                    
+                    if (result != null && result.isPathFound()) {
+                        result.setExecutionTime(elapsed / 1000.0);
+                        
+                        // Collect coordinates for the result and Pareto paths
+                        collectPathCoordinates(result);
+                        if (result.hasParetoOptimalPaths()) {
+                            for (Result paretoPath : result.getParetoOptimalPaths()) {
+                                collectPathCoordinates(paretoPath);
+                            }
+                        }
+                        
+                        lastResult = result;
+                        final Result finalResult = result;
+                        
+                        SwingUtilities.invokeLater(() -> {
+                            displayResults(finalResult);
+                            displayPathOnCurrentMap(finalResult);
+                            setStatus("⚡ Instant recompute: " + finalResult.getParetoPathCount() + 
+                                " path(s) found in " + elapsed + "ms (mode: " + newMode.getDisplayName() + ")");
+                        });
+                    } else {
+                        SwingUtilities.invokeLater(() -> {
+                            setStatus("⚠️ No path found with mode: " + newMode.getDisplayName());
+                        });
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    SwingUtilities.invokeLater(() -> {
+                        setStatus("❌ Recompute error: " + e.getMessage());
+                    });
+                }
+            });
+        } else {
+            // Cache is not valid - user needs to run a new query
+            System.out.println("[GUI] Cache invalid for current parameters - need to run query first");
+            setStatus("ℹ️ Mode: " + newMode.getDisplayName() + " (run query to see results)");
+        }
+    }
+    
     private void executeQuery() {
         int source = queryPanel.getSource();
         int dest = queryPanel.getDestination();
@@ -827,7 +930,10 @@ public class GuiLauncher extends JFrame {
         int interval = queryPanel.getInterval();
         int budget = queryPanel.getBudget();
         int heuristic = queryPanel.getHeuristicMode();
-        RoutingMode routingMode = queryPanel.getRoutingMode();
+        // Get routing mode from PreferenceSlidersPanel (where the combo box actually is)
+        RoutingMode routingMode = preferenceSlidersPanel.getRoutingMode();
+        
+        System.out.println("[GUI] executeQuery: routingMode = " + routingMode + " (" + routingMode.getDisplayName() + ")");
         
         setStatus("Running query: " + source + " → " + dest + " (mode: " + routingMode.getDisplayName() + ")");
         queryPanel.setRunning(true);
@@ -841,9 +947,6 @@ public class GuiLauncher extends JFrame {
                 
                 // Update progress
                 SwingUtilities.invokeLater(() -> mapPanel.setSearchProgress(10, "Setting up bidirectional search..."));
-                
-                // Always use aggressive mode
-                BidirectionalLabeling.setAggressiveMode();
                 
                 SwingUtilities.invokeLater(() -> mapPanel.setSearchProgress(30, "Expanding labels..."));
                 

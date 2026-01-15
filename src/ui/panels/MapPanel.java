@@ -66,6 +66,10 @@ public class MapPanel extends JPanel {
     // Context feature removed
     private RenderMode currentMode = RenderMode.SATELLITE;
     
+    // Pareto paths for hybrid mode
+    private List<ParetoPathData> paretoPaths = new ArrayList<>();
+    private boolean showParetoPaths = false;
+    
     private double zoomLevel = 1.0;
     private double panX = 0, panY = 0;
     private Point dragStart = null;
@@ -103,12 +107,37 @@ public class MapPanel extends JPanel {
     private static final Color BORDER = new Color(226, 232, 240);         // Light Border
     private static final Color BG_SURFACE = new Color(248, 250, 252);     // Off White
     
+    // Pareto path colors
+    private static final Color PARETO_MAX_WIDENESS = new Color(34, 197, 94);   // Green - max wideness
+    private static final Color PARETO_MIN_TURNS = new Color(251, 146, 60);     // Orange - min turns  
+    private static final Color PARETO_OTHER = new Color(168, 85, 247);         // Purple - other paths
+    
     // Extra vibrant colors for UI
     private static final Color VIVID_PURPLE = new Color(168, 85, 247);
     private static final Color CORAL_PINK = new Color(255, 107, 107);
     private static final Color OCEAN_TEAL = new Color(20, 184, 166);
     private static final Color CYBER_YELLOW = new Color(250, 204, 21);
     private static final Color ROYAL_INDIGO = new Color(99, 102, 241);
+    
+    /**
+     * Data class for Pareto path information
+     */
+    public static class ParetoPathData {
+        public final List<double[]> coordinates;
+        public final List<Integer> wideEdges;
+        public final double wideScore;
+        public final int rightTurns;
+        public final int pathIndex;
+        
+        public ParetoPathData(List<double[]> coordinates, List<Integer> wideEdges,
+                             double wideScore, int rightTurns, int pathIndex) {
+            this.coordinates = coordinates;
+            this.wideEdges = wideEdges;
+            this.wideScore = wideScore;
+            this.rightTurns = rightTurns;
+            this.pathIndex = pathIndex;
+        }
+    }
     
     public MapPanel() {
         setBackground(BG_SURFACE);
@@ -347,6 +376,9 @@ public class MapPanel extends JPanel {
         
         if (previewSourceCoord != null && previewDestCoord != null) {
             renderQueryPreview(g2d);
+        } else if (showParetoPaths && !paretoPaths.isEmpty()) {
+            // Render Pareto paths with color coding
+            renderParetoPaths(g2d);
         } else if (pathCoordinates.isEmpty()) {
             renderEmptyState(g2d);
         } else {
@@ -778,6 +810,200 @@ public class MapPanel extends JPanel {
         g2d.drawString("Zoom: " + String.format("%.0f%%", zoomLevel * 100), 24, 75);
     }
     
+    /**
+     * Render multiple Pareto optimal paths with color coding:
+     * - Green: path with maximum wideness
+     * - Orange: path with minimum turns
+     * - Purple: other Pareto optimal paths
+     */
+    private void renderParetoPaths(Graphics2D g2d) {
+        if (paretoPaths.isEmpty()) return;
+        
+        // Calculate bounds for all Pareto paths
+        calculateBoundsForParetoPaths();
+        int w = getWidth(), h = getHeight(), pad = 80;
+        
+        if (showGrid) drawGrid(g2d, w, h, pad);
+        
+        // Find max wideness and min turns indices
+        int maxWidenessIdx = 0;
+        int minTurnsIdx = 0;
+        double maxWideness = -1;
+        int minTurns = Integer.MAX_VALUE;
+        
+        for (int i = 0; i < paretoPaths.size(); i++) {
+            ParetoPathData path = paretoPaths.get(i);
+            if (path.wideScore > maxWideness) {
+                maxWideness = path.wideScore;
+                maxWidenessIdx = i;
+            }
+            if (path.rightTurns < minTurns) {
+                minTurns = path.rightTurns;
+                minTurnsIdx = i;
+            }
+        }
+        
+        // Render paths in reverse order (so important paths are on top)
+        // First render "other" paths (purple)
+        for (int i = paretoPaths.size() - 1; i >= 0; i--) {
+            if (i != maxWidenessIdx && i != minTurnsIdx) {
+                renderSingleParetoPath(g2d, paretoPaths.get(i), PARETO_OTHER, 3.0f, 0.6f, w, h, pad);
+            }
+        }
+        
+        // Then render min turns path (orange) if different from max wideness
+        if (minTurnsIdx != maxWidenessIdx) {
+            renderSingleParetoPath(g2d, paretoPaths.get(minTurnsIdx), PARETO_MIN_TURNS, 4.0f, 0.85f, w, h, pad);
+        }
+        
+        // Finally render max wideness path (green) on top
+        renderSingleParetoPath(g2d, paretoPaths.get(maxWidenessIdx), PARETO_MAX_WIDENESS, 5.0f, 1.0f, w, h, pad);
+        
+        // Render source and destination markers (from first path)
+        if (!paretoPaths.isEmpty() && paretoPaths.get(0).coordinates.size() >= 2) {
+            List<double[]> firstPath = paretoPaths.get(0).coordinates;
+            Point2D.Double srcPoint = toScreen(firstPath.get(0)[0], firstPath.get(0)[1], w, h, pad);
+            Point2D.Double dstPoint = toScreen(
+                firstPath.get(firstPath.size() - 1)[0], 
+                firstPath.get(firstPath.size() - 1)[1], w, h, pad);
+            
+            // Source marker
+            g2d.setColor(new Color(SOURCE_COLOR.getRed(), SOURCE_COLOR.getGreen(), SOURCE_COLOR.getBlue(), 50));
+            g2d.fill(new Ellipse2D.Double(srcPoint.x - 12, srcPoint.y - 12, 24, 24));
+            g2d.setColor(SOURCE_COLOR);
+            g2d.fill(new Ellipse2D.Double(srcPoint.x - 8, srcPoint.y - 8, 16, 16));
+            g2d.setColor(Color.WHITE);
+            g2d.setStroke(new BasicStroke(2));
+            g2d.draw(new Ellipse2D.Double(srcPoint.x - 8, srcPoint.y - 8, 16, 16));
+            g2d.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            g2d.drawString("S", (int) srcPoint.x - 4, (int) srcPoint.y + 4);
+            
+            // Destination marker
+            g2d.setColor(new Color(DEST_COLOR.getRed(), DEST_COLOR.getGreen(), DEST_COLOR.getBlue(), 50));
+            g2d.fill(new Ellipse2D.Double(dstPoint.x - 12, dstPoint.y - 12, 24, 24));
+            g2d.setColor(DEST_COLOR);
+            g2d.fill(new Ellipse2D.Double(dstPoint.x - 8, dstPoint.y - 8, 16, 16));
+            g2d.setColor(Color.WHITE);
+            g2d.setStroke(new BasicStroke(2));
+            g2d.draw(new Ellipse2D.Double(dstPoint.x - 8, dstPoint.y - 8, 16, 16));
+            g2d.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            g2d.drawString("D", (int) dstPoint.x - 4, (int) dstPoint.y + 4);
+        }
+        
+        // Draw Pareto legend
+        drawParetoLegend(g2d, maxWideness, minTurns);
+    }
+    
+    /**
+     * Render a single Pareto path with specified color and width
+     */
+    private void renderSingleParetoPath(Graphics2D g2d, ParetoPathData pathData, Color color, 
+                                        float width, float alpha, int w, int h, int pad) {
+        if (pathData.coordinates == null || pathData.coordinates.size() < 2) return;
+        
+        // Outer glow
+        Color glowColor = new Color(color.getRed(), color.getGreen(), color.getBlue(), (int)(40 * alpha));
+        g2d.setColor(glowColor);
+        g2d.setStroke(new BasicStroke(width + 6, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        for (int i = 0; i < pathData.coordinates.size() - 1; i++) {
+            Point2D.Double p1 = toScreen(pathData.coordinates.get(i)[0], pathData.coordinates.get(i)[1], w, h, pad);
+            Point2D.Double p2 = toScreen(pathData.coordinates.get(i + 1)[0], pathData.coordinates.get(i + 1)[1], w, h, pad);
+            g2d.draw(new Line2D.Double(p1, p2));
+        }
+        
+        // Border (white)
+        g2d.setColor(new Color(255, 255, 255, (int)(180 * alpha)));
+        g2d.setStroke(new BasicStroke(width + 2, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        for (int i = 0; i < pathData.coordinates.size() - 1; i++) {
+            Point2D.Double p1 = toScreen(pathData.coordinates.get(i)[0], pathData.coordinates.get(i)[1], w, h, pad);
+            Point2D.Double p2 = toScreen(pathData.coordinates.get(i + 1)[0], pathData.coordinates.get(i + 1)[1], w, h, pad);
+            g2d.draw(new Line2D.Double(p1, p2));
+        }
+        
+        // Core path
+        Color coreColor = new Color(color.getRed(), color.getGreen(), color.getBlue(), (int)(255 * alpha));
+        g2d.setColor(coreColor);
+        g2d.setStroke(new BasicStroke(width, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        for (int i = 0; i < pathData.coordinates.size() - 1; i++) {
+            Point2D.Double p1 = toScreen(pathData.coordinates.get(i)[0], pathData.coordinates.get(i)[1], w, h, pad);
+            Point2D.Double p2 = toScreen(pathData.coordinates.get(i + 1)[0], pathData.coordinates.get(i + 1)[1], w, h, pad);
+            g2d.draw(new Line2D.Double(p1, p2));
+        }
+    }
+    
+    /**
+     * Calculate bounds for all Pareto paths
+     */
+    private void calculateBoundsForParetoPaths() {
+        if (boundsCalculated || paretoPaths.isEmpty()) return;
+        
+        minLat = Double.MAX_VALUE; maxLat = -Double.MAX_VALUE;
+        minLon = Double.MAX_VALUE; maxLon = -Double.MAX_VALUE;
+        
+        for (ParetoPathData path : paretoPaths) {
+            for (double[] c : path.coordinates) {
+                minLat = Math.min(minLat, c[0]); maxLat = Math.max(maxLat, c[0]);
+                minLon = Math.min(minLon, c[1]); maxLon = Math.max(maxLon, c[1]);
+            }
+        }
+        
+        double latPad = (maxLat - minLat) * 0.15 + 0.001;
+        double lonPad = (maxLon - minLon) * 0.15 + 0.001;
+        minLat -= latPad; maxLat += latPad;
+        minLon -= lonPad; maxLon += lonPad;
+        boundsCalculated = true;
+    }
+    
+    /**
+     * Draw legend for Pareto paths
+     */
+    private void drawParetoLegend(Graphics2D g2d, double maxWideness, int minTurns) {
+        int x = 12, y = 12;
+        int width = 210;
+        int height = 110;
+        
+        // Background
+        g2d.setColor(new Color(255, 255, 255, 230));
+        g2d.fillRoundRect(x, y, width, height, 12, 12);
+        
+        // Border
+        g2d.setColor(BORDER);
+        g2d.setStroke(new BasicStroke(1));
+        g2d.drawRoundRect(x, y, width, height, 12, 12);
+        
+        // Title
+        g2d.setColor(TEXT_PRIMARY);
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        g2d.drawString("Pareto Paths (" + paretoPaths.size() + ")", x + 12, y + 22);
+        
+        // Legend items
+        g2d.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        int itemY = y + 42;
+        
+        // Max wideness (green)
+        g2d.setColor(PARETO_MAX_WIDENESS);
+        g2d.setStroke(new BasicStroke(4, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g2d.drawLine(x + 12, itemY, x + 40, itemY);
+        g2d.setColor(TEXT_PRIMARY);
+        g2d.drawString(String.format("Max Wide: %.2f%%", maxWideness), x + 50, itemY + 4);
+        
+        // Min turns (orange)
+        itemY += 24;
+        g2d.setColor(PARETO_MIN_TURNS);
+        g2d.setStroke(new BasicStroke(4, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g2d.drawLine(x + 12, itemY, x + 40, itemY);
+        g2d.setColor(TEXT_PRIMARY);
+        g2d.drawString(String.format("Min Turns: %d", minTurns), x + 50, itemY + 4);
+        
+        // Other paths (purple)
+        itemY += 24;
+        g2d.setColor(PARETO_OTHER);
+        g2d.setStroke(new BasicStroke(3, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g2d.drawLine(x + 12, itemY, x + 40, itemY);
+        g2d.setColor(TEXT_PRIMARY);
+        g2d.drawString("Other Pareto paths", x + 50, itemY + 4);
+    }
+    
     private void exportImage() {
         JFileChooser chooser = new JFileChooser();
         chooser.setSelectedFile(new java.io.File("flexiroute_map.png"));
@@ -799,6 +1025,8 @@ public class MapPanel extends JPanel {
         this.pathNodes = Collections.emptyList();
         this.wideEdges = Collections.emptyList();
         this.pathCoordinates = new ArrayList<>();
+        this.paretoPaths = new ArrayList<>();
+        this.showParetoPaths = false;
         this.boundsCalculated = false;
         clearQueryPreview();
         showSearchProgress = false;
@@ -812,6 +1040,33 @@ public class MapPanel extends JPanel {
         this.pathNodes = nodes != null ? new ArrayList<>(nodes) : Collections.emptyList();
         this.wideEdges = wideEdgeIndices != null ? new ArrayList<>(wideEdgeIndices) : Collections.emptyList();
         this.pathCoordinates = coordinates != null ? new ArrayList<>(coordinates) : new ArrayList<>();
+        this.paretoPaths.clear();
+        this.showParetoPaths = false;
+        this.boundsCalculated = false;
+        clearQueryPreview();
+        repaint();
+    }
+    
+    /**
+     * Set multiple Pareto optimal paths for hybrid mode visualization
+     * Paths are color-coded: green for max wideness, orange for min turns, purple for others
+     */
+    public void setParetoPaths(List<map.RouteOverlayRenderer.ParetoPathInfo> paths) {
+        this.paretoPaths.clear();
+        if (paths != null) {
+            for (map.RouteOverlayRenderer.ParetoPathInfo p : paths) {
+                this.paretoPaths.add(new ParetoPathData(p.coordinates, p.wideEdges, p.wideScore, p.rightTurns, p.pathIndex));
+            }
+        }
+        this.showParetoPaths = !this.paretoPaths.isEmpty();
+        
+        // Clear single path when Pareto paths are set
+        if (this.showParetoPaths) {
+            this.pathCoordinates.clear();
+            this.pathNodes = Collections.emptyList();
+            this.wideEdges = Collections.emptyList();
+        }
+        
         this.boundsCalculated = false;
         clearQueryPreview();
         repaint();

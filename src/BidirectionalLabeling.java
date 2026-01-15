@@ -3,7 +3,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ForkJoinTask;
 
 
@@ -14,39 +13,6 @@ public class BidirectionalLabeling implements Runnable{
         BidirectionalDriver.SharedState shared;
         private boolean isForward;
         private boolean master = false;
-
-        // Direction-aware caches to avoid exploring labels that are obviously weaker than
-        // the best heuristic seen for a node. Lower scores are better.
-        private static final ConcurrentHashMap<Integer, Double> forwardBestScore = new ConcurrentHashMap<>();
-        private static final ConcurrentHashMap<Integer, Double> backwardBestScore = new ConcurrentHashMap<>();
-        
-        // Track search progress to enable progressive pruning
-        private static final ConcurrentHashMap<Integer, Double> forwardMinCost = new ConcurrentHashMap<>();
-        private static final ConcurrentHashMap<Integer, Double> backwardMinCost = new ConcurrentHashMap<>();
-        
-        // Dynamic pruning: only prune when frontier exceeds this threshold
-        // Configurable based on heuristic mode: Aggressive (10) or Balanced (50)
-        private static int FRONTIER_THRESHOLD = 10; // Default: Aggressive
-        
-        // Track frontier sizes for dynamic pruning decision
-        private static final ConcurrentHashMap<Integer, Integer> forwardFrontierCount = new ConcurrentHashMap<>();
-        private static final ConcurrentHashMap<Integer, Integer> backwardFrontierCount = new ConcurrentHashMap<>();
-        
-        // Heuristic modes
-        public static void setAggressiveMode() { FRONTIER_THRESHOLD = 10; }
-        public static void setBalancedMode() { FRONTIER_THRESHOLD = 50; }
-        public static int getFrontierThreshold() { return FRONTIER_THRESHOLD; }
-
-        // Refined baseline weights for the adaptive heuristic. These ensure admissibility while
-        // providing strong guidance. Distance weight is higher to prioritize budget satisfaction.
-        private static final double BASE_DISTANCE_WEIGHT = 0.40;  // Balanced for budget awareness
-        private static final double BASE_WIDTH_WEIGHT = 0.20;     // Reduced penalty
-        private static final double BASE_TURN_WEIGHT = 0.10;      // Lower penalty to allow exploration
-        private static final double BASE_SHARP_TURN_WEIGHT = 0.05; // Minimal penalty
-        
-        // Progressive pruning - more lenient thresholds to allow bidirectional search to meet
-        private static final double INITIAL_PRUNE_THRESHOLD = 1.30; // 30% tolerance initially
-        private static final double STRICT_PRUNE_THRESHOLD = 1.10;  // 10% tolerance when established
 
         public BidirectionalLabeling(int goal, double b, Label label, BidirectionalDriver.SharedState shared, boolean is_forward){
                 this.goal = goal;
@@ -72,14 +38,6 @@ public class BidirectionalLabeling implements Runnable{
 				double distance = edge.get_distance();
 
                                 if(Graph.get_node(j).isFeasible() && !topLabel.getVisited(j)) {
-                                        Node nextNode = Graph.get_node(j);
-                                        if(shouldPrune(nextNode, edge, j)) {
-                                                continue;
-                                        }
-                                        
-                                        // Track frontier expansion for dynamic pruning
-                                        forwardFrontierCount.merge(j, 1, Integer::sum);
-                                        
                                         Function current_arrivaltime_function = topLabel.get_arrivalTime();//current function at node i
                                         Function current_width_function = topLabel.get_wide_distance();
 					
@@ -136,12 +94,16 @@ public class BidirectionalLabeling implements Runnable{
 										BreakPoint boundary_breakpoint = computeBoundaryBreakpoint(x1, y1, x2, y2, allotted_budget);
 										arrival_time_breakpoints.add(boundary_breakpoint);
 										
-										double tmp_width = current_width_function.getBreakpoints().get(width_time_point-1).getY() + edge.get_width(current_arrivaltime_function.getBreakpoints().get(arrival_time_point-1).getY());
-										BreakPoint boundary_width = new BreakPoint(boundary_breakpoint.getX(), tmp_width);
-										width_breakpoints.add(boundary_width);
-										
-										if(boundary_width.getY()>max_width)
-											max_width = boundary_width.getY();
+										// Safe bounds check for width function access
+										int widthIdx = Math.min(arrival_time_point-1, current_width_function.getBreakpoints().size()-1);
+										if (widthIdx >= 0) {
+											double tmp_width = current_width_function.getBreakpoints().get(widthIdx).getY() + edge.get_width(current_arrivaltime_function.getBreakpoints().get(arrival_time_point-1).getY());
+											BreakPoint boundary_width = new BreakPoint(boundary_breakpoint.getX(), tmp_width);
+											width_breakpoints.add(boundary_width);
+									
+											if(boundary_width.getY()>max_width)
+												max_width = boundary_width.getY();
+										}
 									}
 									else {
 										is_first = false;
@@ -275,14 +237,6 @@ public class BidirectionalLabeling implements Runnable{
 				double distance = edge.get_distance();
 
                                 if(Graph.get_node(j).isFeasible() && !topLabel.getVisited(j)) {
-                                        Node nextNode = Graph.get_node(j);
-                                        if(shouldPrune(nextNode, edge, j)) {
-                                                continue;
-                                        }
-                                        
-                                        // Track frontier expansion for dynamic pruning
-                                        backwardFrontierCount.merge(j, 1, Integer::sum);
-                                        
                                         Function current_arrivaltime_function = topLabel.get_arrivalTime();//current function at node i
                                         Function current_width_function = topLabel.get_wide_distance();
 					
@@ -341,13 +295,16 @@ public class BidirectionalLabeling implements Runnable{
 										BreakPoint boundary_breakpoint = computeBoundaryBreakpoint(x1, y1, x2, y2, allotted_budget);
 										arrival_time_breakpoints.add(boundary_breakpoint);
 										
-										double tmp_width = current_width_function.getBreakpoints().get(arrival_time_point-1).getY() + edge.get_width(boundary_breakpoint.getX());
-										BreakPoint boundary_score = new BreakPoint(boundary_breakpoint.getX(), tmp_width);
-										width_breakpoints.add(boundary_score);
-										
-										if(boundary_score.getY()>max_width)
-											max_width = boundary_score.getY();
-										
+										// Safe bounds check for width function access
+										int widthIdx = Math.min(arrival_time_point-1, current_width_function.getBreakpoints().size()-1);
+										if (widthIdx >= 0) {
+											double tmp_width = current_width_function.getBreakpoints().get(widthIdx).getY() + edge.get_width(boundary_breakpoint.getX());
+											BreakPoint boundary_width = new BreakPoint(boundary_breakpoint.getX(), tmp_width);
+											width_breakpoints.add(boundary_width);
+									
+											if(boundary_width.getY()>max_width)
+												max_width = boundary_width.getY();
+										}
 									}
 									else {
 										is_first = false;
@@ -361,7 +318,6 @@ public class BidirectionalLabeling implements Runnable{
 									
 									if(new_width_breakpoint.getY()>max_width)
 										max_width = new_width_breakpoint.getY();
-								
 								}
 								
 							}
@@ -491,135 +447,6 @@ public class BidirectionalLabeling implements Runnable{
 			//nodeWiselabels.clear();
                         labelQueue.clear();
                 }
-        }
-
-        private boolean shouldPrune(Node nextNode, Edge edge, int nextNodeId) {
-                // Dynamic pruning: only activate when frontier size exceeds threshold
-                ConcurrentHashMap<Integer, Integer> frontierCount = isForward ? forwardFrontierCount : backwardFrontierCount;
-                int currentFrontierSize = frontierCount.values().stream().mapToInt(Integer::intValue).sum();
-                
-                // If frontier is small, don't prune - allow exploration
-                if(currentFrontierSize <= FRONTIER_THRESHOLD) {
-                        return false;
-                }
-                
-                // Frontier exceeded threshold - apply aggressive pruning to keep top candidates
-                double heuristicScore = computeHeuristicScore(nextNode, edge);
-                ConcurrentHashMap<Integer, Double> scoreCache = isForward ? forwardBestScore : backwardBestScore;
-                ConcurrentHashMap<Integer, Double> costCache = isForward ? forwardMinCost : backwardMinCost;
-
-                // Progressive pruning: use stricter threshold as we find better paths
-                double pathCost = topLabel.getDistance() + edge.get_distance();
-                Double globalMinCost = isForward ? 
-                        forwardMinCost.values().stream().min(Double::compare).orElse(Double.MAX_VALUE) :
-                        backwardMinCost.values().stream().min(Double::compare).orElse(Double.MAX_VALUE);
-                
-                double pruneThreshold = (globalMinCost < Double.MAX_VALUE && pathCost > globalMinCost * 0.8) ?
-                        STRICT_PRUNE_THRESHOLD : INITIAL_PRUNE_THRESHOLD;
-
-                // Heuristic-based pruning - keep only top candidates
-                Double best = scoreCache.get(nextNodeId);
-                if(best != null && heuristicScore >= best * pruneThreshold) {
-                        return true;
-                }
-
-                // Cost-based pruning: if we've seen this node with significantly lower cost, prune
-                // Use more lenient threshold to avoid pruning too many alternatives
-                Double minCost = costCache.get(nextNodeId);
-                if(minCost != null && pathCost >= minCost * 1.50) {
-                        return true;
-                }
-
-                scoreCache.merge(nextNodeId, heuristicScore, Math::min);
-                costCache.merge(nextNodeId, pathCost, Math::min);
-                return false;
-        }
-
-        private double computeHeuristicScore(Node nextNode, Edge edge) {
-                double pathDistance = topLabel.getDistance() + edge.get_distance();
-                double estimatedRemainingDistance = isForward ? nextNode.get_backward_hDistance() : nextNode.get_forward_hDistance();
-                
-                // Handle unreachable or unknown distances with geographic distance fallback
-                if(estimatedRemainingDistance == Double.MAX_VALUE || estimatedRemainingDistance <= 0) {
-                        // Use Euclidean distance to goal as heuristic fallback
-                        Node goalNode = Graph.get_node(goal);
-                        if(goalNode != null) {
-                                double geographicDistance = nextNode.euclidean_distance(goalNode);
-                                // Scale geographic distance to approximate road distance
-                                // Typically road distance is 1.2-1.5x Euclidean distance
-                                estimatedRemainingDistance = geographicDistance * 1.3;
-                        } else {
-                                // Last resort: use fraction of budget
-                                estimatedRemainingDistance = budget * 0.3;
-                        }
-                }
-                
-                double totalEstimatedDistance = pathDistance + estimatedRemainingDistance;
-                double remainingBudget = budget - pathDistance;
-                
-                // Refined budget pressure calculation
-                // usedRatio tracks how much budget we've consumed relative to total needed
-                double usedBudgetRatio = totalEstimatedDistance / Math.max(1.0, budget);
-                // remainingRatio tracks budget headroom
-                double remainingBudgetRatio = Math.max(0.0, remainingBudget / Math.max(1.0, estimatedRemainingDistance));
-                
-                // Adaptive distance weight increases when budget is tight
-                // But stays admissible by not over-penalizing
-                double budgetPressure = Math.min(2.0, usedBudgetRatio);
-                double adaptiveDistanceWeight = BASE_DISTANCE_WEIGHT * (1.0 + 0.4 * budgetPressure);
-
-                // Normalize distance component by budget to keep it bounded
-                double normalizedDistance = totalEstimatedDistance / Math.max(1.0, budget);
-
-                // Refined width penalty: consider both current edge and accumulated path width
-                double currentWidth = topLabel.get_wide_distance().getMaxValue();
-                double edgeWidthEstimate = Math.max(1.0, (edge.getBaseWidth() + edge.getRushWidth()) / 2.0);
-                
-                // Width penalty is higher for narrow edges, especially if path is already narrow
-                double accumulatedWidthRatio = currentWidth / Math.max(1.0, pathDistance);
-                double edgeWidthPenalty = edge.get_distance() / edgeWidthEstimate;
-                double combinedWidthPenalty = (accumulatedWidthRatio + edgeWidthPenalty) / 2.0;
-                
-                // Amplify width weight when budget is tight (narrow roads slow us down)
-                double adaptiveWidthWeight = BASE_WIDTH_WEIGHT * (1.0 + 0.3 * Math.min(1.5, budgetPressure));
-
-                // Turn computation with better context awareness
-                Integer predecessorId = topLabel.getVisitedList().get(topLabel.get_nodeID());
-                boolean sharpTurn = false;
-                if(predecessorId != null && predecessorId >= 0) {
-                        Node previousNode = Graph.get_node(predecessorId);
-                        Node currentNode = Graph.get_node(topLabel.get_nodeID());
-                        sharpTurn = Graph.isSharpRightTurn(previousNode, currentNode, nextNode);
-                }
-
-                int actualTurns = topLabel.getRightTurns();
-                int projectedTurns = actualTurns + (sharpTurn ? 1 : 0);
-                int estimatedRemainingTurns = isForward ? nextNode.get_backward_hRightTurn() : nextNode.get_forward_hRightTurn();
-                int totalEstimatedTurns = projectedTurns + estimatedRemainingTurns;
-
-                // Turn weight adapts based on turn density and remaining budget
-                // High turn density on tight budget is very costly
-                double turnDensity = totalEstimatedTurns / Math.max(1.0, totalEstimatedDistance);
-                double adaptiveTurnWeight = BASE_TURN_WEIGHT * (1.0 + 0.4 * Math.min(1.5, 
-                        budgetPressure * turnDensity + combinedWidthPenalty * 0.15));
-
-                // Sharp turn weight increases when budget is critical or path is narrow
-                double adaptiveSharpTurnWeight = BASE_SHARP_TURN_WEIGHT * (1.0 + 0.3 * Math.min(1.8, 
-                        budgetPressure + combinedWidthPenalty * 0.2));
-
-                // Final heuristic combines all factors with adaptive weights
-                // Simplified to prioritize finding paths over optimality in early stages
-                double heuristic = adaptiveDistanceWeight * normalizedDistance
-                                + adaptiveWidthWeight * combinedWidthPenalty * 0.5  // Reduced impact
-                                + adaptiveTurnWeight * totalEstimatedTurns * 0.5    // Reduced impact
-                                + (sharpTurn ? adaptiveSharpTurnWeight * 0.5 : 0.0); // Reduced impact
-                
-                // Only apply budget penalty when critically low
-                if(remainingBudgetRatio < 0.15 && estimatedRemainingDistance > 0) {
-                        heuristic *= 1.10; // Mild discouragement for very tight paths
-                }
-                
-                return heuristic;
         }
 
         public void setMaster() {

@@ -67,6 +67,7 @@ public class PreferenceSlidersPanel extends JPanel {
     
     // === CALLBACKS ===
     private Consumer<PreferenceValues> onPreferenceChange;
+    private Consumer<RoutingMode> onRoutingModeChange;  // Callback for routing mode change (for instant recomputation)
     
     // === STATE ===
     private PreferenceValues currentValues = new PreferenceValues();
@@ -238,7 +239,16 @@ public class PreferenceSlidersPanel extends JPanel {
         routingModeCombo.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         routingModeCombo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
         routingModeCombo.setAlignmentX(Component.LEFT_ALIGNMENT);
-        routingModeCombo.addActionListener(e -> updatePreferences());
+        routingModeCombo.addActionListener(e -> {
+            updatePreferences();
+            // Trigger routing mode change callback for instant recomputation
+            if (onRoutingModeChange != null) {
+                RoutingMode newMode = (RoutingMode) routingModeCombo.getSelectedItem();
+                if (newMode != null) {
+                    onRoutingModeChange.accept(newMode);
+                }
+            }
+        });
         card.add(routingModeCombo);
         
         return card;
@@ -408,8 +418,31 @@ public class PreferenceSlidersPanel extends JPanel {
         this.onPreferenceChange = callback;
     }
     
+    /**
+     * Set callback for routing mode changes.
+     * This enables instant recomputation from cached labels when only the mode changes.
+     */
+    public void setOnRoutingModeChange(Consumer<RoutingMode> callback) {
+        this.onRoutingModeChange = callback;
+    }
+    
     public PreferenceValues getPreferences() {
         return currentValues;
+    }
+    
+    /**
+     * Get the currently selected routing mode from the combo box
+     */
+    public RoutingMode getRoutingMode() {
+        if (routingModeCombo == null) {
+            System.out.println("[PreferenceSlidersPanel] routingModeCombo is NULL!");
+            return RoutingMode.WIDENESS_ONLY; // Default fallback
+        }
+        Object selectedItem = routingModeCombo.getSelectedItem();
+        System.out.println("[PreferenceSlidersPanel] getRoutingMode(): selected=" + selectedItem + ", class=" + 
+            (selectedItem != null ? selectedItem.getClass().getSimpleName() : "null"));
+        RoutingMode mode = (RoutingMode) selectedItem;
+        return mode != null ? mode : RoutingMode.WIDENESS_ONLY;
     }
     
     /**

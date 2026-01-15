@@ -83,6 +83,10 @@ public class OSMMapComponent extends JPanel implements TileProvider.TileLoadList
     private List<double[]> subgraphNodes = new ArrayList<>();
     private List<int[]> subgraphEdges = new ArrayList<>();
     
+    // Pareto paths state for hybrid mode
+    private List<RouteOverlayRenderer.ParetoPathInfo> paretoPaths = new ArrayList<>();
+    private boolean showParetoPaths = false;
+    
     // Preview state
     private double[] previewSourceCoord;
     private double[] previewDestCoord;
@@ -425,7 +429,10 @@ public class OSMMapComponent extends JPanel implements TileProvider.TileLoadList
             }
             
             // Route or preview
-            if (!pathCoordinates.isEmpty()) {
+            if (showParetoPaths && !paretoPaths.isEmpty()) {
+                // Render multiple Pareto paths with color coding
+                routeRenderer.renderParetoPaths(g2d, paretoPaths);
+            } else if (!pathCoordinates.isEmpty()) {
                 routeRenderer.renderRoute(g2d, pathCoordinates, wideEdges);
             } else if (previewSourceCoord != null && previewDestCoord != null) {
                 routeRenderer.renderPreviewLine(g2d, previewSourceCoord, previewDestCoord);
@@ -644,6 +651,10 @@ public class OSMMapComponent extends JPanel implements TileProvider.TileLoadList
         this.pathCoordinates = coordinates != null ? new ArrayList<>(coordinates) : new ArrayList<>();
         this.wideEdges = wideEdgeIndices != null ? new ArrayList<>(wideEdgeIndices) : new ArrayList<>();
         
+        // Clear Pareto paths when single path is set
+        this.paretoPaths.clear();
+        this.showParetoPaths = false;
+        
         // Clear preview when path is set
         this.previewSourceCoord = null;
         this.previewDestCoord = null;
@@ -654,6 +665,69 @@ public class OSMMapComponent extends JPanel implements TileProvider.TileLoadList
         }
         
         repaint();
+    }
+    
+    /**
+     * Set multiple Pareto optimal paths for hybrid mode visualization
+     * Paths are color-coded: green for max wideness, orange for min turns, purple for others
+     */
+    public void setParetoPaths(List<RouteOverlayRenderer.ParetoPathInfo> paths) {
+        this.paretoPaths = paths != null ? new ArrayList<>(paths) : new ArrayList<>();
+        this.showParetoPaths = !this.paretoPaths.isEmpty();
+        
+        // Clear single path when Pareto paths are set
+        if (this.showParetoPaths) {
+            this.pathCoordinates.clear();
+            this.wideEdges.clear();
+        }
+        
+        // Clear preview
+        this.previewSourceCoord = null;
+        this.previewDestCoord = null;
+        
+        // Auto-fit view to paths
+        if (!this.paretoPaths.isEmpty()) {
+            fitToParetoPaths();
+        }
+        
+        repaint();
+    }
+    
+    /**
+     * Fit view to show all Pareto paths
+     */
+    private void fitToParetoPaths() {
+        if (paretoPaths.isEmpty()) return;
+        
+        double minLat = Double.MAX_VALUE, maxLat = -Double.MAX_VALUE;
+        double minLon = Double.MAX_VALUE, maxLon = -Double.MAX_VALUE;
+        
+        for (RouteOverlayRenderer.ParetoPathInfo path : paretoPaths) {
+            for (double[] coord : path.coordinates) {
+                minLat = Math.min(minLat, coord[0]);
+                maxLat = Math.max(maxLat, coord[0]);
+                minLon = Math.min(minLon, coord[1]);
+                maxLon = Math.max(maxLon, coord[1]);
+            }
+        }
+        
+        // Add padding
+        double latPad = (maxLat - minLat) * 0.15 + 0.001;
+        double lonPad = (maxLon - minLon) * 0.15 + 0.001;
+        minLat -= latPad;
+        maxLat += latPad;
+        minLon -= lonPad;
+        maxLon += lonPad;
+        
+        // Center on bounds
+        double centerLat = (minLat + maxLat) / 2;
+        double centerLon = (minLon + maxLon) / 2;
+        converter.setCenter(centerLat, centerLon);
+        converter.resetPan();
+        
+        // Calculate zoom level to fit all paths
+        int zoom = CoordinateConverter.calculateZoomToFit(minLat, maxLat, minLon, maxLon, getWidth(), getHeight());
+        converter.setZoomLevel(Math.max(1, zoom - 1)); // Slightly zoomed out for context
     }
     
     /**
@@ -741,6 +815,8 @@ public class OSMMapComponent extends JPanel implements TileProvider.TileLoadList
     public void clearMap() {
         this.pathCoordinates.clear();
         this.wideEdges.clear();
+        this.paretoPaths.clear();
+        this.showParetoPaths = false;
         this.subgraphNodes.clear();
         this.subgraphEdges.clear();
         clearQueryPreview();

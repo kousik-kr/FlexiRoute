@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -13,6 +14,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinTask;
 import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 import models.RoutingMode;
@@ -179,18 +182,38 @@ public class BidirectionalDriver {
 			//backward_task.run();
 			ForkJoinTask<?> forwardFuture = BidirectionalAstar.pool.submit(forward_task);
 			ForkJoinTask<?> backwardFuture = BidirectionalAstar.pool.submit(backward_task);
+			
+			// Add timeout to prevent infinite hangs (30 seconds per task)
+			final long LABELING_TIMEOUT_SECONDS = 30;
+			boolean forwardCompleted = false, backwardCompleted = false;
+			
 			try {
-				forwardFuture.join();
+				forwardFuture.get(LABELING_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+				forwardCompleted = true;
+			} catch(TimeoutException e) {
+				System.out.println("[WARN] Forward labeling timed out after " + LABELING_TIMEOUT_SECONDS + "s");
+				forwardFuture.cancel(true);
 			} catch(Exception e) {
 				System.out.println("[ERROR] Forward task exception: " + e.getMessage());
 				e.printStackTrace();
 			}
 			try {
-				backwardFuture.join();
+				backwardFuture.get(LABELING_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+				backwardCompleted = true;
+			} catch(TimeoutException e) {
+				System.out.println("[WARN] Backward labeling timed out after " + LABELING_TIMEOUT_SECONDS + "s");
+				backwardFuture.cancel(true);
 			} catch(Exception e) {
 				System.out.println("[ERROR] Backward task exception: " + e.getMessage());
 				e.printStackTrace();
 			}
+			
+			// If labeling timed out, fall back to fastest path
+			if (!forwardCompleted || !backwardCompleted) {
+				System.out.println("[Query] Labeling timed out, using fallback fastest path.");
+				return fallbackFastestPath(source, destination, budget, start_departure_time);
+			}
+			
 			System.out.println("[Query] Labeling tasks joined. Intersections=" + shared.intersectionNodes.size());
 			System.out.println("[Query] Forward labels generated at " + shared.forwardVisited.size() + " nodes");
 			System.out.println("[Query] Backward labels generated at " + shared.backwardVisited.size() + " nodes");
@@ -215,6 +238,11 @@ public class BidirectionalDriver {
 //			Map<Integer,List<Label>> backward_labels = backwardSolver.call();
 			//Map<Integer,Result> pruned_backward_labels = pruneDomination(backward_labels);
 			
+			// Store labels in cache for fast re-computation when only routing mode changes
+			LabelCache cache = LabelCache.getInstance();
+			cache.store(source, destination, budget, start_departure_time, 
+			           shared.intersectionNodes, shared.forwardVisited, shared.backwardVisited);
+			
 			// Use routing mode to determine output strategy
 			System.out.println("[Query] Processing labels with routing mode: " + routingMode);
 			Result result = formOutputLabels(shared.intersectionNodes, shared.forwardVisited, shared.backwardVisited, routingMode);
@@ -233,6 +261,60 @@ public class BidirectionalDriver {
 		}
 		System.out.println("[Query] Source not feasible after A*; returning null.");
 		return null;
+	}
+	
+	/**
+	 * Recompute result from cached labels with a different routing mode.
+	 * This is MUCH faster than running the full algorithm again.
+	 * 
+	 * @param newMode The new routing mode to use
+	 * @return Result computed from cached labels, or null if cache is invalid
+	 */
+	public static Result recomputeFromCache(RoutingMode newMode) {
+		LabelCache cache = LabelCache.getInstance();
+		
+		if (cache.getIntersectionNodes() == null || cache.getIntersectionNodes().isEmpty()) {
+			System.out.println("[Cache] No cached labels available for recomputation");
+			return null;
+		}
+		
+		System.out.println("[Cache] Recomputing from cached labels with mode: " + newMode);
+		long startTime = System.currentTimeMillis();
+		
+		// Create a temporary driver just to use the formOutputLabels method
+		BidirectionalDriver tempDriver = new BidirectionalDriver(
+			cache.getCachedSource(), cache.getCachedDestination(), 
+			cache.getCachedDepartureTime(), cache.getCachedBudget(), newMode);
+		
+		Result result = tempDriver.formOutputLabels(
+			cache.getIntersectionNodes(), 
+			cache.getForwardVisited(), 
+			cache.getBackwardVisited(), 
+			newMode);
+		
+		if (result != null) {
+			result.setRoutingMode(newMode);
+			result.setSource(cache.getCachedSource());
+			result.setDestination(cache.getCachedDestination());
+			result.setBudget((int) cache.getCachedBudget());
+		}
+		
+		long elapsed = System.currentTimeMillis() - startTime;
+		System.out.println("[Cache] Recomputation completed in " + elapsed + "ms");
+		
+		return result;
+	}
+	
+	/**
+	 * Alternative constructor for cache recomputation
+	 */
+	private BidirectionalDriver(int source, int destination, double departureTime, double budget, RoutingMode mode) {
+		this.source = source;
+		this.destination = destination;
+		this.start_departure_time = departureTime;
+		this.end_departure_time = departureTime;
+		this.budget = budget;
+		this.routingMode = mode;
 	}
 
 	private Result formOutputLabels1(Set<Integer> intersectionNodes, ConcurrentHashMap<Integer, PriorityBlockingQueue<Label>> forwardVisited, ConcurrentHashMap<Integer, PriorityBlockingQueue<Label>> backwardVisited) {
@@ -518,10 +600,16 @@ public class BidirectionalDriver {
 	    }
 	    
 	    System.out.println("[Query] Found " + paretoSet.size() + " Pareto optimal paths");
-	    for (Result r : paretoSet) {
-	        System.out.println("  - Score: " + String.format("%.1f%%", r.get_score()) + 
-	                           ", Turns: " + r.get_right_turns() + 
-	                           ", Travel: " + String.format("%.1f", r.get_travel_time()) + "min");
+	    for (int i = 0; i < paretoSet.size(); i++) {
+	        Result r = paretoSet.get(i);
+	        List<Integer> pathNodes = r.getPathNodes();
+	        int pathLen = pathNodes != null ? pathNodes.size() : 0;
+	        int firstNode = (pathNodes != null && !pathNodes.isEmpty()) ? pathNodes.get(0) : -1;
+	        int lastNode = (pathNodes != null && !pathNodes.isEmpty()) ? pathNodes.get(pathNodes.size()-1) : -1;
+	        System.out.println("  Path " + i + ": Score=" + String.format("%.1f%%", r.get_score()) + 
+	                           ", Turns=" + r.get_right_turns() + 
+	                           ", Nodes=" + pathLen +
+	                           ", First=" + firstNode + ", Last=" + lastNode);
 	    }
 	    
 	    return mainResult;
@@ -676,14 +764,82 @@ public class BidirectionalDriver {
 		List<Integer> backwardPath = new ArrayList<Integer>();
 		Map<Integer, Integer> bVisited = backwardLabel.getVisitedList();
 		Integer next = bVisited.get(meet);
-		while (next != null && next != -1 && next != meet) {
+		
+		// Safety limit to prevent infinite loops
+		int maxIter = 10000;
+		int iter = 0;
+		while (next != null && next != -1 && next != meet && iter < maxIter) {
 			backwardPath.add(next);
+			Integer prevNext = next;
 			next = bVisited.get(next);
+			// Prevent infinite loop if next points back to itself
+			if (next != null && next.equals(prevNext)) break;
+			iter++;
+		}
+		
+		// Debug: log if path seems incomplete
+		if (backwardPath.isEmpty() && bVisited.size() > 1) {
+			System.out.println("[DEBUG] Warning: Empty backward path from meet=" + meet + 
+				", bVisited size=" + bVisited.size());
 		}
 
 		List<Integer> full = new ArrayList<Integer>(forwardPath);
 		full.addAll(backwardPath);
+		
+		// Remove any loops from the path
+		full = removeLoops(full);
+		
 		return full;
+	}
+	
+	/**
+	 * Remove loops from a path.
+	 * A loop occurs when the same node appears multiple times in the path.
+	 * We keep the shortest sub-path (remove the loop segment between repeated nodes).
+	 * 
+	 * Example: [A, B, C, D, B, E, F] -> [A, B, E, F] (loop C, D removed)
+	 */
+	private List<Integer> removeLoops(List<Integer> path) {
+		if (path == null || path.size() <= 2) {
+			return path;
+		}
+		
+		// Map to track first occurrence of each node
+		Map<Integer, Integer> firstOccurrence = new HashMap<>();
+		List<Integer> cleanPath = new ArrayList<>();
+		
+		int i = 0;
+		while (i < path.size()) {
+			int node = path.get(i);
+			
+			if (firstOccurrence.containsKey(node)) {
+				// Found a loop - this node appeared before
+				int loopStart = firstOccurrence.get(node);
+				
+				// Remove all nodes from loopStart+1 to i (the loop segment)
+				// by truncating cleanPath back to loopStart position
+				while (cleanPath.size() > loopStart + 1) {
+					int removed = cleanPath.remove(cleanPath.size() - 1);
+					firstOccurrence.remove(removed);
+				}
+				
+				// Continue from after this node (don't add duplicate)
+				i++;
+			} else {
+				// No loop - add node and record position
+				firstOccurrence.put(node, cleanPath.size());
+				cleanPath.add(node);
+				i++;
+			}
+		}
+		
+		// Log if loops were removed
+		if (cleanPath.size() < path.size()) {
+			System.out.println("[Path] Removed " + (path.size() - cleanPath.size()) + 
+				" nodes from loop(s). Original: " + path.size() + " -> Clean: " + cleanPath.size());
+		}
+		
+		return cleanPath;
 	}
 
 	private static class PathInfo {
