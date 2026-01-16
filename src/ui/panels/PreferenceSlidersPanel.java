@@ -142,7 +142,7 @@ public class PreferenceSlidersPanel extends JPanel {
         panel.add(prioritizeWideness);
         panel.add(Box.createHorizontalStrut(6));
         
-        prioritizeTime = createPresetButton("⚡ Fast", ELECTRIC_BLUE);
+        prioritizeTime = createPresetButton("🔄 Turn Safe", ELECTRIC_BLUE);
         prioritizeTime.addActionListener(e -> {
             if (prioritizeTime.isSelected()) {
                 prioritizeWideness.setSelected(false);

@@ -198,7 +198,7 @@ public class BidirectionalLabeling implements Runnable{
 						double current_distance = topLabel.getDistance();
 						HashMap<Integer, Integer> current_visitedList = topLabel.getVisitedList();
 						int current_right_turns= topLabel.getRightTurns();
-						if (current_distance!=0 && Graph.isSharpRightTurn(Graph.get_node(current_visitedList.get(current_vertex)), node, Graph.get_node(j))) {
+						if (current_distance!=0 && Graph.isRightTurn(Graph.get_node(current_visitedList.get(current_vertex)), node, Graph.get_node(j))) {
 							current_right_turns++;
 						}
 							
@@ -399,7 +399,7 @@ public class BidirectionalLabeling implements Runnable{
 						double current_distance = topLabel.getDistance();
 						HashMap<Integer, Integer> current_visitedList = topLabel.getVisitedList();
 						int current_right_turns= topLabel.getRightTurns();
-						if (current_distance!=0 && Graph.isSharpRightTurn(Graph.get_node(j), node, Graph.get_node(current_visitedList.get(current_vertex)))) {
+						if (current_distance!=0 && Graph.isRightTurn(Graph.get_node(j), node, Graph.get_node(current_visitedList.get(current_vertex)))) {
 							current_right_turns++;
 						}
 						
@@ -468,8 +468,8 @@ public class BidirectionalLabeling implements Runnable{
 		if(isForward) {
 			List<Double> arrival_time_series = Graph.getArrivalTimeSeries(arrival_time_breakpoints.get(0).getY(), 
 					arrival_time_breakpoints.get(arrival_time_breakpoints.size()-1).getY());
-			List<Double> width_time_series = Graph.getWidthTimeSeries(arrival_time_breakpoints.get(0).getY(), 
-					arrival_time_breakpoints.get(arrival_time_breakpoints.size()-1).getY());
+			// Width changes occur at arrival time series points (rush hour boundaries)
+			List<Double> width_time_series = arrival_time_series;
 			
 			List<BreakPoint> tmp_arrival_time_breakpoints = new ArrayList<BreakPoint>();
 			List<BreakPoint> tmp_width_breakpoints = new ArrayList<BreakPoint>();
@@ -577,8 +577,8 @@ public class BidirectionalLabeling implements Runnable{
 		else {
 			List<Double> arrival_time_series = Graph.getArrivalTimeSeries(arrival_time_breakpoints.get(0).getX(), 
 					arrival_time_breakpoints.get(arrival_time_breakpoints.size()-1).getX());
-			List<Double> width_time_series = Graph.getWidthTimeSeries(arrival_time_breakpoints.get(0).getX(), 
-					arrival_time_breakpoints.get(arrival_time_breakpoints.size()-1).getX());
+			// Width changes occur at arrival time series points (rush hour boundaries)
+			List<Double> width_time_series = arrival_time_series;
 			
 			List<BreakPoint> tmp_arrival_time_breakpoints = new ArrayList<BreakPoint>();
 			List<BreakPoint> tmp_width_breakpoints = new ArrayList<BreakPoint>();

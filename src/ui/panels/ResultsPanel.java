@@ -149,13 +149,14 @@ public class ResultsPanel extends JPanel {
     }
     
     private JPanel createStatsCards() {
-        JPanel panel = new JPanel(new GridLayout(1, 4, 18, 0));
+        JPanel panel = new JPanel(new GridLayout(1, 5, 14, 0));
         panel.setOpaque(false);
         panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 130));
         panel.setAlignmentX(Component.LEFT_ALIGNMENT);
         
         panel.add(createStatCard("⏱️", "Time", "--", ELECTRIC_BLUE));
         panel.add(createStatCard("📍", "Nodes", "--", NEON_GREEN));
+        panel.add(createStatCard("📏", "Distance", "--", OCEAN_TEAL));
         panel.add(createStatCard("💰", "Cost", "--", SUNSET_ORANGE));
         panel.add(createStatCard("🛣️", "Wide %", "--", HOT_PINK));
         
@@ -417,6 +418,7 @@ public class ResultsPanel extends JPanel {
         // Update stat cards
         updateStatCard("Time", String.format("%.2f ms", result.getExecutionTime()));
         updateStatCard("Nodes", String.valueOf(result.getPathLength()));
+        updateStatCard("Distance", String.format("%.1f", result.getTotalDistance()));
         updateStatCard("Cost", String.format("%.1f", result.getTotalCost()));
         
         int widePercent = result.getPathLength() > 0 
@@ -456,9 +458,10 @@ public class ResultsPanel extends JPanel {
         
         details.append("📊 STATISTICS\n");
         details.append("   Path Length:  ").append(result.getPathLength()).append(" nodes\n");
+        details.append("   Total Distance: ").append(String.format("%.2f", result.getTotalDistance())).append(" units\n");
         details.append("   Total Cost:   ").append(String.format("%.2f", result.getTotalCost())).append(" units\n");
         details.append("   Wide Edges:   ").append(result.getWideEdgeCount()).append("\n");
-        details.append("   Wide Score:   ").append(String.format("%.4f", result.getWideScore())).append("\n");
+        details.append("   Wide Road %:  ").append(String.format("%.2f%%", result.getWideRoadPercentage())).append("\n");
         details.append("   Right Turns:  ").append(result.getRightTurns()).append("\n");
         details.append("   Exec Time:    ").append(String.format("%.2f", result.getExecutionTime())).append(" ms\n\n");
         
@@ -480,8 +483,7 @@ public class ResultsPanel extends JPanel {
                 details.append("┌─────────────────────────────────────────────────┐\n");
                 details.append("│ PATH #").append(pathNum++).append("\n");
                 details.append("├─────────────────────────────────────────────────┤\n");
-                details.append("│  Wide Score:   ").append(String.format("%.4f", paretoPath.getWideScore()));
-                details.append(" (").append(paretoWidePercent).append("% wide roads)\n");
+                details.append("│  Wide Road %:  ").append(String.format("%.2f%%", paretoPath.getWideRoadPercentage())).append("\n");
                 details.append("│  Right Turns:  ").append(paretoPath.getRightTurns()).append("\n");
                 details.append("│  Path Length:  ").append(paretoPath.getPathLength()).append(" nodes\n");
                 details.append("│  Total Cost:   ").append(String.format("%.2f", paretoPath.getTotalCost())).append("\n");
@@ -577,6 +579,7 @@ public class ResultsPanel extends JPanel {
         // Reset stat cards
         updateStatCard("Time", "--");
         updateStatCard("Nodes", "--");
+        updateStatCard("Distance", "--");
         updateStatCard("Cost", "--");
         updateStatCard("Wide %", "--");
         

@@ -131,23 +131,16 @@ public class BidirectionalDriver {
 			
 			List<BreakPoint> forward_arrival_break_points = createArrivalBreakpoints(forward_arrival_time_series);
 			
-			List<Double> forward_wide_distance_time_series = new ArrayList<Double>();
-			forward_wide_distance_time_series.add(start_departure_time);
-			
-			List<Double> forward_tmp_wide_distance_time_series = Graph.getWidthTimeSeries(start_departure_time, end_departure_time);
-			
-			forward_wide_distance_time_series.addAll(forward_tmp_wide_distance_time_series);
-			forward_wide_distance_time_series.add(end_departure_time);
-			List<BreakPoint> forward_wide_distance_break_points = createScoreBreakpoints(forward_wide_distance_time_series);
-			
-			Function forward_arrival_time = new Function(forward_arrival_break_points, -1);
-			Function forward_wide_distance = new Function(forward_wide_distance_break_points, 0);
-			
-			Label sourceLabel = new Label(source, forward_arrival_time, forward_wide_distance, 0, 0.0);
-			//sourceLabel.initializeLists();
-			sourceLabel.setVisited(source, -1);
-			
-			BidirectionalLabeling forward_task = new BidirectionalLabeling(destination, budget/2, sourceLabel, shared, true);
+		// Width changes occur at arrival time series points (rush hour boundaries)
+		List<BreakPoint> forward_wide_distance_break_points = createScoreBreakpoints(forward_arrival_time_series);
+		
+		Function forward_arrival_time = new Function(forward_arrival_break_points, -1);
+		Function forward_wide_distance = new Function(forward_wide_distance_break_points, 0);
+		
+		Label sourceLabel = new Label(source, forward_arrival_time, forward_wide_distance, 0, 0.0);
+		sourceLabel.setVisited(source, -1);
+		
+		BidirectionalLabeling forward_task = new BidirectionalLabeling(destination, budget/2, sourceLabel, shared, true);
 			//forward_task.run();
 			
 			
@@ -163,22 +156,15 @@ public class BidirectionalDriver {
 			
 			List<BreakPoint> backward_arrival_break_points = createArrivalBreakpoints(backward_arrival_time_series);
 			
-			List<Double> backward_wide_distance_time_series = new ArrayList<Double>();
-			backward_wide_distance_time_series.add(start_departure_time+fastest_path_cost);
-			
-			List<Double> backward_tmp_wide_distance_time_series = Graph.getWidthTimeSeries(start_departure_time+fastest_path_cost, end_departure_time+budget);
-			
-			backward_wide_distance_time_series.addAll(backward_tmp_wide_distance_time_series);
-			backward_wide_distance_time_series.add(end_departure_time);
-			List<BreakPoint> backward_wide_distance_break_points = createScoreBreakpoints(backward_wide_distance_time_series);
-			
-			Function backward_arrival_time = new Function(backward_arrival_break_points, -1);
-			Function backward_wide_distance = new Function(backward_wide_distance_break_points, 0);
-			
-			Label destinationLabel = new Label(destination, backward_arrival_time, backward_wide_distance, 0, 0.0);
-			//sourceLabel.initializeLists();
-			destinationLabel.setVisited(destination, -1);
-			BidirectionalLabeling backward_task = new BidirectionalLabeling(source, budget/2, destinationLabel, shared, false);
+		// Width changes occur at arrival time series points (rush hour boundaries)
+		List<BreakPoint> backward_wide_distance_break_points = createScoreBreakpoints(backward_arrival_time_series);
+		
+		Function backward_arrival_time = new Function(backward_arrival_break_points, -1);
+		Function backward_wide_distance = new Function(backward_wide_distance_break_points, 0);
+		
+		Label destinationLabel = new Label(destination, backward_arrival_time, backward_wide_distance, 0, 0.0);
+		destinationLabel.setVisited(destination, -1);
+		BidirectionalLabeling backward_task = new BidirectionalLabeling(source, budget/2, destinationLabel, shared, false);
 			//backward_task.run();
 			ForkJoinTask<?> forwardFuture = BidirectionalAstar.pool.submit(forward_task);
 			ForkJoinTask<?> backwardFuture = BidirectionalAstar.pool.submit(backward_task);
@@ -520,12 +506,21 @@ public class BidirectionalDriver {
 	        ConcurrentHashMap<Integer, PriorityBlockingQueue<Label>> forwardVisited,
 	        ConcurrentHashMap<Integer, PriorityBlockingQueue<Label>> backwardVisited) {
 
+	    // Iterate through all labels to find the one with maximum wideness
 	    return intersectionNodes.parallelStream()
-	        .map(node -> {
-	            Label forward = forwardVisited.get(node).peek();
-	            Label backward = backwardVisited.get(node).peek();
-	            if (forward == null || backward == null) return null;
-	            return getResult(forward, backward);
+	        .flatMap(node -> {
+	            PriorityBlockingQueue<Label> forwards = forwardVisited.get(node);
+	            PriorityBlockingQueue<Label> backwards = backwardVisited.get(node);
+	            if (forwards == null || backwards == null) return java.util.stream.Stream.empty();
+	            
+	            List<Result> nodeResults = new ArrayList<>();
+	            for (Label forward : forwards) {
+	                for (Label backward : backwards) {
+	                    Result r = getResult(forward, backward);
+	                    if (r != null) nodeResults.add(r);
+	                }
+	            }
+	            return nodeResults.stream();
 	        })
 	        .filter(Objects::nonNull)
 	        .max(Comparator.comparingDouble(Result::get_score)) // Maximize wideness only
@@ -541,12 +536,21 @@ public class BidirectionalDriver {
 	        ConcurrentHashMap<Integer, PriorityBlockingQueue<Label>> forwardVisited,
 	        ConcurrentHashMap<Integer, PriorityBlockingQueue<Label>> backwardVisited) {
 
+	    // Iterate through all labels to find the one with minimum turns
 	    return intersectionNodes.parallelStream()
-	        .map(node -> {
-	            Label forward = forwardVisited.get(node).peek();
-	            Label backward = backwardVisited.get(node).peek();
-	            if (forward == null || backward == null) return null;
-	            return getResult(forward, backward);
+	        .flatMap(node -> {
+	            PriorityBlockingQueue<Label> forwards = forwardVisited.get(node);
+	            PriorityBlockingQueue<Label> backwards = backwardVisited.get(node);
+	            if (forwards == null || backwards == null) return java.util.stream.Stream.empty();
+	            
+	            List<Result> nodeResults = new ArrayList<>();
+	            for (Label forward : forwards) {
+	                for (Label backward : backwards) {
+	                    Result r = getResult(forward, backward);
+	                    if (r != null) nodeResults.add(r);
+	                }
+	            }
+	            return nodeResults.stream();
 	        })
 	        .filter(Objects::nonNull)
 	        .min(Comparator.comparingInt(Result::get_right_turns)) // Minimize turns only
@@ -588,10 +592,13 @@ public class BidirectionalDriver {
 	    
 	    if (paretoSet.isEmpty()) return null;
 	    
-	    // Sort by wideness score descending (primary), then by turns ascending (secondary)
+	    // Sort by wideness score descending (primary), then by turns ascending (secondary),
+	    // then by distance ascending (tertiary), then by travel time ascending (quaternary)
 	    paretoSet.sort(Comparator
 	        .comparingDouble(Result::get_score).reversed()
-	        .thenComparingInt(Result::get_right_turns));
+	        .thenComparingInt(Result::get_right_turns)
+	        .thenComparingDouble(Result::getPathDistance)
+	        .thenComparingDouble(Result::get_travel_time));
 	    
 	    // Create a container result with all Pareto optimal paths
 	    Result mainResult = paretoSet.get(0); // Best by wideness as default selection
@@ -606,8 +613,10 @@ public class BidirectionalDriver {
 	        int pathLen = pathNodes != null ? pathNodes.size() : 0;
 	        int firstNode = (pathNodes != null && !pathNodes.isEmpty()) ? pathNodes.get(0) : -1;
 	        int lastNode = (pathNodes != null && !pathNodes.isEmpty()) ? pathNodes.get(pathNodes.size()-1) : -1;
-	        System.out.println("  Path " + i + ": Score=" + String.format("%.1f%%", r.get_score()) + 
+	        System.out.println("  Path " + i + ": WideRoad%=" + String.format("%.1f%%", r.get_score()) + 
 	                           ", Turns=" + r.get_right_turns() + 
+	                           ", Distance=" + String.format("%.2f", r.getPathDistance()) +
+	                           ", Time=" + String.format("%.2f", r.get_travel_time()) +
 	                           ", Nodes=" + pathLen +
 	                           ", First=" + firstNode + ", Last=" + lastNode);
 	    }
@@ -618,15 +627,22 @@ public class BidirectionalDriver {
 	/**
 	 * Compute Pareto optimal set from a list of results
 	 * A result is Pareto optimal if no other result dominates it
+	 * Also removes duplicate paths (same wideness, turns, distance, time)
 	 */
 	private List<Result> computeParetoSet(List<Result> results) {
 	    List<Result> paretoSet = new ArrayList<>();
 	    
 	    for (Result candidate : results) {
 	        boolean isDominated = false;
+	        boolean isDuplicate = false;
 	        List<Result> toRemove = new ArrayList<>();
 	        
 	        for (Result existing : paretoSet) {
+	            // Check if this is a duplicate (identical metrics)
+	            if (isDuplicateResult(existing, candidate)) {
+	                isDuplicate = true;
+	                break;
+	            }
 	            if (existing.dominates(candidate)) {
 	                isDominated = true;
 	                break;
@@ -636,7 +652,7 @@ public class BidirectionalDriver {
 	            }
 	        }
 	        
-	        if (!isDominated) {
+	        if (!isDominated && !isDuplicate) {
 	            paretoSet.removeAll(toRemove);
 	            paretoSet.add(candidate);
 	        }
@@ -646,25 +662,47 @@ public class BidirectionalDriver {
 	}
 	
 	/**
-	 * ALL_OBJECTIVES: Original behavior - minimize turns first, then maximize wideness, avoid sharp turns
+	 * Check if two results are duplicates (have identical metrics)
+	 */
+	private boolean isDuplicateResult(Result a, Result b) {
+	    double wideTolerance = 0.001; // 0.001% tolerance for wideness
+	    double distTolerance = 0.01;  // 0.01 units tolerance for distance
+	    double timeTolerance = 0.01;  // 0.01 minutes tolerance for time
+	    
+	    return Math.abs(a.get_score() - b.get_score()) < wideTolerance &&
+	           a.get_right_turns() == b.get_right_turns() &&
+	           Math.abs(a.getPathDistance() - b.getPathDistance()) < distTolerance &&
+	           Math.abs(a.get_travel_time() - b.get_travel_time()) < timeTolerance;
+	}
+	
+	/**
+	 * ALL_OBJECTIVES: Original behavior - minimize turns first, then maximize wideness
 	 */
 	private Result formOutputLabelsAllObjectives(
 	        Set<Integer> intersectionNodes,
 	        ConcurrentHashMap<Integer, PriorityBlockingQueue<Label>> forwardVisited,
 	        ConcurrentHashMap<Integer, PriorityBlockingQueue<Label>> backwardVisited) {
 
+	    // Iterate through all labels to find the best by turns then wideness
 	    return intersectionNodes.parallelStream()
-	        .map(node -> {
-	            Label forward = forwardVisited.get(node).peek();
-	            Label backward = backwardVisited.get(node).peek();
-	            if (forward == null || backward == null) return null;
-	            return getResult(forward, backward);
+	        .flatMap(node -> {
+	            PriorityBlockingQueue<Label> forwards = forwardVisited.get(node);
+	            PriorityBlockingQueue<Label> backwards = backwardVisited.get(node);
+	            if (forwards == null || backwards == null) return java.util.stream.Stream.empty();
+	            
+	            List<Result> nodeResults = new ArrayList<>();
+	            for (Label forward : forwards) {
+	                for (Label backward : backwards) {
+	                    Result r = getResult(forward, backward);
+	                    if (r != null) nodeResults.add(r);
+	                }
+	            }
+	            return nodeResults.stream();
 	        })
 	        .filter(Objects::nonNull)
 	        .min(Comparator
 	                .comparingInt(Result::get_right_turns)        // fewer right turns first
-	                .thenComparingInt(Result::get_sharp_turns)    // fewer sharp turns second
-	                .thenComparing(Comparator.comparingDouble(Result::get_score).reversed()) // higher score wins if tie
+	                .thenComparing(Comparator.comparingDouble(Result::get_score).reversed()) // higher wideness score wins if tie
 	        ).orElse(null);
 	}
 
@@ -743,8 +781,16 @@ public class BidirectionalDriver {
 
 		List<Integer> path = buildPath(current_forward_label, current_backward_label);
 		PathInfo info = summarizePath(path);
+		
+		// Calculate wide road percentage from actual path distances
+		// wideRoadPercentage = (sum of wide road distances / total path distance) * 100
+		double wideRoadPercentage = 0;
+		if (info.totalDistance > 0) {
+			wideRoadPercentage = (info.wideRoadDistance / info.totalDistance) * 100.0;
+		}
 
-		return new Result(dep_time, scr, total_right_turns, info.sharpTurns, info.travelTime, path, info.wideEdgeIndices);
+		return new Result(dep_time, wideRoadPercentage, total_right_turns, 0 /* sharp turns removed */, 
+						  info.travelTime, info.totalDistance, path, info.wideEdgeIndices);
 	}
 
 	private List<Integer> buildPath(Label forwardLabel, Label backwardLabel) {
@@ -844,23 +890,27 @@ public class BidirectionalDriver {
 
 	private static class PathInfo {
 		final double travelTime;
-		final int sharpTurns;
 		final List<Integer> wideEdgeIndices;
+		final double wideRoadDistance;  // Sum of distances of wide roads only
+		final double totalDistance;      // Sum of all edge distances
 
-		PathInfo(double travelTime, int sharpTurns, List<Integer> wideEdgeIndices) {
+		PathInfo(double travelTime, List<Integer> wideEdgeIndices, 
+		         double wideRoadDistance, double totalDistance) {
 			this.travelTime = travelTime;
-			this.sharpTurns = sharpTurns;
 			this.wideEdgeIndices = wideEdgeIndices;
+			this.wideRoadDistance = wideRoadDistance;
+			this.totalDistance = totalDistance;
 		}
 	}
 
 	private PathInfo summarizePath(List<Integer> path) {
 		if (path == null || path.size() < 2) {
-			return new PathInfo(0, 0, Collections.emptyList());
+			return new PathInfo(0, Collections.emptyList(), 0, 0);
 		}
 		double travel = 0;
-		int sharp = 0;
 		List<Integer> wideIndices = new ArrayList<Integer>();
+		double wideRoadDistance = 0;  // Sum of distances of wide roads
+		double totalDistance = 0;      // Sum of all edge distances
 
 		for (int i = 0; i < path.size() - 1; i++) {
 			int u = path.get(i);
@@ -877,20 +927,17 @@ public class BidirectionalDriver {
 			}
 			if (edge != null) {
 				travel += edge.getLowestCost();
+				double edgeDistance = edge.get_distance();
+				totalDistance += edgeDistance;
+				
+				// Check if this is a wide road (not clearway and width >= threshold)
 				if (!edge.is_clearway() && edge.get_width(0) >= BidirectionalAstar.WIDENESS_THRESHOLD) {
 					wideIndices.add(i);
-				}
-			}
-			if (i > 0) {
-				Node prev = Graph.get_node(path.get(i - 1));
-				Node cur = from;
-				Node nxt = Graph.get_node(v);
-				if (prev != null && cur != null && nxt != null && Graph.isSharpRightTurn(prev, cur, nxt)) {
-					sharp++;
+					wideRoadDistance += edgeDistance;  // Add distance of wide road
 				}
 			}
 		}
-		return new PathInfo(travel, sharp, wideIndices);
+		return new PathInfo(travel, wideIndices, wideRoadDistance, totalDistance);
 	}
 	
 	private static List<BreakPoint> createScoreBreakpoints(List<Double> time_series) {
@@ -967,11 +1014,11 @@ public class BidirectionalDriver {
 			return null; // could not rebuild a valid path
 		}
 
-		// Compute right turns, sharp turns, and wide edges
+		// Compute right turns and wide edges
 		int rightTurns = 0;
-		int sharpTurns = 0;
 		java.util.List<Integer> wideEdgeIndices = new java.util.ArrayList<>();
 		double travelTime = dist.get(dest);
+		double totalDistance = 0;  // Calculate total distance
 
 		for (int i = 0; i < path.size() - 1; i++) {
 			int u = path.get(i);
@@ -979,6 +1026,7 @@ public class BidirectionalDriver {
 			Node from = Graph.get_node(u);
 			Edge edge = from != null ? from.get_outgoing_edges().get(v) : null;
 			if (edge != null) {
+				totalDistance += edge.get_distance();  // Add edge distance
 				if (!edge.is_clearway() && edge.get_width(0) >= BidirectionalAstar.WIDENESS_THRESHOLD) {
 					wideEdgeIndices.add(i);
 				}
@@ -988,18 +1036,14 @@ public class BidirectionalDriver {
 				Node curNode = from;
 				Node nextNode = Graph.get_node(v);
 				if (prevNode != null && curNode != null && nextNode != null) {
-					if (Graph.isSharpRightTurn(prevNode, curNode, nextNode)) {
-						sharpTurns++;
-					}
-					// Approximate right turns by reusing sharp-turn check as proxy
-					if (Graph.isSharpRightTurn(prevNode, curNode, nextNode)) {
+					if (Graph.isRightTurn(prevNode, curNode, nextNode)) {
 						rightTurns++;
 					}
 				}
 			}
 		}
 
-		return new Result(startDepartureMinutes, 0 /*score unknown for fallback*/, rightTurns, sharpTurns, travelTime, path, wideEdgeIndices);
+		return new Result(startDepartureMinutes, 0 /*score unknown for fallback*/, rightTurns, 0 /* sharp turns removed */, travelTime, totalDistance, path, wideEdgeIndices);
 	}
 
 }

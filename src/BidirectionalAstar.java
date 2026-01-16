@@ -267,18 +267,13 @@ public class BidirectionalAstar {
 		BufferedReader br = new BufferedReader(new FileReader(fin));
 		String line;
 		String[] arrival_time_series = null;
-		String[] width_time_series = null;
 
 		if((line = br.readLine()) != null){
 			arrival_time_series = line.trim().split(" ");
 		}
         
-		if((line = br.readLine()) != null){
-			width_time_series = line.trim().split(" ");
-		}
         
 		Graph.updateArrivalTimeSeries(arrival_time_series);
-		Graph.updateWidthTimeSeries(width_time_series);
 
 		while((line = br.readLine()) != null){
 			line = line.trim();
@@ -295,23 +290,14 @@ public class BidirectionalAstar {
 			int destination = Integer.parseInt(entries[1]);
 			String travel_cost = entries[2];
 
-			double baseWidth = 2.5;
-			double rushWidth = 3.5;
-			double distance = -1;
-			if (entries.length >= 6) {
-				baseWidth = Double.parseDouble(entries[3]);
-				rushWidth = Double.parseDouble(entries[4]);
-				distance = Double.parseDouble(entries[5]);
-			}
+		
+			double baseWidth = Double.parseDouble(entries[3]);
+			double rushWidth = Double.parseDouble(entries[4]);
+			double distance = Double.parseDouble(entries[5]);
 
-			Edge edge = new Edge(source, destination);
-			edge.setBaseWidth(baseWidth);
-			edge.setRushWidth(rushWidth);
-			edge.setWidth(baseWidth);
-			if (distance >= 0) {
-				edge.setDistance(distance);
-			}
 
+			Edge edge = new Edge(source, destination, baseWidth, rushWidth, distance);
+	
 			String[] travel_costs = travel_cost.split(",");
 
 			// Add time-dependent travel costs
@@ -395,7 +381,7 @@ public class BidirectionalAstar {
     public static void configureDefaults() {
         THRESHOLD = 10;
         SHARP_THRESHOLD = 60;
-        WIDENESS_THRESHOLD = 12.8;
+        WIDENESS_THRESHOLD = 4.5;
 		TIME_LIMIT = TIME_LIMIT > 0 ? TIME_LIMIT : 5;
         interval_duration = interval_duration > 0 ? interval_duration : 360;
         pool = new ForkJoinPool(Runtime.getRuntime().availableProcessors());

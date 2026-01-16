@@ -51,7 +51,7 @@ if [ ! -f "target/classes/GuiLauncher.class" ]; then
     javac -d target/classes -cp target/classes \
         src/Node.java src/Edge.java src/Properties.java src/Cluster.java \
         src/Graph.java src/Label.java src/Function.java src/BreakPoint.java \
-        src/Query.java src/Result.java src/BidirectionalLabeling.java \
+        src/Query.java src/Result.java src/LabelCache.java src/BidirectionalLabeling.java \
         src/BidirectionalAstar.java src/BidirectionalDriver.java \
         src/DatasetDownloader.java src/GoogleDriveConfigHelper.java \
         src/GoogleDriveDatasetLoader.java 2>&1
@@ -64,6 +64,10 @@ if [ ! -f "target/classes/GuiLauncher.class" ]; then
     javac -d target/classes -cp target/classes \
         src/map/*.java 2>&1
     
+    # Compile UI components first (LogViewerWindow is needed by QueryHistoryPanel)
+    javac -d target/classes -cp target/classes \
+        src/ui/components/*.java 2>&1
+    
     # Compile UI panels
     javac -d target/classes -cp target/classes \
         src/ui/panels/QueryPanel.java \
@@ -73,10 +77,6 @@ if [ ! -f "target/classes/GuiLauncher.class" ]; then
         src/ui/panels/QueryHistoryPanel.java \
         src/ui/panels/MetricsDashboard.java \
         src/ui/panels/PreferenceSlidersPanel.java 2>&1
-    
-    # Compile UI components
-    javac -d target/classes -cp target/classes \
-        src/ui/components/SplashScreen.java 2>&1
     
     # Compile launcher
     javac -d target/classes -cp target/classes \

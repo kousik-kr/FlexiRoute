@@ -19,6 +19,7 @@ public class ResultData {
     private int rightTurns;
     private int departureTime;
     private double suggestedDepartureTime;  // Departure time suggested by the algorithm
+    private double totalDistance;  // Total physical distance of the path
     private List<Integer> pathNodes;
     private List<double[]> pathCoordinates;
     private List<Integer> wideEdgeIndices;
@@ -26,7 +27,7 @@ public class ResultData {
     // Pareto optimal paths support
     private List<ResultData> paretoOptimalPaths;
     private String routingModeName;
-    private double wideScore;  // Wideness score for this path
+    private double wideRoadPercentage;  // Percentage of wide road distance out of total path distance
     
     public ResultData() {
         this.pathNodes = new ArrayList<>();
@@ -51,8 +52,9 @@ public class ResultData {
     public ResultData rightTurns(int turns) { this.rightTurns = turns; return this; }
     public ResultData departureTime(int time) { this.departureTime = time; return this; }
     public ResultData suggestedDepartureTime(double time) { this.suggestedDepartureTime = time; return this; }
+    public ResultData totalDistance(double distance) { this.totalDistance = distance; return this; }
     public ResultData routingModeName(String name) { this.routingModeName = name; return this; }
-    public ResultData wideScore(double score) { this.wideScore = score; return this; }
+    public ResultData wideRoadPercentage(double percentage) { this.wideRoadPercentage = percentage; return this; }
     public ResultData pathNodes(List<Integer> nodes) { 
         this.pathNodes = nodes != null ? new ArrayList<>(nodes) : new ArrayList<>(); 
         return this; 
@@ -85,6 +87,7 @@ public class ResultData {
     public int getRightTurns() { return rightTurns; }
     public int getDepartureTime() { return departureTime; }
     public double getSuggestedDepartureTime() { return suggestedDepartureTime; }
+    public double getTotalDistance() { return totalDistance; }
     public List<Integer> getPathNodes() { return pathNodes; }
     public List<double[]> getPathCoordinates() { return pathCoordinates; }
     public List<Integer> getWideEdgeIndices() { return wideEdgeIndices; }
@@ -92,5 +95,5 @@ public class ResultData {
     public boolean hasParetoOptimalPaths() { return !paretoOptimalPaths.isEmpty(); }
     public int getParetoPathCount() { return paretoOptimalPaths.size(); }
     public String getRoutingModeName() { return routingModeName; }
-    public double getWideScore() { return wideScore; }
+    public double getWideRoadPercentage() { return wideRoadPercentage; }
 }

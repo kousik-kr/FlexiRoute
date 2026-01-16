@@ -570,15 +570,15 @@ public class RouteOverlayRenderer {
     public static class ParetoPathInfo {
         public final List<double[]> coordinates;
         public final List<Integer> wideEdges;
-        public final double wideScore;
+        public final double wideRoadPercentage;
         public final int rightTurns;
         public final int pathIndex;
         
         public ParetoPathInfo(List<double[]> coordinates, List<Integer> wideEdges, 
-                              double wideScore, int rightTurns, int pathIndex) {
+                              double wideRoadPercentage, int rightTurns, int pathIndex) {
             this.coordinates = coordinates;
             this.wideEdges = wideEdges;
-            this.wideScore = wideScore;
+            this.wideRoadPercentage = wideRoadPercentage;
             this.rightTurns = rightTurns;
             this.pathIndex = pathIndex;
         }
@@ -605,8 +605,8 @@ public class RouteOverlayRenderer {
             
             for (int i = 0; i < paretoPaths.size(); i++) {
                 ParetoPathInfo path = paretoPaths.get(i);
-                if (path.wideScore > maxWideness) {
-                    maxWideness = path.wideScore;
+                if (path.wideRoadPercentage > maxWideness) {
+                    maxWideness = path.wideRoadPercentage;
                     maxWidenessIdx = i;
                 }
                 if (path.rightTurns < minTurns) {
@@ -676,7 +676,7 @@ public class RouteOverlayRenderer {
         String colorName = color.equals(PARETO_MAX_WIDENESS) ? "GREEN" : 
                           color.equals(PARETO_MIN_TURNS) ? "ORANGE" : "PURPLE";
         System.out.println("[Render] Path " + pathInfo.pathIndex + ": " + screenPoints.size() + 
-            " points, color=" + colorName + ", score=" + String.format("%.1f%%", pathInfo.wideScore) + 
+            " points, color=" + colorName + ", wideRoad%=" + String.format("%.1f%%", pathInfo.wideRoadPercentage) + 
             ", turns=" + pathInfo.rightTurns);
         
         // Apply perpendicular offset if needed (to separate overlapping paths)

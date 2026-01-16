@@ -45,4 +45,7 @@ output/*.txt
 *.csv
 # Dataset files in scripts/ folder
 scripts/edges_*.txt
-scripts/nodes_*.txt
+scripts/nodes_*.txtlogs/
+
+# Query logs
+logs/

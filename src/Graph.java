@@ -23,7 +23,6 @@ public final class Graph {
     private static final Map<Integer, Node> adjacency_list = new HashMap<>();
     private static final Map<Integer, Cluster> clusters = new HashMap<>();
     private static double[] arrivalTimeSeries;
-    private static double[] widthTimeSeries;
 
     private Graph() {
         // Static utility class; do not instantiate.
@@ -90,7 +89,6 @@ public final class Graph {
         clusters.clear();
         n_vertexes = 0;
         arrivalTimeSeries = null;
-        widthTimeSeries = null;
     }
 
     public static void updateArrivalTimeSeries(String[] time_series) {
@@ -101,20 +99,8 @@ public final class Graph {
 
     }
 
-    public static void updateWidthTimeSeries(String[] time_series) {
-        widthTimeSeries = new double[time_series.length];
-        for (int i = 0; i < time_series.length; i++) {
-            widthTimeSeries[i] = Double.parseDouble(time_series[i]);
-        }
-
-    }
-
     public static double[] getArrivalTimeSeries() {
         return arrivalTimeSeries;
-    }
-
-    public static double[] getWidthTimeSeries() {
-        return widthTimeSeries;
     }
 
     public static List<Double> getArrivalTimeSeries(double start_departure_time, double end_departure_time) {
@@ -135,33 +121,32 @@ public final class Graph {
         return time_series;
     }
 
-    public static List<Double> getWidthTimeSeries(double start_departure_time, double end_departure_time) {
-        List<Double> time_series = new ArrayList<>();
-
-        for (double time_point : widthTimeSeries) {
-
-            if (time_point == start_departure_time || time_point == end_departure_time)
-                continue;
-
-            if (time_point > start_departure_time && time_point < end_departure_time) {
-                time_series.add(time_point);
-            } else if (time_point > end_departure_time) {
-                break; // No need to continue as the list is sorted
-            }
-        }
-
-        return time_series;
-    }
-
-    public static boolean isSharpRightTurn(Node previous_node, Node current_node, Node next_node) {
+    /**
+     * Check if a turn is a right turn (any turn to the right)
+     * A right turn has a negative angle (turning clockwise)
+     * @param previous_node The node we came from
+     * @param current_node The current node (intersection)
+     * @param next_node The node we're going to
+     * @return true if this is a right turn (angle < 0)
+     */
+    public static boolean isRightTurn(Node previous_node, Node current_node, Node next_node) {
         double b1 = bearing(previous_node, current_node);
         double b2 = bearing(current_node, next_node);
 
         // Signed angle difference in range [-180, 180]
         double delta = (b2 - b1 + 540) % 360 - 180;
 
-        // Sharp right turn: angle < -60 degrees
-        return delta < -BidirectionalAstar.SHARP_THRESHOLD;
+        // Right turn: any negative angle (turning right/clockwise)
+        // Small threshold to avoid counting near-straight paths as turns
+        return delta < -10; // -10 degrees threshold for meaningful right turn
+    }
+
+    /**
+     * @deprecated Use isRightTurn instead. Kept for backward compatibility.
+     */
+    @Deprecated
+    public static boolean isSharpRightTurn(Node previous_node, Node current_node, Node next_node) {
+        return isRightTurn(previous_node, current_node, next_node);
     }
 
     public static double bearing(Node previous_node, Node current_node) {
@@ -266,7 +251,7 @@ public final class Graph {
 
                 double g_distance = current_distance + distance;
                 int g_right_turn = current_right_turn;
-                if (current_vertex != source && isSharpRightTurn(get_node(prevoious_node), node, get_node(j))) {
+                if (current_vertex != source && isRightTurn(get_node(prevoious_node), node, get_node(j))) {
                     g_right_turn++;
                 }
 
@@ -371,7 +356,7 @@ public final class Graph {
 
                 double g_distance = current_distance + distance;
                 int g_right_turn = current_right_turn;
-                if (current_vertex != destination && isSharpRightTurn(get_node(j), node, get_node(next_node))) {
+                if (current_vertex != destination && isRightTurn(get_node(j), node, get_node(next_node))) {
                     g_right_turn++;
                 }
 

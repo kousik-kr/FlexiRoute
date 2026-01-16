@@ -585,7 +585,7 @@ public class GuiLauncher extends JFrame {
                 Result paretoPath = result.getParetoPath(i);
                 List<double[]> coords = paretoPath != null ? paretoPath.getPathCoordinates() : null;
                 System.out.println("[Display] Path " + i + ": coords=" + (coords != null ? coords.size() : "null") +
-                    ", score=" + (paretoPath != null ? String.format("%.1f%%", paretoPath.get_score()) : "?") +
+                    ", wideRoad%=" + (paretoPath != null ? String.format("%.1f%%", paretoPath.get_score()) : "?") +
                     ", turns=" + (paretoPath != null ? paretoPath.get_right_turns() : "?"));
                 
                 if (paretoPath != null && coords != null && !coords.isEmpty()) {
@@ -869,6 +869,7 @@ public class GuiLauncher extends JFrame {
         int dest = queryPanel.getDestination();
         int departure = queryPanel.getDeparture();
         int budget = queryPanel.getBudget();
+        int interval = queryPanel.getInterval();
         
         // Check if we can reuse cached labels
         if (BidirectionalAstar.canReuseCachedLabels(source, dest, budget, departure)) {
@@ -897,10 +898,46 @@ public class GuiLauncher extends JFrame {
                         
                         lastResult = result;
                         final Result finalResult = result;
+                        final long execTime = elapsed;
                         
                         SwingUtilities.invokeLater(() -> {
                             displayResults(finalResult);
                             displayPathOnCurrentMap(finalResult);
+                            
+                            // Save to history/log (will append to same log file for same query session)
+                            try {
+                                int pathLen = finalResult.getPathNodes() != null ? finalResult.getPathNodes().size() : 0;
+                                int wideCount = finalResult.getWideEdgeIndices() != null ? finalResult.getWideEdgeIndices().size() : 0;
+                                double wideRoadPct = pathLen > 1 ? (100.0 * wideCount / (pathLen - 1)) : 0.0;
+                                
+                                QueryResult queryResult = new QueryResult.Builder()
+                                    .setSourceNode(source)
+                                    .setDestinationNode(dest)
+                                    .setDepartureTime(departure)
+                                    .setIntervalDuration(interval)
+                                    .setBudget(budget)
+                                    .setActualDepartureTime(finalResult.get_departureTime())
+                                    .setScore(finalResult.get_score())
+                                    .setTravelTime(finalResult.getTotalCost())
+                                    .setRightTurns(finalResult.get_right_turns())
+                                    .setSharpTurns(finalResult.get_sharp_turns())
+                                    .setPathNodes(finalResult.getPathNodes())
+                                    .setWideEdgeIndices(finalResult.getWideEdgeIndices())
+                                    .setExecutionTimeMs(execTime)
+                                    .setSuccess(finalResult.isPathFound())
+                                    .setTotalDistance(finalResult.getPathDistance())
+                                    .setOptimalDepartureTime(finalResult.get_departureTime())
+                                    .setWideRoadPercentage(wideRoadPct)
+                                    .setWideEdgeCount(wideCount)
+                                    .setRoutingMode(finalResult.getRoutingMode())
+                                    .build();
+                                
+                                historyManager.addQuery(queryResult);
+                                historyPanel.refreshTable();
+                            } catch (Exception ex) {
+                                System.err.println("Error recording mode change to history: " + ex.getMessage());
+                            }
+                            
                             setStatus("⚡ Instant recompute: " + finalResult.getParetoPathCount() + 
                                 " path(s) found in " + elapsed + "ms (mode: " + newMode.getDisplayName() + ")");
                         });
@@ -960,7 +997,7 @@ public class GuiLauncher extends JFrame {
                 
                 // Create result with enhanced info if null
                 if (result == null) {
-                    result = new Result(departure, 0, 0, 0, 0, new ArrayList<>(), new ArrayList<>());
+                    result = new Result(departure, 0, 0, 0, 0, 0, new ArrayList<>(), new ArrayList<>());
                 }
                 result.setSource(source);
                 result.setDestination(dest);
@@ -988,35 +1025,51 @@ public class GuiLauncher extends JFrame {
                 final int budgetVal = budget;
                 
                 SwingUtilities.invokeLater(() -> {
-                    mapPanel.setSearchProgress(100, "Complete!");
-                    mapPanel.clearSearchFrontier();
-                    displayResults(finalResult);
-                    queryPanel.setRunning(false);
-                    
-                    // Record to history and metrics
-                    QueryResult queryResult = new QueryResult.Builder()
-                        .setSourceNode(srcNode)
-                        .setDestinationNode(dstNode)
-                        .setDepartureTime(departTime)
-                        .setIntervalDuration(intervalDur)
-                        .setBudget(budgetVal)
-                        .setActualDepartureTime(finalResult.get_departureTime())
-                        .setScore(finalResult.get_score())
-                        .setTravelTime(finalResult.getTotalCost())
-                        .setRightTurns(finalResult.get_right_turns())
-                        .setSharpTurns(finalResult.get_sharp_turns())
-                        .setPathNodes(finalResult.getPathNodes())
-                        .setWideEdgeIndices(finalResult.getWideEdgeIndices())
-                        .setExecutionTimeMs((long)finalResult.getExecutionTime())
-                        .setSuccess(finalResult.isPathFound())
-                        .build();
-                    
-                    historyManager.addQuery(queryResult);
-                    metricsCollector.recordQuery(finalResult.isPathFound(), (long)finalResult.getExecutionTime(), 
-                        finalResult.getPathNodes() != null ? finalResult.getPathNodes().size() : 0);
-                    
-                    // Refresh history panel
-                    historyPanel.refreshTable();
+                    try {
+                        mapPanel.setSearchProgress(100, "Complete!");
+                        mapPanel.clearSearchFrontier();
+                        displayResults(finalResult);
+                        queryPanel.setRunning(false);
+                        
+                        // Record to history and metrics
+                        // Calculate wide road percentage
+                        int pathLen = finalResult.getPathNodes() != null ? finalResult.getPathNodes().size() : 0;
+                        int wideCount = finalResult.getWideEdgeIndices() != null ? finalResult.getWideEdgeIndices().size() : 0;
+                        double wideRoadPct = pathLen > 1 ? (100.0 * wideCount / (pathLen - 1)) : 0.0;
+                        
+                        QueryResult queryResult = new QueryResult.Builder()
+                            .setSourceNode(srcNode)
+                            .setDestinationNode(dstNode)
+                            .setDepartureTime(departTime)
+                            .setIntervalDuration(intervalDur)
+                            .setBudget(budgetVal)
+                            .setActualDepartureTime(finalResult.get_departureTime())
+                            .setScore(finalResult.get_score())
+                            .setTravelTime(finalResult.getTotalCost())
+                            .setRightTurns(finalResult.get_right_turns())
+                            .setSharpTurns(finalResult.get_sharp_turns())
+                            .setPathNodes(finalResult.getPathNodes())
+                            .setWideEdgeIndices(finalResult.getWideEdgeIndices())
+                            .setExecutionTimeMs((long)finalResult.getExecutionTime())
+                            .setSuccess(finalResult.isPathFound())
+                            // New fields
+                            .setTotalDistance(finalResult.getPathDistance())
+                            .setOptimalDepartureTime(finalResult.get_departureTime())
+                            .setWideRoadPercentage(wideRoadPct)
+                            .setWideEdgeCount(wideCount)
+                            .setRoutingMode(finalResult.getRoutingMode())
+                            .build();
+                        
+                        historyManager.addQuery(queryResult);
+                        metricsCollector.recordQuery(finalResult.isPathFound(), (long)finalResult.getExecutionTime(), 
+                            finalResult.getPathNodes() != null ? finalResult.getPathNodes().size() : 0);
+                        
+                        // Refresh history panel
+                        historyPanel.refreshTable();
+                    } catch (Exception ex) {
+                        System.err.println("Error recording query to history: " + ex.getMessage());
+                        ex.printStackTrace();
+                    }
                     
                     // Show appropriate status based on results
                     if (finalResult.hasParetoOptimalPaths()) {
@@ -1074,10 +1127,11 @@ public class GuiLauncher extends JFrame {
             .executionTime(result.getExecutionTime())
             .pathFound(result.isPathFound())
             .totalCost(result.getTotalCost())
+            .totalDistance(result.getPathDistance())  // Total physical distance
             .pathLength(result.getPathLength())
             .wideEdgeCount(result.getWideEdgeCount())
             .rightTurns(result.get_right_turns())
-            .wideScore(result.get_score())
+            .wideRoadPercentage(result.get_score())
             .routingModeName(result.getRoutingMode() != null ? result.getRoutingMode().getDisplayName() : "Wideness Only")
             .pathNodes(result.getPathNodes())
             .pathCoordinates(result.getPathCoordinates())
@@ -1095,10 +1149,11 @@ public class GuiLauncher extends JFrame {
                     .executionTime(paretoPath.getExecutionTime())
                     .pathFound(paretoPath.isPathFound())
                     .totalCost(paretoPath.getTotalCost())
+                    .totalDistance(paretoPath.getPathDistance())  // Total physical distance
                     .pathLength(paretoPath.getPathLength())
                     .wideEdgeCount(paretoPath.getWideEdgeCount())
                     .rightTurns(paretoPath.get_right_turns())
-                    .wideScore(paretoPath.get_score())
+                    .wideRoadPercentage(paretoPath.get_score())
                     .pathNodes(paretoPath.getPathNodes())
                     .pathCoordinates(paretoPath.getPathCoordinates())
                     .wideEdgeIndices(paretoPath.getWideEdgeIndices());

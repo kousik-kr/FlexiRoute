@@ -15,6 +15,7 @@ public class Result {
 	private int right_turns;
 	private int sharp_turns;
 	private double travel_time;
+	private double pathDistance;  // Total distance of the path
 	private List<Integer> pathNodes;
 	private List<Integer> wideEdgeIndices;
 	
@@ -34,11 +35,17 @@ public class Result {
 	
 	public Result(double dep_time, double scr, int turns, int sharpTurns, double travelTime,
 			List<Integer> pathNodes, List<Integer> wideEdgeIndices) {
+		this(dep_time, scr, turns, sharpTurns, travelTime, 0.0, pathNodes, wideEdgeIndices);
+	}
+	
+	public Result(double dep_time, double scr, int turns, int sharpTurns, double travelTime,
+			double pathDistance, List<Integer> pathNodes, List<Integer> wideEdgeIndices) {
 		this.departure_time = dep_time;
 		this.score = scr;
 		this.right_turns = turns;
 		this.sharp_turns = sharpTurns;
 		this.travel_time = travelTime;
+		this.pathDistance = pathDistance;
 		this.pathNodes = pathNodes != null ? pathNodes : new ArrayList<>();
 		this.wideEdgeIndices = wideEdgeIndices != null ? wideEdgeIndices : new ArrayList<>();
 		this.pathFound = pathNodes != null && !pathNodes.isEmpty();
@@ -65,6 +72,10 @@ public class Result {
 
 	public double get_travel_time() {
 		return this.travel_time;
+	}
+	
+	public double getPathDistance() {
+		return this.pathDistance;
 	}
 
 	public List<Integer> get_pathNodes() {
@@ -222,6 +233,7 @@ public class Result {
 	/**
 	 * Check if this result dominates another in Pareto sense
 	 * A dominates B if A is better or equal in all objectives and strictly better in at least one
+	 * Tie-breaking: If wideness and turns are equal, prefer shorter distance; if distance also equal, prefer shorter travel time
 	 */
 	public boolean dominates(Result other) {
 		boolean betterInWideness = this.score >= other.score;
@@ -229,14 +241,40 @@ public class Result {
 		boolean strictlyBetterInWideness = this.score > other.score;
 		boolean strictlyBetterInTurns = this.right_turns < other.right_turns;
 		
-		return betterInWideness && betterInTurns && (strictlyBetterInWideness || strictlyBetterInTurns);
+		// Primary dominance: strictly better in at least one objective (wideness or turns)
+		if (betterInWideness && betterInTurns && (strictlyBetterInWideness || strictlyBetterInTurns)) {
+			return true;
+		}
+		
+		// Tie-breaking: If wideness and turns are exactly equal, use distance and then travel time
+		boolean sameWideness = Math.abs(this.score - other.score) < 0.001; // within 0.001% tolerance
+		boolean sameTurns = this.right_turns == other.right_turns;
+		
+		if (sameWideness && sameTurns) {
+			// Get distances from path info
+			double thisDistance = this.getPathDistance();
+			double otherDistance = other.getPathDistance();
+			
+			// First tie-breaker: prefer shorter distance (with small tolerance for floating point)
+			if (thisDistance < otherDistance - 0.001) {
+				return true;
+			}
+			
+			// If distances are essentially equal, use travel time as second tie-breaker
+			boolean sameDistance = Math.abs(thisDistance - otherDistance) < 0.001;
+			if (sameDistance && this.travel_time < other.travel_time - 0.001) {
+				return true;
+			}
+		}
+		
+		return false;
 	}
 	
 	/**
 	 * Get a summary string for Pareto path display
 	 */
 	public String getParetoSummary() {
-		return String.format("Path %d: Score=%.1f%%, Turns=%d, Time=%.1fmin", 
+		return String.format("Path %d: WideRoad%%=%.1f%%, Turns=%d, Time=%.1fmin", 
 			paretoPathIndex + 1, score, right_turns, travel_time);
 	}
 	
@@ -246,7 +284,7 @@ public class Result {
 			return String.format("Result{source=%d, dest=%d, paretoCount=%d, mode=%s}",
 				source, destination, getParetoPathCount(), routingMode);
 		}
-		return String.format("Result{source=%d, dest=%d, nodes=%d, score=%.1f%%, turns=%d, cost=%.2f}",
+		return String.format("Result{source=%d, dest=%d, nodes=%d, wideRoad%%=%.1f%%, turns=%d, cost=%.2f}",
 			source, destination, getPathLength(), score, right_turns, totalCost);
 	}
 }

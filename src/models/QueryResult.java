@@ -1,6 +1,7 @@
 package models;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -23,6 +24,16 @@ public class QueryResult {
     private final LocalDateTime timestamp;
     private final boolean success;
     private final String errorMessage;
+    
+    // New enhanced fields
+    private final double totalDistance;           // Total physical distance of the path
+    private final double optimalDepartureTime;    // Optimal departure time suggested by algorithm
+    private final double wideRoadPercentage;      // Percentage of wide road coverage
+    private final int wideEdgeCount;              // Count of wide edges
+    private final String logFilePath;             // Path to the log file for this query
+    private final RoutingMode routingMode;        // Routing mode used for this query
+    private final List<List<Integer>> paretoPaths;   // All Pareto optimal paths
+    private final List<double[]> paretoMetrics;      // Metrics [wideRoad%, turns, distance] for each Pareto path
 
     private QueryResult(Builder builder) {
         this.sourceNode = builder.sourceNode;
@@ -41,6 +52,16 @@ public class QueryResult {
         this.timestamp = builder.timestamp;
         this.success = builder.success;
         this.errorMessage = builder.errorMessage;
+        
+        // New fields
+        this.totalDistance = builder.totalDistance;
+        this.optimalDepartureTime = builder.optimalDepartureTime;
+        this.wideRoadPercentage = builder.wideRoadPercentage;
+        this.wideEdgeCount = builder.wideEdgeCount;
+        this.logFilePath = builder.logFilePath;
+        this.routingMode = builder.routingMode;
+        this.paretoPaths = builder.paretoPaths;
+        this.paretoMetrics = builder.paretoMetrics;
     }
 
     // Getters
@@ -60,6 +81,28 @@ public class QueryResult {
     public LocalDateTime getTimestamp() { return timestamp; }
     public boolean isSuccess() { return success; }
     public String getErrorMessage() { return errorMessage; }
+    
+    // New enhanced getters
+    public double getTotalDistance() { return totalDistance; }
+    public double getOptimalDepartureTime() { return optimalDepartureTime; }
+    public double getWideRoadPercentage() { return wideRoadPercentage; }
+    public int getWideEdgeCount() { return wideEdgeCount; }
+    public String getLogFilePath() { return logFilePath; }
+    public RoutingMode getRoutingMode() { return routingMode; }
+    public List<List<Integer>> getParetoPaths() { return paretoPaths; }
+    public List<double[]> getParetoMetrics() { return paretoMetrics; }
+    public boolean hasParetoPaths() { return paretoPaths != null && !paretoPaths.isEmpty(); }
+    public int getParetoPathCount() { return paretoPaths != null ? paretoPaths.size() : 0; }
+    
+    /**
+     * Format optimal departure time as HH:MM string
+     */
+    public String getFormattedOptimalDepartureTime() {
+        if (optimalDepartureTime <= 0) return "--";
+        int hours = (int) (optimalDepartureTime / 60);
+        int mins = (int) (optimalDepartureTime % 60);
+        return String.format("%02d:%02d", hours, mins);
+    }
 
     public static class Builder {
         private int sourceNode;
@@ -78,6 +121,16 @@ public class QueryResult {
         private LocalDateTime timestamp = LocalDateTime.now();
         private boolean success = true;
         private String errorMessage = "";
+        
+        // New enhanced fields
+        private double totalDistance;
+        private double optimalDepartureTime;
+        private double wideRoadPercentage;
+        private int wideEdgeCount;
+        private String logFilePath;
+        private RoutingMode routingMode;
+        private List<List<Integer>> paretoPaths = new ArrayList<>();
+        private List<double[]> paretoMetrics = new ArrayList<>();
 
         public Builder setSourceNode(int sourceNode) {
             this.sourceNode = sourceNode;
@@ -151,6 +204,57 @@ public class QueryResult {
 
         public Builder setErrorMessage(String errorMessage) {
             this.errorMessage = errorMessage;
+            return this;
+        }
+        
+        // New enhanced setters
+        public Builder setTotalDistance(double totalDistance) {
+            this.totalDistance = totalDistance;
+            return this;
+        }
+        
+        public Builder setOptimalDepartureTime(double optimalDepartureTime) {
+            this.optimalDepartureTime = optimalDepartureTime;
+            return this;
+        }
+        
+        public Builder setWideRoadPercentage(double wideRoadPercentage) {
+            this.wideRoadPercentage = wideRoadPercentage;
+            return this;
+        }
+        
+        public Builder setWideEdgeCount(int wideEdgeCount) {
+            this.wideEdgeCount = wideEdgeCount;
+            return this;
+        }
+        
+        public Builder setLogFilePath(String logFilePath) {
+            this.logFilePath = logFilePath;
+            return this;
+        }
+        
+        public Builder setRoutingMode(RoutingMode routingMode) {
+            this.routingMode = routingMode;
+            return this;
+        }
+        
+        public Builder setParetoPaths(List<List<Integer>> paretoPaths) {
+            this.paretoPaths = paretoPaths != null ? paretoPaths : new ArrayList<>();
+            return this;
+        }
+        
+        public Builder setParetoMetrics(List<double[]> paretoMetrics) {
+            this.paretoMetrics = paretoMetrics != null ? paretoMetrics : new ArrayList<>();
+            return this;
+        }
+        
+        public Builder addParetoPath(List<Integer> path, double[] metrics) {
+            if (path != null) {
+                this.paretoPaths.add(path);
+                if (metrics != null) {
+                    this.paretoMetrics.add(metrics);
+                }
+            }
             return this;
         }
 

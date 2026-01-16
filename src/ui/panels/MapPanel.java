@@ -125,15 +125,15 @@ public class MapPanel extends JPanel {
     public static class ParetoPathData {
         public final List<double[]> coordinates;
         public final List<Integer> wideEdges;
-        public final double wideScore;
+        public final double wideRoadPercentage;
         public final int rightTurns;
         public final int pathIndex;
         
         public ParetoPathData(List<double[]> coordinates, List<Integer> wideEdges,
-                             double wideScore, int rightTurns, int pathIndex) {
+                             double wideRoadPercentage, int rightTurns, int pathIndex) {
             this.coordinates = coordinates;
             this.wideEdges = wideEdges;
-            this.wideScore = wideScore;
+            this.wideRoadPercentage = wideRoadPercentage;
             this.rightTurns = rightTurns;
             this.pathIndex = pathIndex;
         }
@@ -833,8 +833,8 @@ public class MapPanel extends JPanel {
         
         for (int i = 0; i < paretoPaths.size(); i++) {
             ParetoPathData path = paretoPaths.get(i);
-            if (path.wideScore > maxWideness) {
-                maxWideness = path.wideScore;
+            if (path.wideRoadPercentage > maxWideness) {
+                maxWideness = path.wideRoadPercentage;
                 maxWidenessIdx = i;
             }
             if (path.rightTurns < minTurns) {
@@ -1055,7 +1055,7 @@ public class MapPanel extends JPanel {
         this.paretoPaths.clear();
         if (paths != null) {
             for (map.RouteOverlayRenderer.ParetoPathInfo p : paths) {
-                this.paretoPaths.add(new ParetoPathData(p.coordinates, p.wideEdges, p.wideScore, p.rightTurns, p.pathIndex));
+                this.paretoPaths.add(new ParetoPathData(p.coordinates, p.wideEdges, p.wideRoadPercentage, p.rightTurns, p.pathIndex));
             }
         }
         this.showParetoPaths = !this.paretoPaths.isEmpty();
