@@ -35,7 +35,7 @@ RAW_EDGE_FILE = "London_Edgelist.csv"
 DEFAULT_BASE_WIDTH = 3.5  # meters (typical lane width)
 DEFAULT_RUSH_WIDTH = 2.5  # meters under congestion
 CLEARWAY_RUSH_WIDTH = 4.5  # meters during rush hour (no parking allowed - UK clearway)
-CLEARWAY_PERCENTAGE = 5  # percentage of roads with urban clearway condition
+CLEARWAY_PERCENTAGE = 50  # percentage of roads with urban clearway condition
 DEFAULT_SPEED = 100.0  # meters per minute (6 km/h walking speed baseline)
 DENSITY = 20  # percentage of edges with positive scores
 
@@ -58,7 +58,6 @@ def generate_time_series() -> List[int]:
 
 
 ARRIVAL_SERIES = generate_time_series()
-WIDTH_SERIES = [0]  # placeholder; currently unused by solver
 
 
 @dataclass
@@ -192,8 +191,6 @@ def write_edges(
     with out_path.open("w", encoding="utf-8", newline="\n") as fh:
         # Line 1: Arrival time series
         fh.write(" ".join(str(t) for t in ARRIVAL_SERIES) + "\n")
-        # Line 2: Width time series
-        fh.write(" ".join(str(t) for t in WIDTH_SERIES) + "\n")
         
         # Generate score assignments
         random.seed(42)  # Reproducible scores
