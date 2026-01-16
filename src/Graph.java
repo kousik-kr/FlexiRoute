@@ -142,6 +142,55 @@ public final class Graph {
     }
 
     /**
+     * Check if a right turn should be counted with the new logic:
+     * - Out degree of current_node must be > 1 (multiple outgoing edges)
+     * - The next_node must NOT be the leftmost edge among all outgoing edges
+     * 
+     * @param previous_node The node we came from
+     * @param current_node The current node (intersection)
+     * @param next_node The node we're going to
+     * @return true if this is a counted right turn
+     */
+    public static boolean isCountedRightTurn(Node previous_node, Node current_node, Node next_node) {
+        // First check if it's a right turn geometrically
+        if (!isRightTurn(previous_node, current_node, next_node)) {
+            return false;
+        }
+        
+        // Check if out degree > 1
+        Map<Integer, Edge> outgoingEdges = current_node.get_outgoing_edges();
+        if (outgoingEdges.size() <= 1) {
+            return false; // No choice, not a "right turn" in the sense we're counting
+        }
+        
+        // Find the leftmost edge (smallest bearing among outgoing edges)
+        double incomingBearing = bearing(previous_node, current_node);
+        double leftmostBearing = Double.POSITIVE_INFINITY;
+        int leftmostNodeId = -1;
+        
+        for (Integer nextNodeId : outgoingEdges.keySet()) {
+            Node nextN = get_node(nextNodeId);
+            if (nextN != null) {
+                double outgoingBearing = bearing(current_node, nextN);
+                // Calculate relative angle from incoming direction
+                double relativeAngle = (outgoingBearing - incomingBearing + 360) % 360;
+                // Normalize to [-180, 180] range for proper left comparison
+                if (relativeAngle > 180) {
+                    relativeAngle -= 360;
+                }
+                // Leftmost means most negative angle (furthest left)
+                if (relativeAngle < leftmostBearing) {
+                    leftmostBearing = relativeAngle;
+                    leftmostNodeId = nextNodeId;
+                }
+            }
+        }
+        
+        // Return true if next_node is NOT the leftmost edge
+        return next_node.get_id() != leftmostNodeId;
+    }
+
+    /**
      * @deprecated Use isRightTurn instead. Kept for backward compatibility.
      */
     @Deprecated
@@ -251,7 +300,7 @@ public final class Graph {
 
                 double g_distance = current_distance + distance;
                 int g_right_turn = current_right_turn;
-                if (current_vertex != source && isRightTurn(get_node(prevoious_node), node, get_node(j))) {
+                if (current_vertex != source && isCountedRightTurn(get_node(prevoious_node), node, get_node(j))) {
                     g_right_turn++;
                 }
 
@@ -356,7 +405,7 @@ public final class Graph {
 
                 double g_distance = current_distance + distance;
                 int g_right_turn = current_right_turn;
-                if (current_vertex != destination && isRightTurn(get_node(j), node, get_node(next_node))) {
+                if (current_vertex != destination && isCountedRightTurn(get_node(j), node, get_node(next_node))) {
                     g_right_turn++;
                 }
 

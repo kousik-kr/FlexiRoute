@@ -87,6 +87,11 @@ public class OSMMapComponent extends JPanel implements TileProvider.TileLoadList
     private List<RouteOverlayRenderer.ParetoPathInfo> paretoPaths = new ArrayList<>();
     private boolean showParetoPaths = false;
     
+    // Route info popup state
+    private RouteOverlayRenderer.ParetoPathInfo selectedPath = null;
+    private Point popupLocation = null;
+    private boolean showRouteInfoPopup = false;
+    
     // Preview state
     private double[] previewSourceCoord;
     private double[] previewDestCoord;
@@ -190,7 +195,7 @@ public class OSMMapComponent extends JPanel implements TileProvider.TileLoadList
             }
         });
         
-        // Pan with mouse drag
+        // Pan with mouse drag and route click detection
         addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
@@ -206,6 +211,13 @@ public class OSMMapComponent extends JPanel implements TileProvider.TileLoadList
                 isDragging = false;
                 dragStart = null;
                 setCursor(Cursor.getDefaultCursor());
+            }
+            
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (SwingUtilities.isLeftMouseButton(e) && !isDragging) {
+                    handleRouteClick(e.getPoint());
+                }
             }
         });
         
@@ -452,9 +464,210 @@ public class OSMMapComponent extends JPanel implements TileProvider.TileLoadList
                 renderProgressOverlay(g2d);
             }
             
+            // Route info popup
+            if (showRouteInfoPopup && selectedPath != null && popupLocation != null) {
+                renderRouteInfoPopup(g2d);
+            }
+            
         } finally {
             g2d.dispose();
         }
+    }
+    
+    /**
+     * Handle click on the map to detect if a route was clicked
+     */
+    private void handleRouteClick(Point clickPoint) {
+        if (!showParetoPaths || paretoPaths.isEmpty()) {
+            // Hide popup if clicking elsewhere when no Pareto paths
+            showRouteInfoPopup = false;
+            selectedPath = null;
+            repaint();
+            return;
+        }
+        
+        // Check if click is near any Pareto path
+        RouteOverlayRenderer.ParetoPathInfo clickedPath = findClickedPath(clickPoint);
+        
+        if (clickedPath != null) {
+            selectedPath = clickedPath;
+            popupLocation = clickPoint;
+            showRouteInfoPopup = true;
+        } else {
+            // Hide popup if clicking elsewhere
+            showRouteInfoPopup = false;
+            selectedPath = null;
+        }
+        repaint();
+    }
+    
+    /**
+     * Find which Pareto path was clicked (if any)
+     * Returns the path closest to the click point within a threshold distance
+     */
+    private RouteOverlayRenderer.ParetoPathInfo findClickedPath(Point clickPoint) {
+        final double CLICK_THRESHOLD = 15.0; // pixels
+        
+        RouteOverlayRenderer.ParetoPathInfo closestPath = null;
+        double minDistance = Double.MAX_VALUE;
+        
+        for (RouteOverlayRenderer.ParetoPathInfo path : paretoPaths) {
+            if (path.coordinates == null || path.coordinates.size() < 2) continue;
+            
+            // Check distance to each segment of the path
+            for (int i = 0; i < path.coordinates.size() - 1; i++) {
+                double[] c1 = path.coordinates.get(i);
+                double[] c2 = path.coordinates.get(i + 1);
+                
+                Point2D.Double p1 = converter.latLonToPixel(c1[0], c1[1]);
+                Point2D.Double p2 = converter.latLonToPixel(c2[0], c2[1]);
+                
+                double dist = pointToSegmentDistance(clickPoint.x, clickPoint.y, p1.x, p1.y, p2.x, p2.y);
+                
+                if (dist < minDistance && dist < CLICK_THRESHOLD) {
+                    minDistance = dist;
+                    closestPath = path;
+                }
+            }
+        }
+        
+        return closestPath;
+    }
+    
+    /**
+     * Calculate the distance from a point to a line segment
+     */
+    private double pointToSegmentDistance(double px, double py, double x1, double y1, double x2, double y2) {
+        double dx = x2 - x1;
+        double dy = y2 - y1;
+        double lengthSq = dx * dx + dy * dy;
+        
+        if (lengthSq == 0) {
+            // Segment is a point
+            return Math.sqrt((px - x1) * (px - x1) + (py - y1) * (py - y1));
+        }
+        
+        // Project point onto line segment
+        double t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / lengthSq));
+        double projX = x1 + t * dx;
+        double projY = y1 + t * dy;
+        
+        return Math.sqrt((px - projX) * (px - projX) + (py - projY) * (py - projY));
+    }
+    
+    /**
+     * Render the route info popup
+     */
+    private void renderRouteInfoPopup(Graphics2D g2d) {
+        if (selectedPath == null || popupLocation == null) return;
+        
+        // Determine path type/color
+        int maxWidenessIdx = 0;
+        int minTurnsIdx = 0;
+        double maxWideness = -1;
+        int minTurns = Integer.MAX_VALUE;
+        
+        for (int i = 0; i < paretoPaths.size(); i++) {
+            RouteOverlayRenderer.ParetoPathInfo path = paretoPaths.get(i);
+            if (path.wideRoadPercentage > maxWideness) {
+                maxWideness = path.wideRoadPercentage;
+                maxWidenessIdx = i;
+            }
+            if (path.rightTurns < minTurns) {
+                minTurns = path.rightTurns;
+                minTurnsIdx = i;
+            }
+        }
+        
+        // Determine the color and label for this path
+        Color pathColor;
+        String pathLabel;
+        int pathIdx = paretoPaths.indexOf(selectedPath);
+        
+        if (pathIdx == maxWidenessIdx) {
+            pathColor = RouteOverlayRenderer.PARETO_MAX_WIDENESS;
+            pathLabel = "🟢 Max Wideness Path";
+        } else if (pathIdx == minTurnsIdx) {
+            pathColor = RouteOverlayRenderer.PARETO_MIN_TURNS;
+            pathLabel = "🟠 Min Turns Path";
+        } else {
+            pathColor = RouteOverlayRenderer.PARETO_OTHER;
+            pathLabel = "🟣 Pareto Path #" + (pathIdx + 1);
+        }
+        
+        // Popup dimensions
+        int popupWidth = 200;
+        int popupHeight = 95;
+        int padding = 12;
+        
+        // Position popup - adjust if near edges
+        int popupX = popupLocation.x + 15;
+        int popupY = popupLocation.y - popupHeight / 2;
+        
+        // Keep popup within bounds
+        if (popupX + popupWidth > getWidth() - 10) {
+            popupX = popupLocation.x - popupWidth - 15;
+        }
+        if (popupY < 60) {
+            popupY = 60;
+        }
+        if (popupY + popupHeight > getHeight() - 10) {
+            popupY = getHeight() - popupHeight - 10;
+        }
+        
+        // Draw shadow
+        g2d.setColor(new Color(0, 0, 0, 40));
+        g2d.fill(new RoundRectangle2D.Double(popupX + 3, popupY + 3, popupWidth, popupHeight, 12, 12));
+        
+        // Draw popup background
+        g2d.setColor(new Color(255, 255, 255, 245));
+        g2d.fill(new RoundRectangle2D.Double(popupX, popupY, popupWidth, popupHeight, 12, 12));
+        
+        // Draw colored border on left
+        g2d.setColor(pathColor);
+        g2d.fill(new RoundRectangle2D.Double(popupX, popupY, 5, popupHeight, 4, 4));
+        
+        // Draw border
+        g2d.setColor(new Color(pathColor.getRed(), pathColor.getGreen(), pathColor.getBlue(), 150));
+        g2d.setStroke(new BasicStroke(2));
+        g2d.draw(new RoundRectangle2D.Double(popupX, popupY, popupWidth, popupHeight, 12, 12));
+        
+        // Draw title
+        g2d.setColor(pathColor.darker());
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        g2d.drawString(pathLabel, popupX + padding + 4, popupY + 22);
+        
+        // Draw separator line
+        g2d.setColor(new Color(200, 200, 200));
+        g2d.setStroke(new BasicStroke(1));
+        g2d.drawLine(popupX + padding, popupY + 32, popupX + popupWidth - padding, popupY + 32);
+        
+        // Draw wide road percentage
+        g2d.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        g2d.setColor(TEXT_PRIMARY);
+        g2d.drawString("Wide Road:", popupX + padding + 4, popupY + 52);
+        
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        g2d.setColor(RouteOverlayRenderer.PARETO_MAX_WIDENESS);
+        String wideRoadText = String.format("%.2f%%", selectedPath.wideRoadPercentage);
+        FontMetrics fm = g2d.getFontMetrics();
+        g2d.drawString(wideRoadText, popupX + popupWidth - padding - fm.stringWidth(wideRoadText), popupY + 52);
+        
+        // Draw right turns
+        g2d.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        g2d.setColor(TEXT_PRIMARY);
+        g2d.drawString("Right Turns:", popupX + padding + 4, popupY + 75);
+        
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        g2d.setColor(RouteOverlayRenderer.PARETO_MIN_TURNS);
+        String turnsText = String.valueOf(selectedPath.rightTurns);
+        fm = g2d.getFontMetrics();
+        g2d.drawString(turnsText, popupX + popupWidth - padding - fm.stringWidth(turnsText), popupY + 75);
+        
+        // Draw small close hint
+        g2d.setFont(new Font("Segoe UI", Font.ITALIC, 9));
+        g2d.setColor(TEXT_SECONDARY);
+        g2d.drawString("Click elsewhere to close", popupX + padding + 4, popupY + popupHeight - 6);
     }
     
     private void renderTiles(Graphics2D g2d) {
@@ -659,6 +872,10 @@ public class OSMMapComponent extends JPanel implements TileProvider.TileLoadList
         this.previewSourceCoord = null;
         this.previewDestCoord = null;
         
+        // Clear route info popup
+        this.showRouteInfoPopup = false;
+        this.selectedPath = null;
+        
         // Auto-fit view to path
         if (!this.pathCoordinates.isEmpty()) {
             fitToPath();
@@ -684,6 +901,10 @@ public class OSMMapComponent extends JPanel implements TileProvider.TileLoadList
         // Clear preview
         this.previewSourceCoord = null;
         this.previewDestCoord = null;
+        
+        // Clear route info popup
+        this.showRouteInfoPopup = false;
+        this.selectedPath = null;
         
         // Auto-fit view to paths
         if (!this.paretoPaths.isEmpty()) {
@@ -819,6 +1040,11 @@ public class OSMMapComponent extends JPanel implements TileProvider.TileLoadList
         this.showParetoPaths = false;
         this.subgraphNodes.clear();
         this.subgraphEdges.clear();
+        
+        // Clear route info popup
+        this.showRouteInfoPopup = false;
+        this.selectedPath = null;
+        
         clearQueryPreview();
         showProgress = false;
         repaint();

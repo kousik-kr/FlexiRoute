@@ -707,6 +707,20 @@ public class RouteOverlayRenderer {
             g.draw(new Line2D.Double(screenPoints.get(i), screenPoints.get(i + 1)));
         }
         
+        // Draw direction arrows along the path
+        int arrowInterval = Math.max(1, screenPoints.size() / 10);
+        for (int i = arrowInterval; i < screenPoints.size() - 1; i += arrowInterval) {
+            Point2D.Double p1 = screenPoints.get(i - 1);
+            Point2D.Double p2 = screenPoints.get(i);
+            
+            // Calculate midpoint and direction
+            double midX = (p1.x + p2.x) / 2;
+            double midY = (p1.y + p2.y) / 2;
+            double angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+            
+            drawArrow(g, midX, midY, angle, 8, coreColor);
+        }
+        
         // Draw endpoint markers (circles at start and end of each path)
         g.setColor(coreColor);
         Point2D.Double startPt = screenPoints.get(0);

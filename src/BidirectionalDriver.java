@@ -930,8 +930,9 @@ public class BidirectionalDriver {
 				double edgeDistance = edge.get_distance();
 				totalDistance += edgeDistance;
 				
-				// Check if this is a wide road (not clearway and width >= threshold)
-				if (!edge.is_clearway() && edge.get_width(0) >= BidirectionalAstar.WIDENESS_THRESHOLD) {
+				// Check if this is a wide road during rush hours (rushWidth >= threshold)
+				// We use rushWidth directly since that's when roads have different widths
+				if (edge.getRushWidth() >= BidirectionalAstar.WIDENESS_THRESHOLD) {
 					wideIndices.add(i);
 					wideRoadDistance += edgeDistance;  // Add distance of wide road
 				}
@@ -1036,7 +1037,7 @@ public class BidirectionalDriver {
 				Node curNode = from;
 				Node nextNode = Graph.get_node(v);
 				if (prevNode != null && curNode != null && nextNode != null) {
-					if (Graph.isRightTurn(prevNode, curNode, nextNode)) {
+					if (Graph.isCountedRightTurn(prevNode, curNode, nextNode)) {
 						rightTurns++;
 					}
 				}
