@@ -15,7 +15,7 @@ REM Compile models first (other classes depend on them)
 javac -d target/classes src/models/*.java 2>nul
 
 REM Compile core classes
-javac -d target/classes -cp target/classes src/Node.java src/Edge.java src/Properties.java src/Cluster.java src/Graph.java src/Label.java src/Function.java src/BreakPoint.java src/Query.java src/Result.java src/BidirectionalLabeling.java src/BidirectionalAstar.java src/BidirectionalDriver.java src/DatasetDownloader.java src/GoogleDriveConfigHelper.java src/GoogleDriveDatasetLoader.java 2>nul
+javac -d target/classes -cp target/classes src/Node.java src/Edge.java src/Properties.java src/Cluster.java src/Graph.java src/Label.java src/Function.java src/BreakPoint.java src/Query.java src/Result.java src/RushHour.java src/LabelCache.java src/BidirectionalLabeling.java src/BidirectionalAstar.java src/BidirectionalDriver.java src/DatasetDownloader.java src/GoogleDriveConfigHelper.java src/GoogleDriveDatasetLoader.java src/DebugQuery.java src/ParetoPathFinder.java src/ParetoWidenessTest.java 2>nul
 
 REM Compile managers
 javac -d target/classes -cp target/classes src/managers/*.java 2>nul
@@ -23,11 +23,11 @@ javac -d target/classes -cp target/classes src/managers/*.java 2>nul
 REM Compile map components (OSM support)
 javac -d target/classes -cp target/classes src/map/*.java 2>nul
 
+REM Compile UI components first (LogViewerWindow is needed by QueryHistoryPanel)
+javac -d target/classes -cp target/classes src/ui/components/SplashScreen.java src/ui/components/LogViewerWindow.java 2>nul
+
 REM Compile UI panels
 javac -d target/classes -cp target/classes src/ui/panels/QueryPanel.java src/ui/panels/MapPanel.java src/ui/panels/ResultsPanel.java src/ui/panels/ResultData.java src/ui/panels/QueryHistoryPanel.java src/ui/panels/MetricsDashboard.java src/ui/panels/PreferenceSlidersPanel.java 2>nul
-
-REM Compile UI components
-javac -d target/classes -cp target/classes src/ui/components/SplashScreen.java 2>nul
 
 REM Compile the launcher
 javac -d target/classes -cp target/classes src/GuiLauncher.java 2>nul

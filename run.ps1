@@ -11,11 +11,23 @@ Set-Location $scriptDir
 
 # Check if Java is installed
 try {
-    $javaVersion = java -version 2>&1 | Select-Object -First 1
-    Write-Host "[OK] Java found: $javaVersion" -ForegroundColor Green
+    $javaVersionOutput = java -version 2>&1
+    Write-Host "[OK] Java found" -ForegroundColor Green
+    $versionLine = $javaVersionOutput | Select-Object -First 1
+    Write-Host "    Version: $versionLine" -ForegroundColor Green
+    
+    # Extract version number
+    if ($versionLine -match '(\d+)') {
+        $majorVersion = [int]$matches[1]
+        if ($majorVersion -lt 21) {
+            Write-Host "[ERROR] Java version $majorVersion found, but Java 21 or higher is required" -ForegroundColor Red
+            Read-Host "Press Enter to exit"
+            exit 1
+        }
+    }
 } catch {
     Write-Host "[ERROR] Java is not installed or not in PATH" -ForegroundColor Red
-    Write-Host "Please install Java 17 or higher" -ForegroundColor Yellow
+    Write-Host "Please install Java 21 or higher" -ForegroundColor Yellow
     Read-Host "Press Enter to exit"
     exit 1
 }
@@ -39,10 +51,10 @@ if (-not (Test-Path "target\classes\GuiLauncher.class")) {
     javac -d target/classes -cp target/classes `
         src/Node.java src/Edge.java src/Properties.java src/Cluster.java `
         src/Graph.java src/Label.java src/Function.java src/BreakPoint.java `
-        src/Query.java src/Result.java src/BidirectionalLabeling.java `
+        src/Query.java src/Result.java src/RushHour.java src/LabelCache.java src/BidirectionalLabeling.java `
         src/BidirectionalAstar.java src/BidirectionalDriver.java `
         src/DatasetDownloader.java src/GoogleDriveConfigHelper.java `
-        src/GoogleDriveDatasetLoader.java 2>&1
+        src/GoogleDriveDatasetLoader.java src/DebugQuery.java src/ParetoPathFinder.java src/ParetoWidenessTest.java 2>&1
     
     # Compile managers
     javac -d target/classes -cp target/classes `
@@ -51,6 +63,11 @@ if (-not (Test-Path "target\classes\GuiLauncher.class")) {
     # Compile map components (OSM support)
     javac -d target/classes -cp target/classes `
         src/map/*.java 2>&1
+    
+    # Compile UI components first (LogViewerWindow is needed by QueryHistoryPanel)
+    javac -d target/classes -cp target/classes `
+        src/ui/components/SplashScreen.java `
+        src/ui/components/LogViewerWindow.java 2>&1
     
     # Compile UI panels
     javac -d target/classes -cp target/classes `
@@ -61,10 +78,6 @@ if (-not (Test-Path "target\classes\GuiLauncher.class")) {
         src/ui/panels/QueryHistoryPanel.java `
         src/ui/panels/MetricsDashboard.java `
         src/ui/panels/PreferenceSlidersPanel.java 2>&1
-    
-    # Compile UI components
-    javac -d target/classes -cp target/classes `
-        src/ui/components/SplashScreen.java 2>&1
     
     # Compile launcher
     javac -d target/classes -cp target/classes `

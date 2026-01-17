@@ -26,12 +26,16 @@ cd "$SCRIPT_DIR"
 echo -e "${BLUE}[1/3]${NC} Checking Java installation..."
 if ! command -v java &> /dev/null; then
     echo -e "${RED}ERROR: Java is not installed or not in PATH${NC}"
-    echo "Please install Java 17 or higher:"
-    echo "  sudo apt update && sudo apt install openjdk-17-jdk"
+    echo "Please install Java 21 or higher:"
+    echo "  sudo apt update && sudo apt install openjdk-21-jdk"
     exit 1
 fi
 
 JAVA_VERSION=$(java -version 2>&1 | head -n 1 | cut -d'"' -f2 | cut -d'.' -f1)
+if [ "$JAVA_VERSION" -lt 21 ]; then
+    echo -e "${RED}ERROR: Java version $JAVA_VERSION found, but Java 21 or higher is required${NC}"
+    exit 1
+fi
 echo -e "${GREEN}✓${NC} Java found (version $JAVA_VERSION)"
 
 # Check/compile sources
@@ -51,10 +55,10 @@ if [ ! -f "target/classes/GuiLauncher.class" ]; then
     javac -d target/classes -cp target/classes \
         src/Node.java src/Edge.java src/Properties.java src/Cluster.java \
         src/Graph.java src/Label.java src/Function.java src/BreakPoint.java \
-        src/Query.java src/Result.java src/LabelCache.java src/BidirectionalLabeling.java \
+        src/Query.java src/Result.java src/RushHour.java src/LabelCache.java src/BidirectionalLabeling.java \
         src/BidirectionalAstar.java src/BidirectionalDriver.java \
         src/DatasetDownloader.java src/GoogleDriveConfigHelper.java \
-        src/GoogleDriveDatasetLoader.java 2>&1
+        src/GoogleDriveDatasetLoader.java src/DebugQuery.java src/ParetoPathFinder.java src/ParetoWidenessTest.java 2>&1
     
     # Compile managers
     javac -d target/classes -cp target/classes \
@@ -66,7 +70,7 @@ if [ ! -f "target/classes/GuiLauncher.class" ]; then
     
     # Compile UI components first (LogViewerWindow is needed by QueryHistoryPanel)
     javac -d target/classes -cp target/classes \
-        src/ui/components/*.java 2>&1
+        src/ui/components/SplashScreen.java src/ui/components/LogViewerWindow.java 2>&1
     
     # Compile UI panels
     javac -d target/classes -cp target/classes \
@@ -104,7 +108,8 @@ echo ""
 java -Dsun.java2d.uiScale=1.0 \
      -Dswing.aatext=true \
      -Dawt.useSystemAAFontSettings=on \
-     -Xmx2g \
+     -Xms1g \
+     -Xmx25g \
      -cp "target/classes" \
      GuiLauncher
 
