@@ -78,13 +78,24 @@ public class Edge {
 		double x1, x2, y1, y2;
 		Entry<Integer, Properties> element = get_itr(arrival_time);
 		
+		// Guard against null element (empty time_property or no matching entry)
+		if (element == null) {
+			return arrival_time; // Return input time if no time property found
+		}
+		
 		if(arrival_time==element.getKey()){
 			x2 = element.getKey();
 			y2 = element.getKey() + element.getValue().get_value();
 
 			Entry<Integer, Properties> previous_element = this.time_property.lowerEntry(element.getKey());
-			x1 = previous_element.getKey();
-			y1 = previous_element.getKey() + previous_element.getValue().get_value();
+			if (previous_element == null) {
+				// No previous entry - use current element for both points
+				x1 = element.getKey();
+				y1 = element.getKey() + element.getValue().get_value();
+			} else {
+				x1 = previous_element.getKey();
+				y1 = previous_element.getKey() + previous_element.getValue().get_value();
+			}
 		}
 		else{
 			x1 = element.getKey();
@@ -139,6 +150,11 @@ public class Edge {
 	}
 
 	private	Entry<Integer, Properties> get_itr(double time){
+		// Guard against empty or null time_property map
+		if (this.time_property == null || this.time_property.isEmpty()) {
+			return null;
+		}
+		
 		Entry<Integer, Properties> final_itr = null;
 		
 		for(Entry<Integer, Properties> element : this.time_property.entrySet()) {

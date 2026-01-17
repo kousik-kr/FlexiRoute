@@ -169,8 +169,8 @@ public class BidirectionalDriver {
 			ForkJoinTask<?> forwardFuture = BidirectionalAstar.pool.submit(forward_task);
 			ForkJoinTask<?> backwardFuture = BidirectionalAstar.pool.submit(backward_task);
 			
-			// Add timeout to prevent infinite hangs (30 seconds per task)
-			final long LABELING_TIMEOUT_SECONDS = 30;
+			// Add timeout to prevent infinite hangs (5 seconds per task - reduced for responsiveness)
+			final long LABELING_TIMEOUT_SECONDS = 5;
 			boolean forwardCompleted = false, backwardCompleted = false;
 			
 			try {

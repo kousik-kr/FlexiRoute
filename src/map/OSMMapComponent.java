@@ -18,11 +18,13 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.awt.event.MouseWheelEvent;
+import java.awt.geom.Ellipse2D;
 import java.awt.geom.Point2D;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -34,6 +36,7 @@ import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JToggleButton;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
@@ -72,6 +75,27 @@ public class OSMMapComponent extends JPanel implements TileProvider.TileLoadList
     private static final Color ACCENT_COLOR = new Color(59, 130, 246);
     private static final Color VIVID_PURPLE = new Color(168, 85, 247);
     
+    // === NODE SELECTION MODE ===
+    public enum NodeSelectionMode {
+        NONE,           // Normal pan/zoom mode
+        SELECT_SOURCE,  // Click to select source node
+        SELECT_DEST     // Click to select destination node
+    }
+    
+    // Node selection callback interface
+    public interface NodeSelectionListener {
+        void onNodeSelected(int nodeId, double lat, double lon, boolean isSource);
+    }
+    
+    // Interface for finding nearest node (to be implemented by caller that has access to Graph)
+    public interface NearestNodeFinder {
+        /**
+         * Find the nearest node to given lat/lon coordinates
+         * @return array of [nodeId, nodeLat, nodeLon] or null if not found
+         */
+        double[] findNearestNode(double lat, double lon);
+    }
+    
     // === COMPONENTS ===
     private final TileProvider tileProvider;
     private final CoordinateConverter converter;
@@ -95,6 +119,22 @@ public class OSMMapComponent extends JPanel implements TileProvider.TileLoadList
     // Preview state
     private double[] previewSourceCoord;
     private double[] previewDestCoord;
+    
+    // Node selection state
+    private NodeSelectionMode selectionMode = NodeSelectionMode.NONE;
+    private NodeSelectionListener nodeSelectionListener;
+    private NearestNodeFinder nearestNodeFinder;
+    private Integer selectedSourceNodeId = null;
+    private Integer selectedDestNodeId = null;
+    private double[] selectedSourceCoord = null;
+    private double[] selectedDestCoord = null;
+    private Point hoverPoint = null;  // Current mouse position for hover effect
+    private int nearestNodeIdUnderMouse = -1;  // Node ID nearest to mouse in selection mode
+    private double[] nearestNodeCoordUnderMouse = null;
+    
+    // Selection mode UI elements
+    private JToggleButton selectSourceBtn;
+    private JToggleButton selectDestBtn;
     
     // Interaction state
     private Point dragStart;
@@ -216,7 +256,12 @@ public class OSMMapComponent extends JPanel implements TileProvider.TileLoadList
             @Override
             public void mouseClicked(MouseEvent e) {
                 if (SwingUtilities.isLeftMouseButton(e) && !isDragging) {
-                    handleRouteClick(e.getPoint());
+                    // Check if we're in node selection mode
+                    if (selectionMode != NodeSelectionMode.NONE) {
+                        handleNodeSelection(e.getPoint());
+                    } else {
+                        handleRouteClick(e.getPoint());
+                    }
                 }
             }
         });
@@ -230,6 +275,21 @@ public class OSMMapComponent extends JPanel implements TileProvider.TileLoadList
                     converter.addPanOffset(dx, dy);
                     dragStart = e.getPoint();
                     repaint();
+                }
+            }
+            
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                // Track hover point for selection mode feedback
+                if (selectionMode != NodeSelectionMode.NONE) {
+                    hoverPoint = e.getPoint();
+                    updateNearestNodeUnderMouse(e.getPoint());
+                    setCursor(Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR));
+                    repaint();
+                } else {
+                    hoverPoint = null;
+                    nearestNodeIdUnderMouse = -1;
+                    nearestNodeCoordUnderMouse = null;
                 }
             }
         });
@@ -323,6 +383,92 @@ public class OSMMapComponent extends JPanel implements TileProvider.TileLoadList
         JButton clearMap = createToolbarButton("🗑️ Clear", "Clear Map");
         clearMap.addActionListener(e -> clearMap());
         toolbar.add(clearMap);
+        
+        toolbar.add(Box.createHorizontalStrut(15));
+        
+        // === NODE SELECTION BUTTONS ===
+        JLabel selectLabel = new JLabel("📍 Select: ");
+        selectLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        selectLabel.setForeground(new Color(16, 185, 129));
+        toolbar.add(selectLabel);
+        
+        selectSourceBtn = new JToggleButton("🟢 Source") {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                if (isSelected()) {
+                    g2d.setColor(new Color(16, 185, 129, 50));
+                    g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
+                    g2d.setColor(new Color(16, 185, 129));
+                    g2d.setStroke(new BasicStroke(2));
+                    g2d.drawRoundRect(1, 1, getWidth()-3, getHeight()-3, 8, 8);
+                }
+                g2d.dispose();
+                super.paintComponent(g);
+            }
+        };
+        selectSourceBtn.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        selectSourceBtn.setToolTipText("Click on map to select source node");
+        selectSourceBtn.setFocusPainted(false);
+        selectSourceBtn.setBorderPainted(false);
+        selectSourceBtn.setContentAreaFilled(false);
+        selectSourceBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        selectSourceBtn.setPreferredSize(new Dimension(90, 28));
+        selectSourceBtn.setMaximumSize(new Dimension(90, 28));
+        selectSourceBtn.addActionListener(e -> {
+            if (selectSourceBtn.isSelected()) {
+                selectionMode = NodeSelectionMode.SELECT_SOURCE;
+                selectDestBtn.setSelected(false);
+                setCursor(Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR));
+            } else {
+                selectionMode = NodeSelectionMode.NONE;
+                setCursor(Cursor.getDefaultCursor());
+                hoverPoint = null;
+                repaint();
+            }
+        });
+        toolbar.add(selectSourceBtn);
+        
+        toolbar.add(Box.createHorizontalStrut(5));
+        
+        selectDestBtn = new JToggleButton("🔴 Dest") {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                if (isSelected()) {
+                    g2d.setColor(new Color(255, 107, 107, 50));
+                    g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
+                    g2d.setColor(new Color(255, 107, 107));
+                    g2d.setStroke(new BasicStroke(2));
+                    g2d.drawRoundRect(1, 1, getWidth()-3, getHeight()-3, 8, 8);
+                }
+                g2d.dispose();
+                super.paintComponent(g);
+            }
+        };
+        selectDestBtn.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        selectDestBtn.setToolTipText("Click on map to select destination node");
+        selectDestBtn.setFocusPainted(false);
+        selectDestBtn.setBorderPainted(false);
+        selectDestBtn.setContentAreaFilled(false);
+        selectDestBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        selectDestBtn.setPreferredSize(new Dimension(80, 28));
+        selectDestBtn.setMaximumSize(new Dimension(80, 28));
+        selectDestBtn.addActionListener(e -> {
+            if (selectDestBtn.isSelected()) {
+                selectionMode = NodeSelectionMode.SELECT_DEST;
+                selectSourceBtn.setSelected(false);
+                setCursor(Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR));
+            } else {
+                selectionMode = NodeSelectionMode.NONE;
+                setCursor(Cursor.getDefaultCursor());
+                hoverPoint = null;
+                repaint();
+            }
+        });
+        toolbar.add(selectDestBtn);
         
         toolbar.add(Box.createHorizontalStrut(10));
         
@@ -451,6 +597,14 @@ public class OSMMapComponent extends JPanel implements TileProvider.TileLoadList
             }
             // Don't render empty state - let the tiles show through
             
+            // Render selected source/destination markers
+            renderSelectedNodes(g2d);
+            
+            // Render hover effect in selection mode
+            if (selectionMode != NodeSelectionMode.NONE) {
+                renderSelectionModeOverlay(g2d);
+            }
+            
             // Info overlay
             if (showLabels) {
                 renderInfoOverlay(g2d);
@@ -499,6 +653,93 @@ public class OSMMapComponent extends JPanel implements TileProvider.TileLoadList
             selectedPath = null;
         }
         repaint();
+    }
+    
+    /**
+     * Handle node selection when in selection mode
+     */
+    private void handleNodeSelection(Point clickPoint) {
+        if (nearestNodeFinder == null) {
+            JOptionPane.showMessageDialog(this, 
+                "Node selection not available. Please load a dataset first.", 
+                "No Dataset", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        
+        // Convert click point to lat/lon
+        double[] latLon = converter.pixelToLatLon(clickPoint.x, clickPoint.y);
+        double clickLat = latLon[0];
+        double clickLon = latLon[1];
+        
+        // Find nearest node using the external finder
+        double[] nearestResult = nearestNodeFinder.findNearestNode(clickLat, clickLon);
+        
+        if (nearestResult == null) {
+            JOptionPane.showMessageDialog(this, 
+                "No nodes found! Please load a dataset first.", 
+                "No Nodes", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        
+        int nearestNodeId = (int) nearestResult[0];
+        double nodeLat = nearestResult[1];
+        double nodeLon = nearestResult[2];
+        
+        // Store selection based on mode
+        if (selectionMode == NodeSelectionMode.SELECT_SOURCE) {
+            selectedSourceNodeId = nearestNodeId;
+            selectedSourceCoord = new double[] { nodeLat, nodeLon };
+            
+            // Notify listener
+            if (nodeSelectionListener != null) {
+                nodeSelectionListener.onNodeSelected(nearestNodeId, nodeLat, nodeLon, true);
+            }
+            
+            // Auto-switch to destination selection for convenience
+            selectionMode = NodeSelectionMode.SELECT_DEST;
+            selectSourceBtn.setSelected(false);
+            selectDestBtn.setSelected(true);
+            
+        } else if (selectionMode == NodeSelectionMode.SELECT_DEST) {
+            selectedDestNodeId = nearestNodeId;
+            selectedDestCoord = new double[] { nodeLat, nodeLon };
+            
+            // Notify listener
+            if (nodeSelectionListener != null) {
+                nodeSelectionListener.onNodeSelected(nearestNodeId, nodeLat, nodeLon, false);
+            }
+            
+            // Exit selection mode
+            selectionMode = NodeSelectionMode.NONE;
+            selectSourceBtn.setSelected(false);
+            selectDestBtn.setSelected(false);
+            setCursor(Cursor.getDefaultCursor());
+            hoverPoint = null;
+        }
+        
+        repaint();
+    }
+    
+    /**
+     * Update nearest node tracking for hover effect
+     */
+    private void updateNearestNodeUnderMouse(Point mousePoint) {
+        if (nearestNodeFinder == null) {
+            nearestNodeIdUnderMouse = -1;
+            nearestNodeCoordUnderMouse = null;
+            return;
+        }
+        
+        double[] latLon = converter.pixelToLatLon(mousePoint.x, mousePoint.y);
+        double[] nearestResult = nearestNodeFinder.findNearestNode(latLon[0], latLon[1]);
+        
+        if (nearestResult != null) {
+            nearestNodeIdUnderMouse = (int) nearestResult[0];
+            nearestNodeCoordUnderMouse = new double[] { nearestResult[1], nearestResult[2] };
+        } else {
+            nearestNodeIdUnderMouse = -1;
+            nearestNodeCoordUnderMouse = null;
+        }
     }
     
     /**
@@ -668,6 +909,167 @@ public class OSMMapComponent extends JPanel implements TileProvider.TileLoadList
         g2d.setFont(new Font("Segoe UI", Font.ITALIC, 9));
         g2d.setColor(TEXT_SECONDARY);
         g2d.drawString("Click elsewhere to close", popupX + padding + 4, popupY + popupHeight - 6);
+    }
+    
+    /**
+     * Render selected source and destination node markers
+     */
+    private void renderSelectedNodes(Graphics2D g2d) {
+        // Define colors for markers
+        Color sourceColor = new Color(16, 185, 129);  // Green
+        Color destColor = new Color(255, 107, 107);   // Coral/Red
+        
+        // Render selected source marker
+        if (selectedSourceCoord != null) {
+            Point2D.Double pos = converter.latLonToPixel(selectedSourceCoord[0], selectedSourceCoord[1]);
+            renderNodeMarker(g2d, (int) pos.x, (int) pos.y, sourceColor, "S", selectedSourceNodeId);
+        }
+        
+        // Render selected destination marker
+        if (selectedDestCoord != null) {
+            Point2D.Double pos = converter.latLonToPixel(selectedDestCoord[0], selectedDestCoord[1]);
+            renderNodeMarker(g2d, (int) pos.x, (int) pos.y, destColor, "D", selectedDestNodeId);
+        }
+    }
+    
+    /**
+     * Render a single node marker with pin style
+     */
+    private void renderNodeMarker(Graphics2D g2d, int x, int y, Color color, String label, Integer nodeId) {
+        int markerSize = 32;
+        int pinHeight = 12;
+        
+        // Draw shadow
+        g2d.setColor(new Color(0, 0, 0, 50));
+        g2d.fill(new Ellipse2D.Double(x - markerSize/2 + 3, y - markerSize - pinHeight + 3, markerSize, markerSize));
+        
+        // Draw pin point (triangle)
+        int[] pinXPoints = { x - 6, x + 6, x };
+        int[] pinYPoints = { y - markerSize/2 - pinHeight + 6, y - markerSize/2 - pinHeight + 6, y };
+        g2d.setColor(color.darker());
+        g2d.fillPolygon(pinXPoints, pinYPoints, 3);
+        
+        // Draw main circle
+        g2d.setColor(color);
+        g2d.fill(new Ellipse2D.Double(x - markerSize/2, y - markerSize - pinHeight, markerSize, markerSize));
+        
+        // Draw border
+        g2d.setColor(Color.WHITE);
+        g2d.setStroke(new BasicStroke(3));
+        g2d.draw(new Ellipse2D.Double(x - markerSize/2, y - markerSize - pinHeight, markerSize, markerSize));
+        
+        // Draw inner highlight
+        g2d.setColor(new Color(255, 255, 255, 100));
+        g2d.fill(new Ellipse2D.Double(x - markerSize/2 + 4, y - markerSize - pinHeight + 4, markerSize/2 - 4, markerSize/2 - 4));
+        
+        // Draw label
+        g2d.setColor(Color.WHITE);
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        FontMetrics fm = g2d.getFontMetrics();
+        int labelX = x - fm.stringWidth(label) / 2;
+        int labelY = y - markerSize/2 - pinHeight + fm.getAscent()/2 + 4;
+        g2d.drawString(label, labelX, labelY);
+        
+        // Draw node ID tooltip below marker
+        if (nodeId != null) {
+            String idText = "Node: " + nodeId;
+            g2d.setFont(new Font("Segoe UI", Font.BOLD, 11));
+            fm = g2d.getFontMetrics();
+            int tooltipWidth = fm.stringWidth(idText) + 10;
+            int tooltipHeight = 18;
+            int tooltipX = x - tooltipWidth/2;
+            int tooltipY = y + 5;
+            
+            // Tooltip background
+            g2d.setColor(new Color(50, 50, 50, 220));
+            g2d.fillRoundRect(tooltipX, tooltipY, tooltipWidth, tooltipHeight, 6, 6);
+            
+            // Tooltip text
+            g2d.setColor(Color.WHITE);
+            g2d.drawString(idText, tooltipX + 5, tooltipY + 13);
+        }
+    }
+    
+    /**
+     * Render selection mode overlay showing hover effect and instructions
+     */
+    private void renderSelectionModeOverlay(Graphics2D g2d) {
+        Color modeColor = selectionMode == NodeSelectionMode.SELECT_SOURCE ? 
+            new Color(16, 185, 129) : new Color(255, 107, 107);
+        String modeText = selectionMode == NodeSelectionMode.SELECT_SOURCE ? 
+            "📍 Click to select SOURCE node" : "🎯 Click to select DESTINATION node";
+        
+        // Draw instruction banner at top
+        int bannerHeight = 36;
+        g2d.setColor(new Color(modeColor.getRed(), modeColor.getGreen(), modeColor.getBlue(), 230));
+        g2d.fillRect(0, 48, getWidth(), bannerHeight);
+        
+        // Banner text
+        g2d.setColor(Color.WHITE);
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        FontMetrics fm = g2d.getFontMetrics();
+        g2d.drawString(modeText, (getWidth() - fm.stringWidth(modeText)) / 2, 48 + 24);
+        
+        // Draw hover indicator showing nearest node
+        if (nearestNodeCoordUnderMouse != null && nearestNodeIdUnderMouse != -1) {
+            Point2D.Double nodePos = converter.latLonToPixel(nearestNodeCoordUnderMouse[0], nearestNodeCoordUnderMouse[1]);
+            int nx = (int) nodePos.x;
+            int ny = (int) nodePos.y;
+            
+            // Pulsing effect
+            float pulse = (float) (1.0 + 0.3 * Math.sin(System.currentTimeMillis() / 150.0));
+            int pulseSize = (int) (20 * pulse);
+            
+            // Draw outer pulsing ring
+            g2d.setColor(new Color(modeColor.getRed(), modeColor.getGreen(), modeColor.getBlue(), 80));
+            g2d.setStroke(new BasicStroke(3));
+            g2d.draw(new Ellipse2D.Double(nx - pulseSize, ny - pulseSize, pulseSize * 2, pulseSize * 2));
+            
+            // Draw crosshair at node position
+            g2d.setColor(modeColor);
+            g2d.setStroke(new BasicStroke(2));
+            g2d.drawLine(nx - 15, ny, nx - 5, ny);
+            g2d.drawLine(nx + 5, ny, nx + 15, ny);
+            g2d.drawLine(nx, ny - 15, nx, ny - 5);
+            g2d.drawLine(nx, ny + 5, nx, ny + 15);
+            
+            // Draw center dot
+            g2d.setColor(modeColor);
+            g2d.fill(new Ellipse2D.Double(nx - 4, ny - 4, 8, 8));
+            g2d.setColor(Color.WHITE);
+            g2d.fill(new Ellipse2D.Double(nx - 2, ny - 2, 4, 4));
+            
+            // Draw node ID hover tooltip
+            String hoverText = "Node " + nearestNodeIdUnderMouse;
+            g2d.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            fm = g2d.getFontMetrics();
+            int tooltipWidth = fm.stringWidth(hoverText) + 12;
+            int tooltipHeight = 22;
+            int tooltipX = nx - tooltipWidth / 2;
+            int tooltipY = ny + 25;
+            
+            // Keep tooltip on screen
+            if (tooltipX < 5) tooltipX = 5;
+            if (tooltipX + tooltipWidth > getWidth() - 5) tooltipX = getWidth() - tooltipWidth - 5;
+            
+            // Tooltip background
+            g2d.setColor(new Color(modeColor.getRed(), modeColor.getGreen(), modeColor.getBlue(), 240));
+            g2d.fillRoundRect(tooltipX, tooltipY, tooltipWidth, tooltipHeight, 8, 8);
+            g2d.setColor(Color.WHITE);
+            g2d.setStroke(new BasicStroke(1));
+            g2d.drawRoundRect(tooltipX, tooltipY, tooltipWidth, tooltipHeight, 8, 8);
+            
+            // Tooltip text
+            g2d.drawString(hoverText, tooltipX + 6, tooltipY + 16);
+        }
+        
+        // Trigger repaint for animation
+        if (selectionMode != NodeSelectionMode.NONE) {
+            SwingUtilities.invokeLater(() -> {
+                try { Thread.sleep(50); } catch (InterruptedException ignored) {}
+                repaint();
+            });
+        }
     }
     
     private void renderTiles(Graphics2D g2d) {
@@ -856,6 +1258,99 @@ public class OSMMapComponent extends JPanel implements TileProvider.TileLoadList
     }
     
     // === PUBLIC API ===
+    
+    /**
+     * Set the node selection listener
+     */
+    public void setNodeSelectionListener(NodeSelectionListener listener) {
+        this.nodeSelectionListener = listener;
+    }
+    
+    /**
+     * Set the nearest node finder (required for node selection to work)
+     */
+    public void setNearestNodeFinder(NearestNodeFinder finder) {
+        this.nearestNodeFinder = finder;
+    }
+    
+    /**
+     * Get current node selection mode
+     */
+    public NodeSelectionMode getSelectionMode() {
+        return selectionMode;
+    }
+    
+    /**
+     * Set node selection mode programmatically
+     */
+    public void setSelectionMode(NodeSelectionMode mode) {
+        this.selectionMode = mode;
+        if (selectSourceBtn != null && selectDestBtn != null) {
+            selectSourceBtn.setSelected(mode == NodeSelectionMode.SELECT_SOURCE);
+            selectDestBtn.setSelected(mode == NodeSelectionMode.SELECT_DEST);
+        }
+        if (mode == NodeSelectionMode.NONE) {
+            setCursor(Cursor.getDefaultCursor());
+            hoverPoint = null;
+        } else {
+            setCursor(Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR));
+        }
+        repaint();
+    }
+    
+    /**
+     * Get selected source node ID
+     */
+    public Integer getSelectedSourceNodeId() {
+        return selectedSourceNodeId;
+    }
+    
+    /**
+     * Get selected destination node ID
+     */
+    public Integer getSelectedDestNodeId() {
+        return selectedDestNodeId;
+    }
+    
+    /**
+     * Set selected source node (from external input like QueryPanel)
+     * @param nodeId The node ID
+     * @param lat Latitude of the node
+     * @param lon Longitude of the node
+     */
+    public void setSelectedSource(int nodeId, double lat, double lon) {
+        this.selectedSourceNodeId = nodeId;
+        this.selectedSourceCoord = new double[] { lat, lon };
+        repaint();
+    }
+    
+    /**
+     * Set selected destination node (from external input like QueryPanel)
+     * @param nodeId The node ID
+     * @param lat Latitude of the node
+     * @param lon Longitude of the node
+     */
+    public void setSelectedDestination(int nodeId, double lat, double lon) {
+        this.selectedDestNodeId = nodeId;
+        this.selectedDestCoord = new double[] { lat, lon };
+        repaint();
+    }
+    
+    /**
+     * Clear all node selections
+     */
+    public void clearNodeSelections() {
+        this.selectedSourceNodeId = null;
+        this.selectedDestNodeId = null;
+        this.selectedSourceCoord = null;
+        this.selectedDestCoord = null;
+        this.selectionMode = NodeSelectionMode.NONE;
+        if (selectSourceBtn != null) selectSourceBtn.setSelected(false);
+        if (selectDestBtn != null) selectDestBtn.setSelected(false);
+        setCursor(Cursor.getDefaultCursor());
+        hoverPoint = null;
+        repaint();
+    }
     
     /**
      * Set the route path to display

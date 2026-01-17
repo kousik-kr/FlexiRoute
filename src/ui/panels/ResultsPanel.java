@@ -70,6 +70,9 @@ public class ResultsPanel extends JPanel {
     private Timer animationTimer;
     private float animProgress = 0f;
     
+    // Callback for clear action (to cancel queries)
+    private Runnable onClear;
+    
     public ResultsPanel() {
         setLayout(new BorderLayout(0, 20));
         setBackground(BG_SURFACE);
@@ -573,6 +576,11 @@ public class ResultsPanel extends JPanel {
     }
     
     private void clearOutput() {
+        // Also trigger the clear callback to cancel any ongoing query
+        if (onClear != null) {
+            onClear.run();
+        }
+        
         currentResult = null;
         showEmptyState();
         
@@ -686,5 +694,49 @@ public class ResultsPanel extends JPanel {
         statusLabel.setText("❌ Query failed");
         statusLabel.setForeground(new Color(244, 67, 54));
         pathDetailsArea.setText("ERROR: " + message);
+    }
+    
+    /**
+     * Set the callback that will be called when clear is triggered
+     * This allows GuiLauncher to cancel ongoing queries
+     */
+    public void setOnClear(Runnable callback) {
+        this.onClear = callback;
+    }
+    
+    /**
+     * Public method to clear results - triggers the callback to cancel queries
+     */
+    public void clearResults() {
+        clearOutput();
+    }
+    
+    /**
+     * Internal method to clear results WITHOUT triggering the callback
+     * Used by GuiLauncher to avoid recursion when it already cancelled the query
+     */
+    public void clearResultsInternal() {
+        currentResult = null;
+        showEmptyState();
+        
+        // Reset stat cards
+        updateStatCard("Time", "--");
+        updateStatCard("Nodes", "--");
+        updateStatCard("Distance", "--");
+        updateStatCard("Cost", "--");
+        updateStatCard("Wide %", "--");
+        
+        // Reset progress bar
+        widePathBar.setValue(0);
+        widePathBar.setString("0% wide roads");
+        
+        // Reset status
+        statusLabel.setText("🚀 Run a query to see results");
+        statusLabel.setForeground(TEXT_SECONDARY);
+        
+        // Disable export buttons
+        exportJsonButton.setEnabled(false);
+        exportCsvButton.setEnabled(false);
+        copyButton.setEnabled(false);
     }
 }

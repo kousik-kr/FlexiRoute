@@ -60,6 +60,7 @@ public class QueryPanel extends JPanel {
     
     // Callbacks
     private Runnable onRunQuery;
+    private Runnable onClear;
     private java.util.function.BiConsumer<Integer, Integer> onPreviewChange;
     
     private int maxNodeId = 21048;
@@ -259,6 +260,10 @@ public class QueryPanel extends JPanel {
             intervalSlider.setValue(10);
             budgetSlider.setValue(60);
             updateStatus();
+            // Also trigger the clear callback to cancel any ongoing query
+            if (onClear != null) {
+                onClear.run();
+            }
         }));
         
         return panel;
@@ -523,6 +528,7 @@ public class QueryPanel extends JPanel {
     // === PUBLIC API ===
     
     public void setOnRunQuery(Runnable callback) { this.onRunQuery = callback; }
+    public void setOnClear(Runnable callback) { this.onClear = callback; }
     public void setOnPreviewChange(java.util.function.BiConsumer<Integer, Integer> callback) { this.onPreviewChange = callback; }
     
     public int getSource() { return Integer.parseInt(sourceField.getText().trim()); }

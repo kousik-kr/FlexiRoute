@@ -20,7 +20,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
@@ -128,6 +131,11 @@ public class GuiLauncher extends JFrame {
     private Result lastResult;
     private boolean isDarkMode = false;
     private ExecutorService executor = Executors.newSingleThreadExecutor();
+    
+    // === QUERY EXECUTION STATE ===
+    private volatile Future<?> currentQueryFuture = null;
+    private volatile AtomicBoolean queryCancelled = new AtomicBoolean(false);
+    private static final int QUERY_TIMEOUT_SECONDS = 10; // Timeout for query execution
     
     public GuiLauncher() {
         super(APP_TITLE);
@@ -263,6 +271,8 @@ public class GuiLauncher extends JFrame {
         runQuery.addActionListener(e -> executeQuery());
         
         JMenuItem clearResults = new JMenuItem("Clear Results", KeyEvent.VK_C);
+        clearResults.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0));
+        clearResults.addActionListener(e -> clearMapView());  // Cancels query and clears map
         
         queryMenu.add(runQuery);
         queryMenu.addSeparator();
@@ -322,6 +332,7 @@ public class GuiLauncher extends JFrame {
         // Set callbacks
         queryPanel.setOnRunQuery(this::executeQuery);
         queryPanel.setOnPreviewChange(this::updateQueryPreview);
+        queryPanel.setOnClear(this::clearMapView);  // Clear button cancels query
         
         // Right side: Tabbed pane with map and results
         rightTabs = new JTabbedPane(JTabbedPane.TOP);
@@ -340,6 +351,53 @@ public class GuiLauncher extends JFrame {
         osmMapComponent = new OSMMapComponent();
         mapContainer.add(osmMapComponent, MapViewMode.OSM_TILES.name());
         
+        // Set up nearest node finder for map click selection
+        osmMapComponent.setNearestNodeFinder((lat, lon) -> {
+            Map<Integer, Node> nodes = Graph.get_nodes();
+            if (nodes == null || nodes.isEmpty()) {
+                return null;
+            }
+            
+            int nearestNodeId = -1;
+            double minDistSq = Double.MAX_VALUE;
+            double nearestLat = 0, nearestLon = 0;
+            
+            // Search through all nodes
+            for (Map.Entry<Integer, Node> entry : nodes.entrySet()) {
+                Node node = entry.getValue();
+                double nodeLat = node.get_latitude();
+                double nodeLon = node.get_longitude();
+                
+                // Simple Euclidean distance for quick calculation
+                double dLat = nodeLat - lat;
+                double dLon = nodeLon - lon;
+                double distSq = dLat * dLat + dLon * dLon;
+                
+                if (distSq < minDistSq) {
+                    minDistSq = distSq;
+                    nearestNodeId = entry.getKey();
+                    nearestLat = nodeLat;
+                    nearestLon = nodeLon;
+                }
+            }
+            
+            if (nearestNodeId == -1) return null;
+            return new double[] { nearestNodeId, nearestLat, nearestLon };
+        });
+        
+        // Set up node selection listener to update QueryPanel
+        osmMapComponent.setNodeSelectionListener((nodeId, lat, lon, isSource) -> {
+            if (isSource) {
+                queryPanel.setSource(nodeId);
+                updateStatus("📍 Source node selected: " + nodeId + " (lat: " + 
+                            String.format("%.4f", lat) + ", lon: " + String.format("%.4f", lon) + ")");
+            } else {
+                queryPanel.setDestination(nodeId);
+                updateStatus("🎯 Destination node selected: " + nodeId + " (lat: " + 
+                            String.format("%.4f", lat) + ", lon: " + String.format("%.4f", lon) + ")");
+            }
+        });
+        
         // Map view with toolbar
         JPanel mapViewPanel = new JPanel(new BorderLayout(0, 0));
         mapViewPanel.add(createMapToolbar(), BorderLayout.NORTH);
@@ -349,6 +407,7 @@ public class GuiLauncher extends JFrame {
         
         // Results Panel
         resultsPanel = new ResultsPanel();
+        resultsPanel.setOnClear(this::clearMapView);  // Clear button in results cancels query
         rightTabs.addTab("📊 Results", resultsPanel);
         
         // Metrics Dashboard
@@ -559,13 +618,34 @@ public class GuiLauncher extends JFrame {
     }
     
     private void clearMapView() {
+        // Cancel any ongoing query first
+        cancelCurrentQuery();
+        
         if (currentMapMode == MapViewMode.OSM_TILES) {
             osmMapComponent.clearMap();
-            updateStatus("🗑️ Map cleared");
+            updateStatus("🗑️ Map cleared & query cancelled");
         } else {
             mapPanel.clearMap();
             mapPanel.repaint();
-            updateStatus("🗑️ Map cleared");
+            updateStatus("🗑️ Map cleared & query cancelled");
+        }
+        
+        // Reset query panel state
+        queryPanel.setRunning(false);
+        // Clear results without triggering callback (to avoid recursion)
+        resultsPanel.clearResultsInternal();
+    }
+    
+    /**
+     * Cancel any currently running query
+     */
+    private void cancelCurrentQuery() {
+        queryCancelled.set(true);
+        if (currentQueryFuture != null && !currentQueryFuture.isDone()) {
+            System.out.println("[Query] Cancelling current query...");
+            currentQueryFuture.cancel(true);
+            currentQueryFuture = null;
+            setStatus("🛑 Query cancelled");
         }
     }
     
@@ -961,6 +1041,10 @@ public class GuiLauncher extends JFrame {
     }
     
     private void executeQuery() {
+        // Cancel any previous running query first
+        cancelCurrentQuery();
+        queryCancelled.set(false);
+        
         int source = queryPanel.getSource();
         int dest = queryPanel.getDestination();
         int departure = queryPanel.getDeparture();
@@ -972,24 +1056,72 @@ public class GuiLauncher extends JFrame {
         
         System.out.println("[GUI] executeQuery: routingMode = " + routingMode + " (" + routingMode.getDisplayName() + ")");
         
-        setStatus("Running query: " + source + " → " + dest + " (mode: " + routingMode.getDisplayName() + ")");
+        setStatus("Running query: " + source + " → " + dest + " (mode: " + routingMode.getDisplayName() + ", timeout: " + QUERY_TIMEOUT_SECONDS + "s)");
         queryPanel.setRunning(true);
         resultsPanel.showLoading();
         mapPanel.clearQueryPreview();
         mapPanel.setSearchProgress(0, "Initializing search...");
         
-        executor.submit(() -> {
+        // Store reference to the current query future for cancellation
+        currentQueryFuture = executor.submit(() -> {
             try {
                 long startTime = System.currentTimeMillis();
+                
+                // Check if cancelled before starting
+                if (queryCancelled.get()) {
+                    System.out.println("[Query] Cancelled before start");
+                    return;
+                }
                 
                 // Update progress
                 SwingUtilities.invokeLater(() -> mapPanel.setSearchProgress(10, "Setting up bidirectional search..."));
                 
                 SwingUtilities.invokeLater(() -> mapPanel.setSearchProgress(30, "Expanding labels..."));
                 
-                // Use the existing BidirectionalAstar.runSingleQuery with routing mode
+                // Run the query with timeout using a separate thread
                 BidirectionalAstar.setIntervalDuration(interval);
-                Result result = BidirectionalAstar.runSingleQuery(source, dest, departure, interval, budget, routingMode);
+                
+                // Create a callable for the actual query
+                java.util.concurrent.Callable<Result> queryTask = () -> 
+                    BidirectionalAstar.runSingleQuery(source, dest, departure, interval, budget, routingMode);
+                
+                java.util.concurrent.ExecutorService queryExecutor = java.util.concurrent.Executors.newSingleThreadExecutor();
+                java.util.concurrent.Future<Result> queryFuture = queryExecutor.submit(queryTask);
+                
+                Result result = null;
+                try {
+                    result = queryFuture.get(QUERY_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                } catch (TimeoutException te) {
+                    System.out.println("[Query] Query timed out after " + QUERY_TIMEOUT_SECONDS + " seconds");
+                    queryFuture.cancel(true);
+                    
+                    // Return empty result on timeout
+                    result = new Result(departure, 0, 0, 0, 0, 0, new ArrayList<>(), new ArrayList<>());
+                    result.setSource(source);
+                    result.setDestination(dest);
+                    result.setBudget(budget);
+                    result.setExecutionTime(System.currentTimeMillis() - startTime);
+                    result.setRoutingMode(routingMode);
+                    
+                    final Result timeoutResult = result;
+                    SwingUtilities.invokeLater(() -> {
+                        mapPanel.setSearchProgress(100, "Timed out!");
+                        mapPanel.clearSearchFrontier();
+                        queryPanel.setRunning(false);
+                        setStatus("⏱️ Query timed out after " + QUERY_TIMEOUT_SECONDS + "s - No path found within time limit");
+                        resultsPanel.showError("Query timed out after " + QUERY_TIMEOUT_SECONDS + " seconds. Try a shorter distance or simpler query.");
+                    });
+                    queryExecutor.shutdownNow();
+                    return;
+                } finally {
+                    queryExecutor.shutdownNow();
+                }
+                
+                // Check if cancelled after query completed
+                if (queryCancelled.get()) {
+                    System.out.println("[Query] Cancelled after completion");
+                    return;
+                }
                 
                 SwingUtilities.invokeLater(() -> mapPanel.setSearchProgress(80, "Reconstructing path..."));
                 
@@ -1320,6 +1452,9 @@ public class GuiLauncher extends JFrame {
             // Also update OSM map component when in OSM mode
             if (currentMapMode == MapViewMode.OSM_TILES) {
                 osmMapComponent.setQueryPreviewWithSubgraph(source, dest, srcCoord, dstCoord, subgraphNodes, subgraphEdges);
+                // Update selected node markers on map
+                osmMapComponent.setSelectedSource(source, srcCoord[0], srcCoord[1]);
+                osmMapComponent.setSelectedDestination(dest, dstCoord[0], dstCoord[1]);
             }
         }
     }
