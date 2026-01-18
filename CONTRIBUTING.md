@@ -16,12 +16,16 @@ Thank you for your interest in contributing to FlexiRoute Navigator! 🎉
    cd FlexiRoute
    ```
 
-2. **Build the project**
+2. **Download the dataset**
+   - Download from [Google Drive](https://drive.google.com/drive/folders/1l3NG641rHeshkYW7aDxpb7RhUy0kRuiP)
+   - Extract the `London/` folder to `dataset/London/`
+
+3. **Build the project**
    ```bash
    mvn clean compile
    ```
 
-3. **Run the application**
+4. **Run the application**
    ```bash
    ./run.sh  # Linux/Mac
    run.bat   # Windows

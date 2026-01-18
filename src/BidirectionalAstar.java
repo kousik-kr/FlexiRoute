@@ -385,11 +385,6 @@ public class BidirectionalAstar {
 		TIME_LIMIT = TIME_LIMIT > 0 ? TIME_LIMIT : 5;
         interval_duration = interval_duration > 0 ? interval_duration : 360;
         pool = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
-        System.out.println("[Init] Defaults configured. Thresholds set and pool size=" + pool.getParallelism());
-        
-        // Use the pre-configured default directory (dataset/London/)
-        // configuredGraphDataDir and dataDirectory are already initialized to currentDirectory
-        System.out.println("[Init] Default data directory: " + configuredGraphDataDir);
     }
 
     /**
@@ -405,7 +400,6 @@ public class BidirectionalAstar {
                 return false;
             }
             dataDirectory = dir.endsWith(File.separator) ? dir : dir + File.separator;
-            System.out.println("[Load] Using data directory: " + dataDirectory);
 
             int vertexCount = resolveVertexCount(dataDirectory, vertexCountOverride);
             if (vertexCount <= 0) {
@@ -414,15 +408,10 @@ public class BidirectionalAstar {
             }
             // Ensure vertex count is propagated to Graph before parsing files
             Graph.set_vertex_count(vertexCount);
-            System.out.println("[Load] Resolved vertex count: " + vertexCount);
 
             extract_nodes();
-            System.out.println("[Load] Nodes extracted: " + Graph.get_nodes().size());
             extract_edges();
-            System.out.println("[Load] Edges extracted.");
-            System.out.println("[Load] Using merged format - clusters and widths included in nodes/edges files");
 
-            System.out.println("Loaded graph from " + dataDirectory + " with " + Graph.get_nodes().size() + " nodes.");
             return true;
         } catch (Exception e) {
             System.err.println("Error loading graph from files: " + e.getMessage());
@@ -523,7 +512,6 @@ public class BidirectionalAstar {
         double interval = intervalMinutes > 0 ? intervalMinutes : budgetMinutes;
         interval_duration = interval;
         Query query = new Query(source, destination, departureMinutes, departureMinutes + interval, budgetMinutes, routingMode);
-        System.out.println("[Query] Running with mode: " + routingMode.getDisplayName());
         BidirectionalDriver driver = new BidirectionalDriver(query, budgetMinutes);
         try {
             return driver.driver();

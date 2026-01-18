@@ -28,7 +28,7 @@ FlexiRoute is a **professional pathfinding analysis platform** featuring:
 - **Real-Time Tooltips**: Hover for node information
 
 ### 🎯 **Smart Query System**
-- **Dataset Selection**: Choose between default (London) or custom datasets on startup
+- **Automatic Dataset Loading**: London dataset loaded on startup
 - **Input Validation**: Real-time feedback with visual indicators
 - **Recent History**: Last 10 queries with one-click reload
 - **Quick Actions**: Swap source/dest (S↔D button)
@@ -57,54 +57,55 @@ FlexiRoute is a **professional pathfinding analysis platform** featuring:
 
 - **Java 21+ JDK** (LTS version recommended)
 - **Maven** (for building the Java project)
-- **Python 3 + gdown** (optional, for automatic dataset download)
+- **Python 3 + gdown** (optional, for dataset format conversion)
 
 **Windows**: Install Java 21 JDK from [Adoptium](https://adoptium.net/) and Maven from [Apache Maven](https://maven.apache.org/).
 
 **Ubuntu/Debian**:
 ```bash
 sudo apt update
-sudo apt install openjdk-21-jdk maven python3-pip
-
-# Optional: For automatic dataset download
-pip install gdown
+sudo apt install openjdk-21-jdk maven
 ```
 
 ## 📦 Dataset Setup
 
-FlexiRoute now supports multiple datasets with automatic organization:
+FlexiRoute uses the **London road network dataset** (288,016 nodes, 744,610 edges) as the default dataset, which is automatically loaded on startup.
 
-### 🌍 Available Datasets
+### 📥 Download Dataset
 
-**1. London Dataset (Default)** - 288,016 nodes, 744,610 edges
-- Location: `dataset/London/`
-- Files: `nodes_288016.txt`, `edges_288016.txt`
-- Coverage: Greater London road network with time-dependent costs
-- Created from London_Edgelist.csv with British National Grid coordinates
+The dataset is **not included** in this repository due to size constraints. Please download it from Google Drive:
 
-**2. California Dataset** - 21,048 nodes
-- Location: `dataset/California/`
-- Files: `nodes_21048.txt`, `edges_21048.txt`
-- Coverage: California road network subset
+**📂 Google Drive Link**: [Download FlexiRoute Dataset](https://drive.google.com/drive/folders/1l3NG641rHeshkYW7aDxpb7RhUy0kRuiP?usp=sharing)
 
-### 📥 Getting Started
+The folder contains:
+- **Processed London Dataset** - Ready-to-use files (`nodes_288016.txt`, `edges_288016.txt`)
+- **Unprocessed London Dataset** - Raw CSV file (`London_Edgelist.csv`)
 
-**On first launch**, the application will prompt you to:
-- Load the **Default Dataset** (London) from `dataset/London/`
-- Or choose a **Custom Dataset** directory
+### 📍 Dataset Installation
 
-The map will automatically center on the loaded dataset's geographic coordinates.
+1. Download the dataset folder from Google Drive
+2. Extract the `London/` directory to `dataset/London/` in the project root:
+   ```
+   FlexiRoute/
+   └── dataset/
+       └── London/
+           ├── nodes_288016.txt
+           └── edges_288016.txt
+   ```
+3. Launch the application - it will automatically load the London dataset
+
+### 🔄 Custom Dataset Loading
+
+You can load custom datasets via **File > Load Dataset...** menu option. The map will automatically center on your dataset's geographic coordinates.
 
 ### 📝 Converting Your Own Dataset
 
-To convert a London format dataset:
+To convert a London format CSV to FlexiRoute format:
 ```bash
 python3 scripts/convert_london.py path/to/London_Edgelist.csv
 ```
 
 See `scripts/README_LONDON.md` for detailed conversion instructions.
-
-📚 **[Dataset Setup Guide →](GOOGLE_DRIVE_SETUP.md)**
 
 ## 📁 Project Layout
 
@@ -124,13 +125,10 @@ FlexiRoute/
 │   └── ui/                        # UI components and panels
 │       ├── components/            # Reusable components (SplashScreen)
 │       └── panels/                # Main panels (Query, Map, Results, Metrics)
-├── dataset/                       # Graph data files (organized by region)
-│   ├── London/                    # London dataset (default, 288K nodes)
-│   │   ├── nodes_288016.txt
-│   │   └── edges_288016.txt
-│   └── California/                # California dataset (21K nodes)
-│       ├── nodes_21048.txt
-│       └── edges_21048.txt
+├── dataset/                       # Graph data files
+│   └── London/                    # London dataset (default, 288K nodes)
+│       ├── nodes_288016.txt
+│       └── edges_288016.txt
 ├── scripts/                       # Utility scripts
 │   ├── convert_london.py         # Convert London CSV to FlexiRoute format
 │   └── README_LONDON.md          # Conversion documentation
@@ -210,14 +208,3 @@ Contributions are welcome! Please see our [Contributing Guide](CONTRIBUTING.md) 
 ---
 
 **Enjoy FlexiRoute Navigator!** 🚀
-
-
-- Launch with `run.bat` (Windows) or `run.sh` (Linux/Mac)
-- See `README.md` for setup, dataset formats, and usage instructions
-
-## License
-MIT License — free for personal, academic, and commercial use.
-
----
-
-For more details, see the [README.md](README.md) and [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md).

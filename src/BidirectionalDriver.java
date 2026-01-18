@@ -107,11 +107,8 @@ public class BidirectionalDriver {
 
 
 	public Result driver() throws InterruptedException, ExecutionException {
-		System.out.println("[Query] Starting driver for " + source + " -> " + destination + " budget=" + budget);
 		Graph.forwardAstar(source, destination, budget);
-		System.out.println("[Query] Forward A* finished");
 		Graph.backwardAstar(source, destination, budget);
-		System.out.println("[Query] Backward A* finished");
 
 		if(Graph.get_node(source).isFeasible()) {
 			SharedState shared = new SharedState();
@@ -177,52 +174,23 @@ public class BidirectionalDriver {
 				forwardFuture.get(LABELING_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 				forwardCompleted = true;
 			} catch(TimeoutException e) {
-				System.out.println("[WARN] Forward labeling timed out after " + LABELING_TIMEOUT_SECONDS + "s");
 				forwardFuture.cancel(true);
 			} catch(Exception e) {
-				System.out.println("[ERROR] Forward task exception: " + e.getMessage());
 				e.printStackTrace();
 			}
 			try {
 				backwardFuture.get(LABELING_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 				backwardCompleted = true;
 			} catch(TimeoutException e) {
-				System.out.println("[WARN] Backward labeling timed out after " + LABELING_TIMEOUT_SECONDS + "s");
 				backwardFuture.cancel(true);
 			} catch(Exception e) {
-				System.out.println("[ERROR] Backward task exception: " + e.getMessage());
 				e.printStackTrace();
 			}
 			
 			// If labeling timed out, fall back to fastest path
 			if (!forwardCompleted || !backwardCompleted) {
-				System.out.println("[Query] Labeling timed out, using fallback fastest path.");
 				return fallbackFastestPath(source, destination, budget, start_departure_time);
 			}
-			
-			System.out.println("[Query] Labeling tasks joined. Intersections=" + shared.intersectionNodes.size());
-			System.out.println("[Query] Forward labels generated at " + shared.forwardVisited.size() + " nodes");
-			System.out.println("[Query] Backward labels generated at " + shared.backwardVisited.size() + " nodes");
-//			String analysis_file = "Analysis"+index+"_" + Graph.get_vertex_count() +".txt";
-//			FileWriter fanalysis = new FileWriter(analysis_file);
-//			BufferedWriter writer2 = new BufferedWriter(fanalysis);
-//			
-//			String path_file = "Path"+index+"_" + Graph.get_vertex_count() +".txt";
-//			FileWriter fpath = new FileWriter(path_file);
-//			BufferedWriter writer3 = new BufferedWriter(fpath);
-//			
-//			index++;
-			
-			//BidirectionalDriver driver = new BidirectionalDriver(queries.peek().get_destination(), budget);
-//			ForwardLabeling forwardSolver = new ForwardLabeling(destination, budget, sourceLabel);
-//			Map<Integer,List<Label>> forward_labels = forwardSolver.call();
-//			forwardSolver.setMaster(); 
-			//Map<Integer,Result> pruned_forward_labels = pruneDomination(forward_labels);
-			
-			
-//			BackwardLabeling backwardSolver = new BackwardLabeling(source, budget, destinationLabel);
-//			Map<Integer,List<Label>> backward_labels = backwardSolver.call();
-			//Map<Integer,Result> pruned_backward_labels = pruneDomination(backward_labels);
 			
 			// Store labels in cache for fast re-computation when only routing mode changes
 			LabelCache cache = LabelCache.getInstance();
@@ -230,22 +198,16 @@ public class BidirectionalDriver {
 			           shared.intersectionNodes, shared.forwardVisited, shared.backwardVisited);
 			
 			// Use routing mode to determine output strategy
-			System.out.println("[Query] Processing labels with routing mode: " + routingMode);
 			Result result = formOutputLabels(shared.intersectionNodes, shared.forwardVisited, shared.backwardVisited, routingMode);
 			if (result == null) {
 				// Fallback: return the fastest path found by plain time Dijkstra when labeling yields nothing
 				result = fallbackFastestPath(source, destination, budget, start_departure_time);
-				if (result != null) {
-					System.out.println("[Query] Fallback fastest-path returned due to empty label merge.");
-				}
 			}
 			if (result != null) {
 				result.setRoutingMode(routingMode);
 			}
-			System.out.println("[Query] Result built, returning to caller.");
 			return result;
 		}
-		System.out.println("[Query] Source not feasible after A*; returning null.");
 		return null;
 	}
 	
@@ -260,12 +222,8 @@ public class BidirectionalDriver {
 		LabelCache cache = LabelCache.getInstance();
 		
 		if (cache.getIntersectionNodes() == null || cache.getIntersectionNodes().isEmpty()) {
-			System.out.println("[Cache] No cached labels available for recomputation");
 			return null;
 		}
-		
-		System.out.println("[Cache] Recomputing from cached labels with mode: " + newMode);
-		long startTime = System.currentTimeMillis();
 		
 		// Create a temporary driver just to use the formOutputLabels method
 		BidirectionalDriver tempDriver = new BidirectionalDriver(
@@ -284,9 +242,6 @@ public class BidirectionalDriver {
 			result.setDestination(cache.getCachedDestination());
 			result.setBudget((int) cache.getCachedBudget());
 		}
-		
-		long elapsed = System.currentTimeMillis() - startTime;
-		System.out.println("[Cache] Recomputation completed in " + elapsed + "ms");
 		
 		return result;
 	}
@@ -310,7 +265,6 @@ public class BidirectionalDriver {
 			PriorityBlockingQueue<Label> current_backward_labels = backwardVisited.get(current_join_node);
 			PriorityBlockingQueue<Label> current_forward_labels = forwardVisited.get(current_join_node);
 			printLabel(current_join_node, current_forward_labels, current_backward_labels);
-			System.out.println("Node: " + current_join_node + ", Forward: " + current_forward_labels.size() + ", Backward: " + current_backward_labels.size() + ", Total: " + (long)current_forward_labels.size()*(long)current_backward_labels.size());
 			long i=0;
 			for(Label current_backward_label:current_backward_labels) {
 				for(Label current_forward_label:current_forward_labels) {
@@ -330,7 +284,6 @@ public class BidirectionalDriver {
 					
 				}
 			}
-			System.out.println(i);
 			
 		}
 		return finalResult;
@@ -606,21 +559,6 @@ public class BidirectionalDriver {
 	        mainResult.addParetoPath(paretoSet.get(i));
 	    }
 	    
-	    System.out.println("[Query] Found " + paretoSet.size() + " Pareto optimal paths");
-	    for (int i = 0; i < paretoSet.size(); i++) {
-	        Result r = paretoSet.get(i);
-	        List<Integer> pathNodes = r.getPathNodes();
-	        int pathLen = pathNodes != null ? pathNodes.size() : 0;
-	        int firstNode = (pathNodes != null && !pathNodes.isEmpty()) ? pathNodes.get(0) : -1;
-	        int lastNode = (pathNodes != null && !pathNodes.isEmpty()) ? pathNodes.get(pathNodes.size()-1) : -1;
-	        System.out.println("  Path " + i + ": WideRoad%=" + String.format("%.1f%%", r.get_score()) + 
-	                           ", Turns=" + r.get_right_turns() + 
-	                           ", Distance=" + String.format("%.2f", r.getPathDistance()) +
-	                           ", Time=" + String.format("%.2f", r.get_travel_time()) +
-	                           ", Nodes=" + pathLen +
-	                           ", First=" + firstNode + ", Last=" + lastNode);
-	    }
-	    
 	    return mainResult;
 	}
 	
@@ -822,12 +760,6 @@ public class BidirectionalDriver {
 			if (next != null && next.equals(prevNext)) break;
 			iter++;
 		}
-		
-		// Debug: log if path seems incomplete
-		if (backwardPath.isEmpty() && bVisited.size() > 1) {
-			System.out.println("[DEBUG] Warning: Empty backward path from meet=" + meet + 
-				", bVisited size=" + bVisited.size());
-		}
 
 		List<Integer> full = new ArrayList<Integer>(forwardPath);
 		full.addAll(backwardPath);
@@ -877,12 +809,6 @@ public class BidirectionalDriver {
 				cleanPath.add(node);
 				i++;
 			}
-		}
-		
-		// Log if loops were removed
-		if (cleanPath.size() < path.size()) {
-			System.out.println("[Path] Removed " + (path.size() - cleanPath.size()) + 
-				" nodes from loop(s). Original: " + path.size() + " -> Clean: " + cleanPath.size());
 		}
 		
 		return cleanPath;

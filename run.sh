@@ -56,9 +56,7 @@ if [ ! -f "target/classes/GuiLauncher.class" ]; then
         src/Node.java src/Edge.java src/Properties.java src/Cluster.java \
         src/Graph.java src/Label.java src/Function.java src/BreakPoint.java \
         src/Query.java src/Result.java src/RushHour.java src/LabelCache.java src/BidirectionalLabeling.java \
-        src/BidirectionalAstar.java src/BidirectionalDriver.java \
-        src/DatasetDownloader.java src/GoogleDriveConfigHelper.java \
-        src/GoogleDriveDatasetLoader.java src/DebugQuery.java src/ParetoPathFinder.java src/ParetoWidenessTest.java 2>&1
+        src/BidirectionalAstar.java src/BidirectionalDriver.java 2>&1
     
     # Compile managers
     javac -d target/classes -cp target/classes \

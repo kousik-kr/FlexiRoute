@@ -140,8 +140,8 @@ public class GuiLauncher extends JFrame {
     public GuiLauncher() {
         super(APP_TITLE);
         initializeUI();
-        // Don't load dataset automatically - prompt user to load
-        promptUserToLoadDataset();
+        // Automatically load London dataset on startup
+        loadLondonDataset();
     }
     
     private void initializeUI() {
@@ -642,7 +642,6 @@ public class GuiLauncher extends JFrame {
     private void cancelCurrentQuery() {
         queryCancelled.set(true);
         if (currentQueryFuture != null && !currentQueryFuture.isDone()) {
-            System.out.println("[Query] Cancelling current query...");
             currentQueryFuture.cancel(true);
             currentQueryFuture = null;
             setStatus("🛑 Query cancelled");
@@ -656,7 +655,6 @@ public class GuiLauncher extends JFrame {
         
         // Check if we have multiple Pareto paths (hybrid mode)
         if (result.hasParetoOptimalPaths() && result.getParetoPathCount() > 1) {
-            System.out.println("[Display] Found " + result.getParetoPathCount() + " Pareto paths");
             
             // Build ParetoPathInfo list for rendering
             List<map.RouteOverlayRenderer.ParetoPathInfo> paretoPathInfos = new ArrayList<>();
@@ -664,9 +662,6 @@ public class GuiLauncher extends JFrame {
             for (int i = 0; i < result.getParetoPathCount(); i++) {
                 Result paretoPath = result.getParetoPath(i);
                 List<double[]> coords = paretoPath != null ? paretoPath.getPathCoordinates() : null;
-                System.out.println("[Display] Path " + i + ": coords=" + (coords != null ? coords.size() : "null") +
-                    ", wideRoad%=" + (paretoPath != null ? String.format("%.1f%%", paretoPath.get_score()) : "?") +
-                    ", turns=" + (paretoPath != null ? paretoPath.get_right_turns() : "?"));
                 
                 if (paretoPath != null && coords != null && !coords.isEmpty()) {
                     paretoPathInfos.add(new map.RouteOverlayRenderer.ParetoPathInfo(
@@ -679,7 +674,6 @@ public class GuiLauncher extends JFrame {
                 }
             }
             
-            System.out.println("[Display] Sending " + paretoPathInfos.size() + " paths to renderer");
             if (!paretoPathInfos.isEmpty()) {
                 if (currentMapMode == MapViewMode.OSM_TILES) {
                     osmMapComponent.setParetoPaths(paretoPathInfos);
@@ -729,7 +723,7 @@ public class GuiLauncher extends JFrame {
             BorderFactory.createEmptyBorder(14, 22, 14, 22)
         ));
         
-        statusLabel = new JLabel("🚀 Ready — Load a dataset to begin your adventure!");
+        statusLabel = new JLabel("🚀 Loading London dataset...");
         statusLabel.setFont(new Font("Segoe UI", Font.BOLD, 19));
         statusLabel.setForeground(NEON_GREEN);
         
@@ -912,6 +906,78 @@ public class GuiLauncher extends JFrame {
         }
     }
     
+    /**
+     * Automatically load the London dataset on startup
+     */
+    private void loadLondonDataset() {
+        executor.submit(() -> {
+            try {
+                SwingUtilities.invokeLater(() -> setStatus("Loading London dataset..."));
+                
+                // Configure defaults and load London dataset
+                String currentDir = System.getProperty("user.dir");
+                String londonDatasetPath = currentDir + "/dataset/London";
+                
+                // Check if London dataset exists
+                File londonDir = new File(londonDatasetPath);
+                if (!londonDir.exists() || !londonDir.isDirectory()) {
+                    SwingUtilities.invokeLater(() -> {
+                        setStatus("❌ London dataset not found");
+                        JOptionPane.showMessageDialog(this,
+                            "London dataset not found in dataset/London/\n\n" +
+                            "Please download the dataset from Google Drive:\n" +
+                            "https://drive.google.com/drive/folders/1l3NG641rHeshkYW7aDxpb7RhUy0kRuiP\n\n" +
+                            "Extract to: " + londonDatasetPath + "\n\n" +
+                            "You can also load a custom dataset via File > Load Dataset...",
+                            "Dataset Not Found",
+                            JOptionPane.WARNING_MESSAGE);
+                    });
+                    return;
+                }
+                
+                BidirectionalAstar.configureDefaults();
+                boolean loaded = BidirectionalAstar.loadGraphFromDisk(londonDatasetPath, null);
+                
+                if (!loaded) {
+                    SwingUtilities.invokeLater(() -> {
+                        setStatus("Failed to load London dataset");
+                        JOptionPane.showMessageDialog(this,
+                            "Failed to load London dataset files.\n\n" +
+                            "Please ensure nodes and edges files are present in:\n" +
+                            londonDatasetPath + "\n\n" +
+                            "You can also load a custom dataset via File > Load Dataset...",
+                            "Error",
+                            JOptionPane.ERROR_MESSAGE);
+                    });
+                    return;
+                }
+                
+                SwingUtilities.invokeLater(() -> {
+                    int nodeCount = Graph.get_nodes().size();
+                    setStatus(String.format("✅ London dataset loaded: %,d nodes", nodeCount));
+                    queryPanel.setMaxNodeId(nodeCount);
+                    
+                    // Center OSM map on the London dataset's location
+                    centerMapOnDataset();
+                });
+                
+            } catch (Exception e) {
+                SwingUtilities.invokeLater(() -> {
+                    setStatus("Failed to load dataset: " + e.getMessage());
+                    JOptionPane.showMessageDialog(this,
+                        "Failed to load London dataset:\n" + e.getMessage() + "\n\n" +
+                        "You can load a custom dataset via File > Load Dataset...",
+                        "Error",
+                        JOptionPane.ERROR_MESSAGE);
+                });
+            }
+        });
+    }
+    
+    /**
+     * Removed - no longer prompting user on startup
+     * Dataset is automatically loaded from dataset/London/
+     */
     private void promptUserToLoadDataset() {
         SwingUtilities.invokeLater(() -> {
             int choice = JOptionPane.showOptionDialog(
@@ -953,7 +1019,6 @@ public class GuiLauncher extends JFrame {
         
         // Check if we can reuse cached labels
         if (BidirectionalAstar.canReuseCachedLabels(source, dest, budget, departure)) {
-            System.out.println("[GUI] Routing mode changed to " + newMode + " - recomputing from cache...");
             setStatus("⚡ Instant recompute: " + newMode.getDisplayName() + "...");
             
             // Run recomputation in background thread to avoid blocking UI
@@ -1035,7 +1100,6 @@ public class GuiLauncher extends JFrame {
             });
         } else {
             // Cache is not valid - user needs to run a new query
-            System.out.println("[GUI] Cache invalid for current parameters - need to run query first");
             setStatus("ℹ️ Mode: " + newMode.getDisplayName() + " (run query to see results)");
         }
     }
@@ -1054,8 +1118,6 @@ public class GuiLauncher extends JFrame {
         // Get routing mode from PreferenceSlidersPanel (where the combo box actually is)
         RoutingMode routingMode = preferenceSlidersPanel.getRoutingMode();
         
-        System.out.println("[GUI] executeQuery: routingMode = " + routingMode + " (" + routingMode.getDisplayName() + ")");
-        
         setStatus("Running query: " + source + " → " + dest + " (mode: " + routingMode.getDisplayName() + ", timeout: " + QUERY_TIMEOUT_SECONDS + "s)");
         queryPanel.setRunning(true);
         resultsPanel.showLoading();
@@ -1069,7 +1131,6 @@ public class GuiLauncher extends JFrame {
                 
                 // Check if cancelled before starting
                 if (queryCancelled.get()) {
-                    System.out.println("[Query] Cancelled before start");
                     return;
                 }
                 
@@ -1092,7 +1153,6 @@ public class GuiLauncher extends JFrame {
                 try {
                     result = queryFuture.get(QUERY_TIMEOUT_SECONDS, TimeUnit.SECONDS);
                 } catch (TimeoutException te) {
-                    System.out.println("[Query] Query timed out after " + QUERY_TIMEOUT_SECONDS + " seconds");
                     queryFuture.cancel(true);
                     
                     // Return empty result on timeout
@@ -1119,7 +1179,6 @@ public class GuiLauncher extends JFrame {
                 
                 // Check if cancelled after query completed
                 if (queryCancelled.get()) {
-                    System.out.println("[Query] Cancelled after completion");
                     return;
                 }
                 

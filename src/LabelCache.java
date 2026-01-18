@@ -72,12 +72,6 @@ public class LabelCache {
         this.lastWidenessResult = null;
         this.lastTurnsResult = null;
         this.lastParetoResult = null;
-        
-        System.out.println("[LabelCache] Stored labels for " + source + " -> " + destination + 
-            " (budget=" + budget + ", departure=" + departureTime + ")");
-        System.out.println("[LabelCache] Intersections: " + intersectionNodes.size() + 
-            ", Forward nodes: " + forwardVisited.size() + 
-            ", Backward nodes: " + backwardVisited.size());
     }
     
     /**
@@ -125,7 +119,6 @@ public class LabelCache {
         lastWidenessResult = null;
         lastTurnsResult = null;
         lastParetoResult = null;
-        System.out.println("[LabelCache] Cache cleared");
     }
     
     /**
