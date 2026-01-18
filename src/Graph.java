@@ -148,10 +148,15 @@ public final class Graph {
      * 
      * @param previous_node The node we came from
      * @param current_node The current node (intersection)
-     * @param next_node The node we're going to
+     * @param next_node_id The ID of the node we're going to
      * @return true if this is a counted right turn
      */
-    public static boolean isCountedRightTurn(Node previous_node, Node current_node, Node next_node) {
+    public static boolean isCountedRightTurn(Node previous_node, Node current_node, int next_node_id) {
+        Node next_node = get_node(next_node_id);
+        if (next_node == null) {
+            return false;
+        }
+        
         // First check if it's a right turn geometrically
         if (!isRightTurn(previous_node, current_node, next_node)) {
             return false;
@@ -187,7 +192,7 @@ public final class Graph {
         }
         
         // Return true if next_node is NOT the leftmost edge
-        return next_node.get_id() != leftmostNodeId;
+        return next_node_id != leftmostNodeId;
     }
 
     /**
@@ -300,7 +305,7 @@ public final class Graph {
 
                 double g_distance = current_distance + distance;
                 int g_right_turn = current_right_turn;
-                if (current_vertex != source && isCountedRightTurn(get_node(prevoious_node), node, get_node(j))) {
+                if (current_vertex != source && isCountedRightTurn(get_node(prevoious_node), node, j)) {
                     g_right_turn++;
                 }
 
@@ -405,7 +410,7 @@ public final class Graph {
 
                 double g_distance = current_distance + distance;
                 int g_right_turn = current_right_turn;
-                if (current_vertex != destination && isCountedRightTurn(get_node(j), node, get_node(next_node))) {
+                if (current_vertex != destination && isCountedRightTurn(get_node(j), node, next_node)) {
                     g_right_turn++;
                 }
 

@@ -961,9 +961,9 @@ public class BidirectionalDriver {
 			if (i > 0) {
 				Node prevNode = Graph.get_node(path.get(i - 1));
 				Node curNode = from;
-				Node nextNode = Graph.get_node(v);
-				if (prevNode != null && curNode != null && nextNode != null) {
-					if (Graph.isCountedRightTurn(prevNode, curNode, nextNode)) {
+				int nextNodeId = v;
+				if (prevNode != null && curNode != null) {
+					if (Graph.isCountedRightTurn(prevNode, curNode, nextNodeId)) {
 						rightTurns++;
 					}
 				}

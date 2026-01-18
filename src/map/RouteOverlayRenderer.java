@@ -75,7 +75,7 @@ public class RouteOverlayRenderer {
     }
     
     private final CoordinateConverter converter;
-    private PathStyle pathStyle = PathStyle.GLOW;
+    private PathStyle pathStyle = PathStyle.SOLID;
     private MarkerStyle markerStyle = MarkerStyle.PIN;
     private float pathWidth = 4.0f;
     private float widePathWidth = 6.0f;

@@ -133,22 +133,22 @@ public class PreferenceSlidersPanel extends JPanel {
         
         prioritizeWideness = createPresetButton("🛣️ Wide", NEON_GREEN);
         prioritizeWideness.addActionListener(e -> {
-            if (prioritizeWideness.isSelected()) {
-                prioritizeTime.setSelected(false);
-                balancedMode.setSelected(false);
-                routingModeCombo.setSelectedItem(RoutingMode.WIDENESS_ONLY);
-            }
+            // Always select this mode when clicked (radio button behavior)
+            prioritizeWideness.setSelected(true);
+            prioritizeTime.setSelected(false);
+            balancedMode.setSelected(false);
+            routingModeCombo.setSelectedItem(RoutingMode.WIDENESS_ONLY);
         });
         panel.add(prioritizeWideness);
         panel.add(Box.createHorizontalStrut(6));
         
         prioritizeTime = createPresetButton("🔄 Turn Safe", ELECTRIC_BLUE);
         prioritizeTime.addActionListener(e -> {
-            if (prioritizeTime.isSelected()) {
-                prioritizeWideness.setSelected(false);
-                balancedMode.setSelected(false);
-                routingModeCombo.setSelectedItem(RoutingMode.MIN_TURNS_ONLY);
-            }
+            // Always select this mode when clicked (radio button behavior)
+            prioritizeWideness.setSelected(false);
+            prioritizeTime.setSelected(true);
+            balancedMode.setSelected(false);
+            routingModeCombo.setSelectedItem(RoutingMode.MIN_TURNS_ONLY);
         });
         panel.add(prioritizeTime);
         panel.add(Box.createHorizontalStrut(6));
@@ -156,11 +156,11 @@ public class PreferenceSlidersPanel extends JPanel {
         balancedMode = createPresetButton("⚖️ Balanced", SUNSET_ORANGE);
         balancedMode.setSelected(true);
         balancedMode.addActionListener(e -> {
-            if (balancedMode.isSelected()) {
-                prioritizeWideness.setSelected(false);
-                prioritizeTime.setSelected(false);
-                routingModeCombo.setSelectedItem(RoutingMode.WIDENESS_AND_TURNS);
-            }
+            // Always select this mode when clicked (radio button behavior)
+            prioritizeWideness.setSelected(false);
+            prioritizeTime.setSelected(false);
+            balancedMode.setSelected(true);
+            routingModeCombo.setSelectedItem(RoutingMode.WIDENESS_AND_TURNS);
         });
         panel.add(balancedMode);
         
@@ -236,15 +236,21 @@ public class PreferenceSlidersPanel extends JPanel {
         
         // Dropdown
         routingModeCombo = new JComboBox<>(RoutingMode.values());
+        routingModeCombo.setSelectedItem(RoutingMode.WIDENESS_AND_TURNS);  // Default to Balanced (Pareto)
         routingModeCombo.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         routingModeCombo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
         routingModeCombo.setAlignmentX(Component.LEFT_ALIGNMENT);
         routingModeCombo.addActionListener(e -> {
             updatePreferences();
-            // Trigger routing mode change callback for instant recomputation
-            if (onRoutingModeChange != null) {
-                RoutingMode newMode = (RoutingMode) routingModeCombo.getSelectedItem();
-                if (newMode != null) {
+            // Sync toggle buttons with combo box selection
+            RoutingMode newMode = (RoutingMode) routingModeCombo.getSelectedItem();
+            if (newMode != null) {
+                prioritizeWideness.setSelected(newMode == RoutingMode.WIDENESS_ONLY);
+                prioritizeTime.setSelected(newMode == RoutingMode.MIN_TURNS_ONLY);
+                balancedMode.setSelected(newMode == RoutingMode.WIDENESS_AND_TURNS);
+                
+                // Trigger routing mode change callback for instant recomputation
+                if (onRoutingModeChange != null) {
                     onRoutingModeChange.accept(newMode);
                 }
             }

@@ -19,6 +19,7 @@
     </dependencies>
 
     <build>
+        <sourceDirectory>src</sourceDirectory>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -26,6 +27,17 @@
                 <version>3.14.1</version>
                 <configuration>
                     <release>21</release>
+                    <excludes>
+                        <exclude>**/Main.java</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <mainClass>GuiLauncher</mainClass>
                 </configuration>
             </plugin>
         </plugins>

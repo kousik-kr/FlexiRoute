@@ -403,6 +403,10 @@ public class GuiLauncher extends JFrame {
         mapViewPanel.add(createMapToolbar(), BorderLayout.NORTH);
         mapViewPanel.add(mapContainer, BorderLayout.CENTER);
         
+        // Explicitly show OSM map as the default view
+        CardLayout cl = (CardLayout) mapContainer.getLayout();
+        cl.show(mapContainer, MapViewMode.OSM_TILES.name());
+        
         rightTabs.addTab("🗺️ Map View", mapViewPanel);
         
         // Results Panel
